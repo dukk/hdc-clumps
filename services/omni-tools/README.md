@@ -18,9 +18,9 @@
 | `teardown` | Optional compose down, destroy LXC |
 
 ```bash
-node apps/hdc-cli/cli.mjs run service omni-tools deploy -- --instance a
-node apps/hdc-cli/cli.mjs run service omni-tools query -- --live
-node apps/hdc-cli/cli.mjs run service omni-tools maintain --
+hdc run service omni-tools deploy -- --instance a
+hdc run service omni-tools query -- --live
+hdc run service omni-tools maintain --
 ```
 
 ## Common flags

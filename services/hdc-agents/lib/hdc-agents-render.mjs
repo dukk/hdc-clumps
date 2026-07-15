@@ -2,12 +2,13 @@
 export const AGENT_ROSTER = [
   { role: "hdc-manager", port: 9200 },
   { role: "hdc-monitor", port: 9201 },
-  { role: "hdc-sre", port: 9202 },
+  { role: "hdc-sre-ops", port: 9202 },
   { role: "hdc-security-expert", port: 9203 },
   { role: "hdc-security-architect", port: 9204 },
   { role: "hdc-network-architect", port: 9205 },
   { role: "hdc-research", port: 9206 },
   { role: "hdc-engineer", port: 9207 },
+  { role: "hdc-sre-engineer", port: 9208 },
 ];
 
 /** Roles that write digests/tasks under operations/ */
@@ -16,7 +17,7 @@ export const RW_OPERATIONS_ROLES = new Set([
   "hdc-monitor",
   "hdc-security-expert",
   "hdc-research",
-  "hdc-sre",
+  "hdc-sre-ops",
 ]);
 
 /**
@@ -199,6 +200,7 @@ export function renderComposeYaml(hdcAgents, install, opts = {}) {
   lines.push(`      HDC_WEB_OIDC_CLIENT_ID: \${HDC_WEB_OIDC_CLIENT_ID:-}`);
   lines.push(`      HDC_WEB_OIDC_CLIENT_SECRET: \${HDC_WEB_OIDC_CLIENT_SECRET:-}`);
   lines.push(`      HDC_WEB_PUBLIC_URL: \${HDC_WEB_PUBLIC_URL:-}`);
+  lines.push(`      HDC_WEB_ADMIN_PASSWORD: \${HDC_WEB_ADMIN_PASSWORD:-}`);
   lines.push(`    volumes:`);
   lines.push(`      - /opt/hdc-private:/opt/hdc-private:rw`);
   lines.push(`      - /opt/hdc-agents-meta:/opt/hdc-agents-meta:rw`);

@@ -11,10 +11,10 @@ Copy [`config.example.json`](config.example.json) to hdc-private `clumps/service
 Requires on the Proxmox node: `libguestfs-tools`, `p7zip-full`.
 
 ```bash
-node apps/hdc-cli/cli.mjs secrets set HDC_KALI_DESKTOP_PASSWORD
-node apps/hdc-cli/cli.mjs run service kali-desktop deploy -- --instance a --build-template
-node apps/hdc-cli/cli.mjs run service kali-desktop deploy -- --instance a
-node apps/hdc-cli/cli.mjs run service kali-desktop maintain --
+hdc secrets set HDC_KALI_DESKTOP_PASSWORD
+hdc run service kali-desktop deploy -- --instance a --build-template
+hdc run service kali-desktop deploy -- --instance a
+hdc run service kali-desktop maintain --
 ```
 
 ## Verbs

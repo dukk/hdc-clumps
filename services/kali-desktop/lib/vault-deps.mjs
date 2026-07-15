@@ -18,7 +18,7 @@ export async function resolveKaliPassword(vaultAccess, vaultKey) {
   }
   const value = await vaultAccess.getSecret(key);
   if (!value || !String(value).trim()) {
-    throw new Error(`vault secret ${key} is missing — run: node apps/hdc-cli/cli.mjs secrets set ${key}`);
+    throw new Error(`vault secret ${key} is missing — run: hdc secrets set ${key}`);
   }
   return String(value).trim();
 }

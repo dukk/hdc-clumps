@@ -11,11 +11,11 @@ AI-powered social media scheduling ([gitroomhq/postiz-app](https://github.com/gi
 ## Commands
 
 ```bash
-node apps/hdc-cli/cli.mjs run service postiz deploy --
-node apps/hdc-cli/cli.mjs run service postiz query -- --live
-node apps/hdc-cli/cli.mjs run service postiz maintain --
-node apps/hdc-cli/cli.mjs run service postiz maintain -- --rebuild
-node apps/hdc-cli/cli.mjs run service postiz teardown -- --yes
+hdc run service postiz deploy --
+hdc run service postiz query -- --live
+hdc run service postiz maintain --
+hdc run service postiz maintain -- --rebuild
+hdc run service postiz teardown -- --yes
 ```
 
 ## URL and rebuild
@@ -23,7 +23,7 @@ node apps/hdc-cli/cli.mjs run service postiz teardown -- --yes
 `NEXT_PUBLIC_*` variables are baked at **build** time. After changing `postiz.public_url` or social keys in `postiz.env_extra`, run:
 
 ```bash
-node apps/hdc-cli/cli.mjs run service postiz maintain -- --rebuild
+hdc run service postiz maintain -- --rebuild
 ```
 
 Or on the guest: `postiz-rebuild`.

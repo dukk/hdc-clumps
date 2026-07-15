@@ -26,9 +26,9 @@ Single-node Wazuh stack on Proxmox using Docker Compose.
 | `teardown` | Optional compose down, then destroy LXC or QEMU guest |
 
 ```bash
-node apps/hdc-cli/cli.mjs run service wazuh deploy --
-node apps/hdc-cli/cli.mjs run service wazuh deploy -- --instance a --destroy-existing
-node apps/hdc-cli/cli.mjs run service wazuh query -- --live
+hdc run service wazuh deploy --
+hdc run service wazuh deploy -- --instance a --destroy-existing
+hdc run service wazuh query -- --live
 ```
 
 QEMU example deployment block (merge into `config.json`):

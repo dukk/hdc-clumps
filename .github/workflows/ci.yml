@@ -28,3 +28,10 @@ jobs:
             echo "$bad"
             exit 1
           fi
+      - name: Block RFC1918 10.0.0.x in tracked files
+        run: |
+          set -euo pipefail
+          if git grep -nE '10\.0\.0\.[0-9]+' -- ':!package-lock.json' ':!.github/workflows/ci.yml'; then
+            echo "Found 10.0.0.x addresses; use 192.0.2.x (RFC 5737) in public examples."
+            exit 1
+          fi

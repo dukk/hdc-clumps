@@ -18,8 +18,8 @@ Network discovery stack on Proxmox LXC via official Docker Compose in `/opt/scan
 | `teardown` | Optional compose down, then destroy LXC |
 
 ```bash
-node apps/hdc-cli/cli.mjs run service scanopy deploy --
-node apps/hdc-cli/cli.mjs run service scanopy query -- --live
+hdc run service scanopy deploy --
+hdc run service scanopy query -- --live
 ```
 
 ## Common flags

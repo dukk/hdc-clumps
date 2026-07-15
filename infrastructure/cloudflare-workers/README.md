@@ -36,13 +36,13 @@ Copy [`config.example.json`](config.example.json) to hdc-private as `config.json
 ## Commands
 
 ```bash
-node apps/hdc-cli/cli.mjs run infrastructure cloudflare-workers query --
-node apps/hdc-cli/cli.mjs run infrastructure cloudflare-workers query -- --import --yes
-node apps/hdc-cli/cli.mjs run infrastructure cloudflare-workers deploy --
-node apps/hdc-cli/cli.mjs run infrastructure cloudflare-workers deploy -- --worker example-worker
-node apps/hdc-cli/cli.mjs run infrastructure cloudflare-workers maintain --
-node apps/hdc-cli/cli.mjs run infrastructure cloudflare-workers maintain -- --redeploy
-node apps/hdc-cli/cli.mjs run infrastructure cloudflare-workers teardown -- --worker example-worker --yes
+hdc run infrastructure cloudflare-workers query --
+hdc run infrastructure cloudflare-workers query -- --import --yes
+hdc run infrastructure cloudflare-workers deploy --
+hdc run infrastructure cloudflare-workers deploy -- --worker example-worker
+hdc run infrastructure cloudflare-workers maintain --
+hdc run infrastructure cloudflare-workers maintain -- --redeploy
+hdc run infrastructure cloudflare-workers teardown -- --worker example-worker --yes
 ```
 
 ## Verbs

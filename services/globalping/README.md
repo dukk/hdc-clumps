@@ -20,10 +20,10 @@ Monitoring IP range: **Monitoring** group in `hdc-private/operations/ip-allocati
 | `teardown` | Optional compose down, destroy LXC |
 
 ```bash
-node apps/hdc-cli/cli.mjs secrets set HDC_GLOBALPING_ADOPTION_TOKEN
-node apps/hdc-cli/cli.mjs run service globalping deploy -- --instance a
-node apps/hdc-cli/cli.mjs run service globalping query -- --live
-node apps/hdc-cli/cli.mjs run service globalping maintain --
+hdc secrets set HDC_GLOBALPING_ADOPTION_TOKEN
+hdc run service globalping deploy -- --instance a
+hdc run service globalping query -- --live
+hdc run service globalping maintain --
 ```
 
 ## Common flags

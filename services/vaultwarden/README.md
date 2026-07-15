@@ -19,10 +19,10 @@ Bitwarden-compatible password manager on Proxmox LXC (Docker Compose). Public HT
 | `teardown` | Optional compose down, destroy LXC |
 
 ```bash
-node apps/hdc-cli/cli.mjs secrets set HDC_VAULTWARDEN_ADMIN_TOKEN
-node apps/hdc-cli/cli.mjs run vaultwarden deploy -- --instance a
-node apps/hdc-cli/cli.mjs run vaultwarden query -- --live
-node apps/hdc-cli/cli.mjs run vaultwarden maintain --
+hdc secrets set HDC_VAULTWARDEN_ADMIN_TOKEN
+hdc run vaultwarden deploy -- --instance a
+hdc run vaultwarden query -- --live
+hdc run vaultwarden maintain --
 ```
 
 ## Common flags
@@ -37,7 +37,7 @@ node apps/hdc-cli/cli.mjs run vaultwarden maintain --
 4. **nginx-waf:** add a site with upstream to the CT IP; set `"websocket": true` on locations that need WebSockets (e.g. `/` and `/notifications/hub` for Vaultwarden). On the `/admin` location, set `"waf": { "enabled": false }` so OWASP CRS does not block admin Save POSTs (see [nginx-waf README](../nginx-waf/README.md)).
 5. **Admin:** open `{domain}/admin` only (must match `vaultwarden.domain`; LAN only via nginx-waf) and sign in with the plain password from `HDC_VAULTWARDEN_ADMIN_TOKEN` (not the Argon2 hash in the container `.env`).
 6. **hdc secrets:** set `HDC_VAULTWARDEN_URL`, `HDC_VAULTWARDEN_EMAIL` in `.env`; install [Bitwarden CLI](../../../docs/manually-deployed/bitwarden-cli.md); create your Vaultwarden user account.
-7. **Nagios:** `node apps/hdc-cli/cli.mjs run service nagios maintain --` after BIND A record exists.
+7. **Nagios:** `hdc run service nagios maintain --` after BIND A record exists.
 
 ## Related
 

@@ -18,9 +18,9 @@ SSH disk checks and `apt` dist-upgrade for Linux workstations in [`config.json`]
 | `query` | Disk + upgradable package count |
 
 ```bash
-node apps/hdc-cli/cli.mjs run client client-ubuntu query --
-node apps/hdc-cli/cli.mjs run client client-ubuntu maintain -- --reboot --host-id ws-example
-node apps/hdc-cli/cli.mjs help run client client-ubuntu
+hdc run client client-ubuntu query --
+hdc run client client-ubuntu maintain -- --reboot --host-id ws-example
+hdc help run client client-ubuntu
 ```
 
 ## Common flags

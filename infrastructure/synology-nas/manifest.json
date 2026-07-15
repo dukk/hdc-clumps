@@ -10,7 +10,7 @@
   "operation_report": {
     "next_steps": [
       "Enable SSH in DSM Control Panel → Terminal & SNMP on each NAS before first maintain.",
-      "Store per-host SSH passwords: `node apps/hdc-cli/cli.mjs secrets set HDC_SYNOLOGY_SSH_PASSWORD_NAS_1` (and _NAS_2).",
+      "Store per-host SSH passwords: `hdc secrets set HDC_SYNOLOGY_SSH_PASSWORD_NAS_1` (and _NAS_2).",
       "After DSM reboot during maintain, Proxmox CIFS storage to nas-a/nas-b may be briefly unavailable."
     ]
   },

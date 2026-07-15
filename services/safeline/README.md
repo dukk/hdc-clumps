@@ -24,11 +24,11 @@ Copy `config.example.json` to hdc-private `clumps/services/safeline/config.json`
 ## Verbs
 
 ```bash
-node apps/hdc-cli/cli.mjs run service safeline query --
-node apps/hdc-cli/cli.mjs run service safeline deploy -- --instance a
-node apps/hdc-cli/cli.mjs run service safeline maintain --
-node apps/hdc-cli/cli.mjs run service safeline query -- --live
-node apps/hdc-cli/cli.mjs run service safeline teardown -- --instance a --dry-run
+hdc run service safeline query --
+hdc run service safeline deploy -- --instance a
+hdc run service safeline maintain --
+hdc run service safeline query -- --live
+hdc run service safeline teardown -- --instance a --dry-run
 ```
 
 ### Flags

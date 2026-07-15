@@ -19,11 +19,11 @@ See [`docs/manually-deployed/gcp-oauth.md`](../../../docs/manually-deployed/gcp-
 | `maintain` | Validate config; `--import` writes vault; print Console checklist |
 
 ```bash
-node apps/hdc-cli/cli.mjs run infrastructure gcp-oauth query --
-node apps/hdc-cli/cli.mjs run infrastructure gcp-oauth query -- --import ./client_secret.json --require-vault
-node apps/hdc-cli/cli.mjs run infrastructure gcp-oauth maintain -- --dry-run
-node apps/hdc-cli/cli.mjs run infrastructure gcp-oauth maintain -- --import ./client_secret.json
-node apps/hdc-cli/cli.mjs help run infrastructure gcp-oauth
+hdc run infrastructure gcp-oauth query --
+hdc run infrastructure gcp-oauth query -- --import ./client_secret.json --require-vault
+hdc run infrastructure gcp-oauth maintain -- --dry-run
+hdc run infrastructure gcp-oauth maintain -- --import ./client_secret.json
+hdc help run infrastructure gcp-oauth
 ```
 
 ## Config

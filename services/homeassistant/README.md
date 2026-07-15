@@ -19,8 +19,8 @@ Deploy **Home Assistant OS** as a Proxmox QEMU VM with optional USB passthrough 
 | `teardown` | Destroy QEMU guest (`--dry-run`, `--yes`) |
 
 ```bash
-node apps/hdc-cli/cli.mjs run service homeassistant deploy -- --instance a --destroy-existing
-node apps/hdc-cli/cli.mjs run service homeassistant query -- --live
+hdc run service homeassistant deploy -- --instance a --destroy-existing
+hdc run service homeassistant query -- --live
 ```
 
 ## USB passthrough

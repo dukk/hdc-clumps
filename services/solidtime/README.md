@@ -18,8 +18,8 @@ Deploy SolidTime time-tracking on Proxmox LXC (Ubuntu 22.04, Caddy, PHP, Postgre
 | `teardown` | Destroy LXC |
 
 ```bash
-node apps/hdc-cli/cli.mjs run service solidtime deploy --
-node apps/hdc-cli/cli.mjs run service solidtime maintain -- --check-latest
+hdc run service solidtime deploy --
+hdc run service solidtime maintain -- --check-latest
 ```
 
 ## Common flags

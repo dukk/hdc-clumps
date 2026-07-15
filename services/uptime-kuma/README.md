@@ -27,10 +27,10 @@ OCI UK API is reached over SSH (`api_via_ssh: true`) by default. Optional `oci.a
 | `teardown` | Destroy LXC or OCI VM |
 
 ```bash
-node apps/hdc-cli/cli.mjs run service uptime-kuma deploy -- --instance a
-node apps/hdc-cli/cli.mjs run service uptime-kuma deploy -- --instance ext-a
-node apps/hdc-cli/cli.mjs run service uptime-kuma maintain -- --instance ext-a
-node apps/hdc-cli/cli.mjs run service uptime-kuma query -- --live
+hdc run service uptime-kuma deploy -- --instance a
+hdc run service uptime-kuma deploy -- --instance ext-a
+hdc run service uptime-kuma maintain -- --instance ext-a
+hdc run service uptime-kuma query -- --live
 ```
 
 ## Monitor bootstrap
@@ -38,7 +38,7 @@ node apps/hdc-cli/cli.mjs run service uptime-kuma query -- --live
 1. Seed `monitors[]` from homepage dashboard targets:
 
    ```bash
-   node apps/hdc-cli/cli.mjs run service uptime-kuma query -- --import-from-homepage --yes
+   hdc run service uptime-kuma query -- --import-from-homepage --yes
    ```
 
 2. Review/edit monitors in hdc-private `config.json` (`managed: true` on hdc-owned entries). Use `$hdc.include` for split files under `monitors/` or `monitors-public/`.
@@ -46,8 +46,8 @@ node apps/hdc-cli/cli.mjs run service uptime-kuma query -- --live
 3. Apply to live Uptime Kuma:
 
    ```bash
-   node apps/hdc-cli/cli.mjs run service uptime-kuma maintain -- --dry-run
-   node apps/hdc-cli/cli.mjs run service uptime-kuma maintain -- --instance ext-a
+   hdc run service uptime-kuma maintain -- --dry-run
+   hdc run service uptime-kuma maintain -- --instance ext-a
    ```
 
 ## Discord notifications
@@ -73,7 +73,7 @@ Add to config (root or per-deployment):
 ## OCI deploy (`oci-vm`)
 
 1. Configure [`oci-compute`](../../infrastructure/oci-compute/) (VCN, NSG with TCP 22/80/443, optional restricted TCP 3001, instance `uptime-kuma-ext-a`).
-2. `node apps/hdc-cli/cli.mjs run infrastructure oci-compute deploy -- --resource uptime-kuma-ext-a --yes`
+2. `hdc run infrastructure oci-compute deploy -- --resource uptime-kuma-ext-a --yes`
 3. Set `deployments[].configure.ssh.host` to the public IP; set `uptime_kuma.public_url` to `https://status-ext.dukk.org` (or your public hostname); deploy UK: `--instance ext-a`
 4. **Admin UI:** SSH tunnel (`ssh -L 3001:127.0.0.1:3001 ubuntu@<public-ip>`) or direct HTTP on `:3001` when `oci.admin_ingress.allowed_cidrs[]` matches your home public CIDR and the OCI NSG allows the same source.
 5. **Status page:** https://status-ext.dukk.org/status/public-edge (Caddy TLS on the VM when `public_url` is HTTPS). `oci-compute maintain` mirrors NSG TCP ingress (port + source CIDR) onto the subnet security list; Caddy deploy/maintain also opens 80/443 (and optional admin port/CIDR) in the OCI Ubuntu guest iptables rules (image default allows SSH only).

@@ -17,9 +17,9 @@ Query and maintain Synology DSM hosts over SSH: versions, RAID, disk usage, DSM 
 | `maintain` | SSH keys, Docker ensure, DSM upgrade, `synopkg upgradeall` (one NAS at a time) |
 
 ```bash
-node apps/hdc-cli/cli.mjs run infrastructure synology-nas query --
-node apps/hdc-cli/cli.mjs run infrastructure synology-nas maintain --
-node apps/hdc-cli/cli.mjs help run infrastructure synology-nas
+hdc run infrastructure synology-nas query --
+hdc run infrastructure synology-nas maintain --
+hdc help run infrastructure synology-nas
 ```
 
 ## Common flags

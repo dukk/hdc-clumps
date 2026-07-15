@@ -46,6 +46,6 @@ export async function resolveUptimerobotApiKey(
   if (fromVault) return fromVault;
 
   throw new Error(
-    `${apiKeyVaultKey} is not set. Run: node apps/hdc-cli/cli.mjs secrets set ${apiKeyVaultKey} — or set ${envName} in repo .env`
+    `${apiKeyVaultKey} is not set. Run: hdc secrets set ${apiKeyVaultKey} — or set ${envName} in repo .env`
   );
 }

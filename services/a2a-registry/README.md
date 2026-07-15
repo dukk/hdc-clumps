@@ -21,9 +21,9 @@
 | `teardown` | Optional compose down, destroy LXC |
 
 ```bash
-node apps/hdc-cli/cli.mjs run service a2a-registry deploy -- --instance a
-node apps/hdc-cli/cli.mjs run service a2a-registry query -- --live
-node apps/hdc-cli/cli.mjs run service a2a-registry maintain --
+hdc run service a2a-registry deploy -- --instance a
+hdc run service a2a-registry query -- --live
+hdc run service a2a-registry maintain --
 ```
 
 ## Common flags

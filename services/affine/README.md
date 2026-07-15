@@ -13,10 +13,10 @@ Self-hosted AFFiNE workspace on Proxmox LXC (Docker Compose: AFFiNE + Postgres/p
 ## Commands
 
 ```bash
-node apps/hdc-cli/cli.mjs run service affine deploy -- --instance a
-node apps/hdc-cli/cli.mjs run service affine query -- --live
-node apps/hdc-cli/cli.mjs run service affine maintain --
-node apps/hdc-cli/cli.mjs run service affine teardown -- --instance a --yes
+hdc run service affine deploy -- --instance a
+hdc run service affine query -- --live
+hdc run service affine maintain --
+hdc run service affine teardown -- --instance a --yes
 ```
 
 Deploy flags: `--skip-install`, `--skip-existing`, `--redeploy-existing`, `--instance`, `--system-id`.

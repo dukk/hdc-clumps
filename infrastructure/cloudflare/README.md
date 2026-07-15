@@ -19,9 +19,9 @@ See [`docs/manually-deployed/cloudflare.md`](../../../docs/manually-deployed/clo
 | `maintain` | Apply managed DNS, page rules, and email routing for zones in config |
 
 ```bash
-node apps/hdc-cli/cli.mjs run infrastructure cloudflare query --
-node apps/hdc-cli/cli.mjs run infrastructure cloudflare maintain -- --dry-run
-node apps/hdc-cli/cli.mjs help run infrastructure cloudflare
+hdc run infrastructure cloudflare query --
+hdc run infrastructure cloudflare maintain -- --dry-run
+hdc help run infrastructure cloudflare
 ```
 
 ## Bootstrap config from live Cloudflare
@@ -29,14 +29,14 @@ node apps/hdc-cli/cli.mjs help run infrastructure cloudflare
 Import DNS for all zones matching `cloudflare.zone_filter` (default: entire account):
 
 ```bash
-node apps/hdc-cli/cli.mjs run infrastructure cloudflare query -- --import-zones --yes
+hdc run infrastructure cloudflare query -- --import-zones --yes
 ```
 
 Import page rules or email routing into **existing** config zones (merge):
 
 ```bash
-node apps/hdc-cli/cli.mjs run infrastructure cloudflare query -- --import-page-rules --yes
-node apps/hdc-cli/cli.mjs run infrastructure cloudflare query -- --import-email-routing --yes
+hdc run infrastructure cloudflare query -- --import-page-rules --yes
+hdc run infrastructure cloudflare query -- --import-email-routing --yes
 ```
 
 Preview without writing: omit import flags and inspect `discovered_zones[]` in query JSON.

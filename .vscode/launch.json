@@ -1,0 +1,70 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "HDC CLI: list (sibling hdc)",
+      "type": "node",
+      "request": "launch",
+      "cwd": "${workspaceFolder}/../hdc",
+      "program": "${workspaceFolder}/../hdc/apps/hdc-cli/cli.mjs",
+      "args": ["list"],
+      "env": {
+        "HDC_CLUMPS_ROOT": "${workspaceFolder}"
+      },
+      "console": "integratedTerminal",
+      "skipFiles": ["<node_internals>/**", "**/node_modules/**"]
+    },
+    {
+      "name": "HDC CLI: run service query (sibling hdc)",
+      "type": "node",
+      "request": "launch",
+      "cwd": "${workspaceFolder}/../hdc",
+      "program": "${workspaceFolder}/../hdc/apps/hdc-cli/cli.mjs",
+      "args": ["run", "service", "pi-hole", "query", "--"],
+      "env": {
+        "HDC_CLUMPS_ROOT": "${workspaceFolder}"
+      },
+      "console": "integratedTerminal",
+      "skipFiles": ["<node_internals>/**", "**/node_modules/**"]
+    },
+    {
+      "name": "Vitest: current file (sibling hdc)",
+      "type": "node",
+      "request": "launch",
+      "cwd": "${workspaceFolder}/../hdc",
+      "program": "${workspaceFolder}/../hdc/node_modules/vitest/vitest.mjs",
+      "args": ["run", "${relativeFile}"],
+      "env": {
+        "HDC_CLUMPS_ROOT": "${workspaceFolder}"
+      },
+      "console": "integratedTerminal",
+      "skipFiles": ["<node_internals>/**", "**/node_modules/**"]
+    },
+    {
+      "name": "Vitest: all tests (sibling hdc)",
+      "type": "node",
+      "request": "launch",
+      "cwd": "${workspaceFolder}/../hdc",
+      "program": "${workspaceFolder}/../hdc/node_modules/vitest/vitest.mjs",
+      "args": ["run"],
+      "env": {
+        "HDC_CLUMPS_ROOT": "${workspaceFolder}"
+      },
+      "console": "integratedTerminal",
+      "skipFiles": ["<node_internals>/**", "**/node_modules/**"]
+    },
+    {
+      "name": "Clump script: current file (HDC_CLUMPS_ROOT)",
+      "type": "node",
+      "request": "launch",
+      "cwd": "${workspaceFolder}",
+      "program": "${file}",
+      "env": {
+        "HDC_CLUMPS_ROOT": "${workspaceFolder}",
+        "NODE_OPTIONS": "--experimental-import-meta-resolve"
+      },
+      "console": "integratedTerminal",
+      "skipFiles": ["<node_internals>/**", "**/node_modules/**"]
+    }
+  ]
+}

@@ -20,9 +20,9 @@ Deploy `llama-server` on Proxmox LXC or QEMU from GitHub releases (CPU, CUDA, Vu
 | `teardown` | Destroy LXC or QEMU guest |
 
 ```bash
-node apps/hdc-cli/cli.mjs run service llama-cpp deploy -- --instance a
-node apps/hdc-cli/cli.mjs run service llama-cpp deploy -- --instance a --destroy-existing
-node apps/hdc-cli/cli.mjs run service llama-cpp query -- --live
+hdc run service llama-cpp deploy -- --instance a
+hdc run service llama-cpp deploy -- --instance a --destroy-existing
+hdc run service llama-cpp query -- --live
 ```
 
 ## Deploy modes

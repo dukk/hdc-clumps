@@ -23,10 +23,10 @@ Manual sidecars (hdc-private):
 ## Commands
 
 ```bash
-node apps/hdc-cli/cli.mjs run service lms deploy -- --instance a --destroy-existing
-node apps/hdc-cli/cli.mjs run service lms maintain --
-node apps/hdc-cli/cli.mjs run service lms query -- --live
-node apps/hdc-cli/cli.mjs run service lms teardown -- --instance a --yes
+hdc run service lms deploy -- --instance a --destroy-existing
+hdc run service lms maintain --
+hdc run service lms query -- --live
+hdc run service lms teardown -- --instance a --yes
 ```
 
 ### Deploy flags

@@ -16,7 +16,7 @@
 | `query` | Summary stub |
 
 ```bash
-node apps/hdc-cli/cli.mjs run service minecraft maintain --
+hdc run service minecraft maintain --
 ```
 
 ## Common flags

@@ -16,7 +16,7 @@
       "Complete Twilio Console steps in clumps/services/asterisk/examples/twilio/",
       "Set asterisk.nat.external_* to your WAN IP if behind NAT",
       "Forward SIP (5060) and RTP (10000-20000) on edge firewall to the guest IP",
-      "Run: node apps/hdc-cli/cli.mjs run service asterisk query -- --live"
+      "Run: hdc run service asterisk query -- --live"
     ]
   },
   "verbs": {

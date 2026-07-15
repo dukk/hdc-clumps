@@ -19,9 +19,9 @@ Self-hosted task manager on Proxmox LXC (Docker Compose + PostgreSQL). Public HT
 | `teardown` | Optional compose down, destroy LXC |
 
 ```bash
-node apps/hdc-cli/cli.mjs run service vikunja deploy -- --instance a
-node apps/hdc-cli/cli.mjs run service vikunja query -- --live
-node apps/hdc-cli/cli.mjs run service vikunja maintain --
+hdc run service vikunja deploy -- --instance a
+hdc run service vikunja query -- --live
+hdc run service vikunja maintain --
 ```
 
 ## Common flags

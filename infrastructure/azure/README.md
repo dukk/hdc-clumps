@@ -21,11 +21,11 @@ See [`docs/manually-deployed/azure.md`](../../../docs/manually-deployed/azure.md
 | `teardown` | Destroy compute resources only (`--section compute`) |
 
 ```bash
-node apps/hdc-cli/cli.mjs run infrastructure azure query -- --section all
-node apps/hdc-cli/cli.mjs run infrastructure azure query -- --section entra --import --yes
-node apps/hdc-cli/cli.mjs run infrastructure azure deploy -- --section entra --dry-run
-node apps/hdc-cli/cli.mjs run infrastructure azure deploy -- --section compute --instance a --dry-run
-node apps/hdc-cli/cli.mjs run infrastructure azure maintain -- --section entra
+hdc run infrastructure azure query -- --section all
+hdc run infrastructure azure query -- --section entra --import --yes
+hdc run infrastructure azure deploy -- --section entra --dry-run
+hdc run infrastructure azure deploy -- --section compute --instance a --dry-run
+hdc run infrastructure azure maintain -- --section entra
 ```
 
 ## Config

@@ -17,8 +17,8 @@ Reverse proxy and static hosting with Let's Encrypt. Optional Proxmox QEMU provi
 | `query` | nginx status, config test, upstream probes, cert expiry |
 
 ```bash
-node apps/hdc-cli/cli.mjs run service nginx deploy -- --instance a
-node apps/hdc-cli/cli.mjs run service nginx maintain --
+hdc run service nginx deploy -- --instance a
+hdc run service nginx maintain --
 ```
 
 `maintain -- --site <id>` updates only that site's vhost; other `hdc-*.conf` sites on the host are left as-is. Run full `maintain` (no `--site`) to prune sites removed from `config.json`.

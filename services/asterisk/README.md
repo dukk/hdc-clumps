@@ -27,11 +27,11 @@ Asterisk PBX (PJSIP) on Proxmox with config-driven Twilio Elastic SIP Trunk exam
 | `teardown` | Destroy LXC or QEMU guest |
 
 ```bash
-node apps/hdc-cli/cli.mjs secrets set HDC_TWILIO_SIP_USERNAME
-node apps/hdc-cli/cli.mjs secrets set HDC_TWILIO_SIP_PASSWORD
-node apps/hdc-cli/cli.mjs run service asterisk deploy -- --instance a
-node apps/hdc-cli/cli.mjs run service asterisk maintain --
-node apps/hdc-cli/cli.mjs run service asterisk query -- --live
+hdc secrets set HDC_TWILIO_SIP_USERNAME
+hdc secrets set HDC_TWILIO_SIP_PASSWORD
+hdc run service asterisk deploy -- --instance a
+hdc run service asterisk maintain --
+hdc run service asterisk query -- --live
 ```
 
 ## Common flags

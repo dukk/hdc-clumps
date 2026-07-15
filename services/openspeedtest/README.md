@@ -18,9 +18,9 @@
 | `teardown` | Optional compose down, destroy LXC |
 
 ```bash
-node apps/hdc-cli/cli.mjs run service openspeedtest deploy -- --instance a
-node apps/hdc-cli/cli.mjs run service openspeedtest query -- --live
-node apps/hdc-cli/cli.mjs run service openspeedtest maintain --
+hdc run service openspeedtest deploy -- --instance a
+hdc run service openspeedtest query -- --live
+hdc run service openspeedtest maintain --
 ```
 
 ## Common flags

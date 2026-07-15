@@ -24,10 +24,10 @@
 | `teardown` | Optional compose down, then destroy guest |
 
 ```bash
-node apps/hdc-cli/cli.mjs run service hermes deploy -- --instance a
-node apps/hdc-cli/cli.mjs run service hermes deploy -- --instance a --destroy-existing
-node apps/hdc-cli/cli.mjs run service hermes maintain --
-node apps/hdc-cli/cli.mjs run service hermes query -- --live
+hdc run service hermes deploy -- --instance a
+hdc run service hermes deploy -- --instance a --destroy-existing
+hdc run service hermes maintain --
+hdc run service hermes query -- --live
 ```
 
 ## Modes

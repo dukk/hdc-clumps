@@ -18,9 +18,9 @@ Deploy Nagios 4 on Proxmox LXC instances and generate checks from **BIND forward
 | `query` | Service status per instance |
 
 ```bash
-node apps/hdc-cli/cli.mjs run service nagios deploy --
-node apps/hdc-cli/cli.mjs run service nagios maintain --
-node apps/hdc-cli/cli.mjs run service nagios query --
+hdc run service nagios deploy --
+hdc run service nagios maintain --
+hdc run service nagios query --
 ```
 
 ## Common flags

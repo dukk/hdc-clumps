@@ -9,7 +9,7 @@
 - **Vault:** `HDC_STIRLING_PDF_ADMIN_PASSWORD` (initial admin login password)
 
 ```bash
-node apps/hdc-cli/cli.mjs secrets set HDC_STIRLING_PDF_ADMIN_PASSWORD
+hdc secrets set HDC_STIRLING_PDF_ADMIN_PASSWORD
 ```
 
 ## Commands
@@ -22,9 +22,9 @@ node apps/hdc-cli/cli.mjs secrets set HDC_STIRLING_PDF_ADMIN_PASSWORD
 | `teardown` | Optional compose down, destroy LXC |
 
 ```bash
-node apps/hdc-cli/cli.mjs run service stirling-pdf deploy -- --instance a
-node apps/hdc-cli/cli.mjs run service stirling-pdf query -- --live
-node apps/hdc-cli/cli.mjs run service stirling-pdf maintain --
+hdc run service stirling-pdf deploy -- --instance a
+hdc run service stirling-pdf query -- --live
+hdc run service stirling-pdf maintain --
 ```
 
 ## Common flags

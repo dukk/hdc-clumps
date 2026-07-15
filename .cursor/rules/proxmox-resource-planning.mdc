@@ -1,0 +1,13 @@
+---
+description: Proxmox VM/CT resource planning — capacity, inventory, no invented facts.
+globs: "**/*proxmox*"
+alwaysApply: false
+---
+
+# Proxmox resource planning (HDC)
+
+- **Source of truth**: Treat `operations/inventory/{systems,networks,services,targets}/**/*.json` in **hdc-private** (and matching optional `.md`) plus user-provided live metrics as authoritative. Do not invent hostnames, IPs, bridges, VLANs, pool names, or cluster capacity.
+- **Full workflow**: When planning or deploying a new VM or container on Proxmox, read and follow [`.cursor/skills/proxmox-resource-planning/SKILL.md`](../skills/proxmox-resource-planning/SKILL.md).
+- **After capacity or topology changes**: Update the relevant sidecar `hardware` / `notes` / `access` fields in hdc-private inventory.
+- **Ops commands**: Use `hdc` from the hdc repo root; never put secrets in sidecars or chat (env var names only).
+- **QEMU VMs**: Plan for `agent=1` in VM config and `qemu-guest-agent` in the guest OS (deploy installs when SSH is available; maintain reports health). LXC guests do not use the QEMU guest agent.

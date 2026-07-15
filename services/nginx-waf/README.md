@@ -17,9 +17,9 @@ Nginx with ModSecurity (OWASP CRS), reverse proxy `sites[]`, catalog-driven secu
 | `query` | nginx, ModSecurity profiles, CRS rule count, policy summary per site, certs, upstream probes; `--live` adds vhost drift audit vs config |
 
 ```bash
-node apps/hdc-cli/cli.mjs run service nginx-waf maintain --
-node apps/hdc-cli/cli.mjs run service nginx-waf query --
-node apps/hdc-cli/cli.mjs run service nginx-waf maintain -- --group edge
+hdc run service nginx-waf maintain --
+hdc run service nginx-waf query --
+hdc run service nginx-waf maintain -- --group edge
 ```
 
 ## Config layout (schema v4)

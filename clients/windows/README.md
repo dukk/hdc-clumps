@@ -19,9 +19,9 @@ Disk usage and Windows Update maintenance for PCs listed in [`config.json`](conf
 | `query` | Disk + pending update count; Ollama service/API status when enabled |
 
 ```bash
-node apps/hdc-cli/cli.mjs run client windows query --
-node apps/hdc-cli/cli.mjs run client windows maintain -- --host-id pc-example
-node apps/hdc-cli/cli.mjs help run client windows
+hdc run client windows query --
+hdc run client windows maintain -- --host-id pc-example
+hdc help run client windows
 ```
 
 ## Common flags
@@ -65,10 +65,10 @@ When `schedule.enabled` is true, the service uses **manual** start; Task Schedul
 powershell -ExecutionPolicy Bypass -File clumps/clients/windows/scripts/Install-OllamaService.ps1
 
 # Via hdc after enabling ollama on a host:
-node apps/hdc-cli/cli.mjs run client windows maintain -- --host-id pc-example --ollama-only
-node apps/hdc-cli/cli.mjs run client windows maintain -- --host-id pc-example --ollama-start
-node apps/hdc-cli/cli.mjs run client windows maintain -- --host-id pc-example --ollama-models-only
-node apps/hdc-cli/cli.mjs run client windows query -- --host-id pc-example
+hdc run client windows maintain -- --host-id pc-example --ollama-only
+hdc run client windows maintain -- --host-id pc-example --ollama-start
+hdc run client windows maintain -- --host-id pc-example --ollama-models-only
+hdc run client windows query -- --host-id pc-example
 ```
 
 Script path: [`scripts/Install-OllamaService.ps1`](scripts/Install-OllamaService.ps1). Maintain stops conflicting tray/startup Ollama instances so they do not fight over port 11434.

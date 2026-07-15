@@ -29,10 +29,10 @@ Set `paperless_ngx.tika_enabled` in config:
 | `teardown` | Optional compose down, destroy LXC or QEMU guest |
 
 ```bash
-node apps/hdc-cli/cli.mjs run service paperless-ngx deploy -- --instance a
-node apps/hdc-cli/cli.mjs run service paperless-ngx deploy -- --instance a --destroy-existing
-node apps/hdc-cli/cli.mjs run service paperless-ngx query -- --live
-node apps/hdc-cli/cli.mjs run service paperless-ngx maintain --
+hdc run service paperless-ngx deploy -- --instance a
+hdc run service paperless-ngx deploy -- --instance a --destroy-existing
+hdc run service paperless-ngx query -- --live
+hdc run service paperless-ngx maintain --
 ```
 
 ## Common flags

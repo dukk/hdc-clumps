@@ -657,7 +657,7 @@ export async function loadLetsEncryptEmail(global, vault) {
       ).trim();
       if (email) {
         errout.write(
-          `[hdc] nginx-waf: ${LEGACY_LETS_ENCRYPT_EMAIL_VAULT_KEY} is deprecated — run: node apps/hdc-cli/cli.mjs secrets set ${DEFAULT_LETS_ENCRYPT_EMAIL_VAULT_KEY}\n`,
+          `[hdc] nginx-waf: ${LEGACY_LETS_ENCRYPT_EMAIL_VAULT_KEY} is deprecated — run: hdc secrets set ${DEFAULT_LETS_ENCRYPT_EMAIL_VAULT_KEY}\n`,
         );
       }
     } catch {

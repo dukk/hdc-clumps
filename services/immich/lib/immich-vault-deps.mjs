@@ -39,6 +39,6 @@ export async function resolveImmichApiKey(vault, immich, opts = {}) {
   if (!required) return null;
 
   throw new Error(
-    `${vaultKey} is not set. Create an Immich API key (systemConfig.read + systemConfig.update), then: node apps/hdc-cli/cli.mjs secrets set ${vaultKey}`,
+    `${vaultKey} is not set. Create an Immich API key (systemConfig.read + systemConfig.update), then: hdc secrets set ${vaultKey}`,
   );
 }

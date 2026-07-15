@@ -1,0 +1,13 @@
+{
+  "folders": [
+    {
+      "path": ".",
+      "name": "hdc-clumps"
+    },
+    {
+      "path": "../hdc",
+      "name": "hdc"
+    }
+  ],
+  "settings": {}
+}

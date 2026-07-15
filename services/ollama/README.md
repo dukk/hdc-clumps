@@ -31,11 +31,11 @@ Per-deployment `ollama.models` replaces the merged default list for that node on
 | `teardown` | Destroy LXC or QEMU guest |
 
 ```bash
-node apps/hdc-cli/cli.mjs run service ollama deploy -- --instance a --destroy-existing
-node apps/hdc-cli/cli.mjs run service ollama maintain --
-node apps/hdc-cli/cli.mjs run service ollama maintain -- --instance a --prune --dry-run
-node apps/hdc-cli/cli.mjs run service ollama query -- --live
-node apps/hdc-cli/cli.mjs run service ollama teardown -- --instance a --yes
+hdc run service ollama deploy -- --instance a --destroy-existing
+hdc run service ollama maintain --
+hdc run service ollama maintain -- --instance a --prune --dry-run
+hdc run service ollama query -- --live
+hdc run service ollama teardown -- --instance a --yes
 ```
 
 ## Common flags
@@ -44,7 +44,7 @@ node apps/hdc-cli/cli.mjs run service ollama teardown -- --instance a --yes
 
 ## After deploy
 
-1. **Guest IP:** `node apps/hdc-cli/cli.mjs run service ollama query --` or inventory sidecar → `access.nodes[].ip`.
+1. **Guest IP:** `hdc run service ollama query --` or inventory sidecar → `access.nodes[].ip`.
 2. **API:** `http://<guest-ip>:11434` (`OLLAMA_HOST=0.0.0.0` in systemd; Docker uses `ubuntu.docker.host_port`, default **11434**).
 3. **Models:** `maintain` syncs config; or `curl http://<ip>:11434/api/tags` / `query --live`.
 4. **Chat UI:** deploy [open-webui](../open-webui/README.md) and set `ollama_backends[].url` to this API URL.

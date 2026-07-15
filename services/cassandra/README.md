@@ -17,8 +17,8 @@ Three-node Cassandra cluster on Proxmox QEMU VMs (seeds first).
 | `query` | Service status; `nodetool status` |
 
 ```bash
-node apps/hdc-cli/cli.mjs run service cassandra deploy -- --destroy-existing
-node apps/hdc-cli/cli.mjs run service cassandra query --
+hdc run service cassandra deploy -- --destroy-existing
+hdc run service cassandra query --
 ```
 
 ## Common flags

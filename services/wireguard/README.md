@@ -18,9 +18,9 @@ Privileged Proxmox LXC WireGuard hub (`proxmox.lxc.unprivileged: 0`) managed by 
 | `teardown` | Destroy LXC (`--dry-run`, `--yes`) |
 
 ```bash
-node apps/hdc-cli/cli.mjs secrets set HDC_WIREGUARD_PRIVATE_KEY
-node apps/hdc-cli/cli.mjs run service wireguard deploy --
-node apps/hdc-cli/cli.mjs run service wireguard query -- --live
+hdc secrets set HDC_WIREGUARD_PRIVATE_KEY
+hdc run service wireguard deploy --
+hdc run service wireguard query -- --live
 ```
 
 ## Peer key model

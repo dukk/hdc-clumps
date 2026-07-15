@@ -18,9 +18,9 @@ Greenbone Community Edition deployment on privileged Proxmox LXC via Docker Comp
 | `teardown` | Optional compose down, destroy LXC |
 
 ```bash
-node apps/hdc-cli/cli.mjs secrets set HDC_GREENBONE_ADMIN_PASSWORD
-node apps/hdc-cli/cli.mjs run service greenbone deploy --
-node apps/hdc-cli/cli.mjs run service greenbone query -- --live
+hdc secrets set HDC_GREENBONE_ADMIN_PASSWORD
+hdc run service greenbone deploy --
+hdc run service greenbone query -- --live
 ```
 
 ## Bootstrap note
@@ -34,7 +34,7 @@ If upgrading from the former `openvas` package on a live CT:
 
 1. Copy vault keys: `HDC_OPENVAS_ADMIN_PASSWORD` → `HDC_GREENBONE_ADMIN_PASSWORD` (and `HDC_USER_HDC_PASSWORD_OPENVAS_A` → `HDC_USER_HDC_PASSWORD_GREENBONE_A` if guest baseline ran).
 2. On the CT: `cd /opt/openvas && docker compose down` (no `-v`), note the Docker volume name, `mv /opt/openvas /opt/greenbone`.
-3. Run `node apps/hdc-cli/cli.mjs run service greenbone maintain --`.
+3. Run `hdc run service greenbone maintain --`.
 4. If the stack starts with an empty volume, patch `/opt/greenbone/docker-compose.yml` once to use `external: true` on `greenbone-data` pointing at the old volume name, then re-run maintain.
 5. Update BIND, homepage, and run `proxmox maintain -- --prune` to refresh backup job ids.
 

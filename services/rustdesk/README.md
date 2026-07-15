@@ -32,9 +32,9 @@ Ensure LAN firewalls allow these ports when clients are on other subnets. WAN/Un
 | `teardown` | Optional compose down then destroy LXC (`--dry-run`, `--yes`, `--skip-compose-down`) |
 
 ```bash
-node apps/hdc-cli/cli.mjs run service rustdesk deploy -- --instance a
-node apps/hdc-cli/cli.mjs run service rustdesk query -- --live
-node apps/hdc-cli/cli.mjs run service rustdesk maintain --
+hdc run service rustdesk deploy -- --instance a
+hdc run service rustdesk query -- --live
+hdc run service rustdesk maintain --
 ```
 
 ## Client configuration (after deploy)

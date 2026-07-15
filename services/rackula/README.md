@@ -18,9 +18,9 @@
 | `teardown` | Optional compose down, destroy LXC |
 
 ```bash
-node apps/hdc-cli/cli.mjs run service rackula deploy -- --instance a
-node apps/hdc-cli/cli.mjs run service rackula query -- --live
-node apps/hdc-cli/cli.mjs run service rackula maintain --
+hdc run service rackula deploy -- --instance a
+hdc run service rackula query -- --live
+hdc run service rackula maintain --
 ```
 
 ## Common flags

@@ -17,8 +17,8 @@ Three-node KRaft cluster on Proxmox QEMU (no ZooKeeper).
 | `query` | `systemctl`; `kafka-broker-api-versions.sh` on localhost |
 
 ```bash
-node apps/hdc-cli/cli.mjs run service kafka deploy --
-node apps/hdc-cli/cli.mjs run service kafka query --
+hdc run service kafka deploy --
+hdc run service kafka query --
 ```
 
 ## Common flags

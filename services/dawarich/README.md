@@ -18,9 +18,9 @@
 | `teardown` | Optional compose down, destroy LXC |
 
 ```bash
-node apps/hdc-cli/cli.mjs run service dawarich deploy -- --instance a
-node apps/hdc-cli/cli.mjs run service dawarich query -- --live
-node apps/hdc-cli/cli.mjs run service dawarich maintain --
+hdc run service dawarich deploy -- --instance a
+hdc run service dawarich query -- --live
+hdc run service dawarich maintain --
 ```
 
 ## Common flags

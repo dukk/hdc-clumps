@@ -402,6 +402,7 @@ async function deployOne(deployment, flags, log, runOpts) {
       composeEnv: guestSecrets.composeEnv,
       schedulesJson: guestSecrets.schedulesJson,
       mailboxJson: guestSecrets.mailboxJson,
+      notificationsJson: guestSecrets.notificationsJson,
       metaRoot,
     };
     installResult = await installHdcAgentsInCt(

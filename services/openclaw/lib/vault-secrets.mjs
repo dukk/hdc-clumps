@@ -31,7 +31,7 @@ async function loadSecret(vault, key, label, opts = {}) {
     errout.write(`[hdc] openclaw: generated ${label} and saved to vault ${key}\n`);
     return generated;
   }
-  throw new Error(`missing vault secret ${key} (${label}) — run: node apps/hdc-cli/cli.mjs secrets set ${key}`);
+  throw new Error(`missing vault secret ${key} (${label}) — run: hdc secrets set ${key}`);
 }
 
 /**

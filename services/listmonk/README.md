@@ -19,9 +19,9 @@ Self-hosted newsletter and mailing list manager on Proxmox LXC (Docker Compose +
 | `teardown` | Optional compose down, destroy LXC |
 
 ```bash
-node apps/hdc-cli/cli.mjs run service listmonk deploy -- --instance a
-node apps/hdc-cli/cli.mjs run service listmonk query -- --live
-node apps/hdc-cli/cli.mjs run service listmonk maintain --
+hdc run service listmonk deploy -- --instance a
+hdc run service listmonk query -- --live
+hdc run service listmonk maintain --
 ```
 
 ## Common flags

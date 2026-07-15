@@ -28,7 +28,7 @@ export async function resolveVllmSecrets(_vault, vllm) {
   }
 
   errout.write(
-    `[hdc] vllm: warning — ${key} not in env; gated HF models (Gemma) may fail until set. Export HDC_HF_TOKEN or: node apps/hdc-cli/cli.mjs secrets set ${key}\n`,
+    `[hdc] vllm: warning — ${key} not in env; gated HF models (Gemma) may fail until set. Export HDC_HF_TOKEN or: hdc secrets set ${key}\n`,
   );
   return { hfToken: "", hfTokenVaultKey: key };
 }

@@ -65,7 +65,7 @@ export async function resolveUnifiApiKey(vault, base, rejectUnauthorized, log = 
   });
   if (!apiKey || !String(apiKey).trim()) {
     throw new Error(
-      `${UNIFI_API_KEY_VAULT_KEY} is not set. Run: node apps/hdc-cli/cli.mjs secrets set ${UNIFI_API_KEY_VAULT_KEY}`,
+      `${UNIFI_API_KEY_VAULT_KEY} is not set. Run: hdc secrets set ${UNIFI_API_KEY_VAULT_KEY}`,
     );
   }
   return String(apiKey).trim();

@@ -23,8 +23,8 @@ OpenAI-compatible AI gateway on Proxmox LXC (Docker Compose + bundled Postgres, 
 | `teardown` | Optional compose down, destroy LXC |
 
 ```bash
-node apps/hdc-cli/cli.mjs run service litellm deploy --
-node apps/hdc-cli/cli.mjs run service litellm query -- --live
+hdc run service litellm deploy --
+hdc run service litellm query -- --live
 ```
 
 ## Common flags
@@ -33,10 +33,10 @@ node apps/hdc-cli/cli.mjs run service litellm query -- --live
 
 ```bash
 # Prefer when LiteLLM shows Prisma P1000 after a vault password change:
-node apps/hdc-cli/cli.mjs run service litellm maintain -- --align-db-password
+hdc run service litellm maintain -- --align-db-password
 
 # Wipe DB volumes and recreate from vault (loses spend/keys DB):
-node apps/hdc-cli/cli.mjs run service litellm maintain -- --reset-db --yes
+hdc run service litellm maintain -- --reset-db --yes
 ```
 
 `--reset-db` without `--yes` is refused.

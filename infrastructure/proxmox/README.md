@@ -17,12 +17,12 @@ HDC automation for Proxmox VE hypervisors: API provisioning (LXC/QEMU), host mai
 | `query` | Cluster/guest snapshot (JSON on stdout) |
 
 ```bash
-node apps/hdc-cli/cli.mjs run infrastructure proxmox maintain -- verify-templates
-node apps/hdc-cli/cli.mjs run infrastructure proxmox query --
-node apps/hdc-cli/cli.mjs run infrastructure proxmox deploy -- create-container
-node apps/hdc-cli/cli.mjs run infrastructure proxmox deploy -- create-vm
-node apps/hdc-cli/cli.mjs run infrastructure proxmox deploy -- list-templates
-node apps/hdc-cli/cli.mjs help run infrastructure proxmox
+hdc run infrastructure proxmox maintain -- verify-templates
+hdc run infrastructure proxmox query --
+hdc run infrastructure proxmox deploy -- create-container
+hdc run infrastructure proxmox deploy -- create-vm
+hdc run infrastructure proxmox deploy -- list-templates
+hdc help run infrastructure proxmox
 ```
 
 ### Deploy / maintain capabilities
@@ -79,7 +79,7 @@ Maintain stamps exactly one mutually exclusive guest tag matching the profile (`
 1. Confirm `nas-1` (or your `default_storage`) includes **Backup** in Proxmox Datacenter → Storage → Content.
 2. Copy `provision.backups` into hdc-private `clumps/infrastructure/proxmox/config.json`.
 3. Set service `defaults.backup.profile` values (e.g. vaultwarden `hourly`, DNS/edge `daily`).
-4. Run `node apps/hdc-cli/cli.mjs run infrastructure proxmox maintain -- --dry-run`, then without `--dry-run`.
+4. Run `hdc run infrastructure proxmox maintain -- --dry-run`, then without `--dry-run`.
 5. Verify jobs and guest tags in Proxmox UI (Datacenter → Backup; guest **Tags**).
 
 Flags: `--skip-backups`, `--skip-notifications`, `--dry-run`, `--no-prune` (skip deleting stale `hdc-backup-*` jobs).
@@ -205,7 +205,7 @@ Service examples set explicit startup on bind (`order: 1`), nginx-waf (`order: 2
 ### Rollout
 
 1. Copy `provision.startup` into hdc-private `clumps/infrastructure/proxmox/config.json`.
-2. Run `node apps/hdc-cli/cli.mjs run infrastructure proxmox maintain -- --dry-run`, then without `--dry-run`.
+2. Run `hdc run infrastructure proxmox maintain -- --dry-run`, then without `--dry-run`.
 3. Verify in Proxmox UI: VM/CT → Options → Start/Shutdown order.
 
 Flags: `--skip-startup`, `--dry-run`.

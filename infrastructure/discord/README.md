@@ -17,9 +17,9 @@ See [`docs/manually-deployed/discord.md`](../../../docs/manually-deployed/discor
 | `maintain` | PATCH managed apps when config drifts from live |
 
 ```bash
-node apps/hdc-cli/cli.mjs run infrastructure discord query --
-node apps/hdc-cli/cli.mjs run infrastructure discord query -- --import --yes
-node apps/hdc-cli/cli.mjs run infrastructure discord maintain -- --dry-run
+hdc run infrastructure discord query --
+hdc run infrastructure discord query -- --import --yes
+hdc run infrastructure discord maintain -- --dry-run
 ```
 
 ## Config

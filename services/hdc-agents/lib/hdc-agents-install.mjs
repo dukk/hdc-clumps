@@ -17,7 +17,7 @@ export { resolvePveSshForHost };
  * @param {string} composeDirPath
  * @param {string} dockerfile
  * @param {string} composeYaml
- * @param {{ build?: boolean, composeEnv?: string, schedulesJson?: string, mailboxJson?: string, metaRoot?: string }} [opts]
+ * @param {{ build?: boolean, composeEnv?: string, schedulesJson?: string, mailboxJson?: string, notificationsJson?: string, metaRoot?: string }} [opts]
  */
 export function buildStackScript(composeDirPath, dockerfile, composeYaml, opts = {}) {
   const dir = composeDirPath.replace(/'/g, `'\\''`);
@@ -64,6 +64,10 @@ export function buildStackScript(composeDirPath, dockerfile, composeYaml, opts =
     const b64 = Buffer.from(opts.mailboxJson, "utf8").toString("base64");
     lines.push(`echo '${b64}' | base64 -d > '${meta}/mailbox.json'`);
   }
+  if (opts.notificationsJson) {
+    const b64 = Buffer.from(opts.notificationsJson, "utf8").toString("base64");
+    lines.push(`echo '${b64}' | base64 -d > '${meta}/notifications.json'`);
+  }
   lines.push(`cd '${dir}'`);
   if (opts.build !== false) {
     lines.push("docker compose build");
@@ -76,7 +80,7 @@ export function buildStackScript(composeDirPath, dockerfile, composeYaml, opts =
  * @param {string} composeDirPath
  * @param {string} dockerfile
  * @param {string} composeYaml
- * @param {{ skipUpgrade?: boolean, composeEnv?: string, schedulesJson?: string, mailboxJson?: string, metaRoot?: string }} [opts]
+ * @param {{ skipUpgrade?: boolean, composeEnv?: string, schedulesJson?: string, mailboxJson?: string, notificationsJson?: string, metaRoot?: string }} [opts]
  */
 export function buildMaintainScript(composeDirPath, dockerfile, composeYaml, opts = {}) {
   return buildStackScript(composeDirPath, dockerfile, composeYaml, {
@@ -84,6 +88,7 @@ export function buildMaintainScript(composeDirPath, dockerfile, composeYaml, opt
     composeEnv: opts.composeEnv,
     schedulesJson: opts.schedulesJson,
     mailboxJson: opts.mailboxJson,
+    notificationsJson: opts.notificationsJson,
     metaRoot: opts.metaRoot,
   });
 }
@@ -138,6 +143,7 @@ export async function installHdcAgentsInCt(user, pveHost, vmid, hdcAgents, insta
     composeEnv: opts.composeEnv,
     schedulesJson: opts.schedulesJson,
     mailboxJson: opts.mailboxJson,
+    notificationsJson: opts.notificationsJson,
     metaRoot: opts.metaRoot,
   });
   const r = pctExec(user, pveHost, vmid, script, { capture: true });

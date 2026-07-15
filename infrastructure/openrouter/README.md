@@ -12,7 +12,7 @@ Manage [OpenRouter](https://openrouter.ai/) account credits and inference API ke
 Create the management key in the OpenRouter dashboard (Management API keys). Store with:
 
 ```bash
-node apps/hdc-cli/cli.mjs secrets set HDC_OPENROUTER_MANAGEMENT_API_KEY
+hdc secrets set HDC_OPENROUTER_MANAGEMENT_API_KEY
 ```
 
 ## Config
@@ -20,7 +20,7 @@ node apps/hdc-cli/cli.mjs secrets set HDC_OPENROUTER_MANAGEMENT_API_KEY
 Copy `config.example.json` to **hdc-private** as `clumps/infrastructure/openrouter/config.json`, or bootstrap:
 
 ```bash
-node apps/hdc-cli/cli.mjs run infrastructure openrouter query -- --import --yes
+hdc run infrastructure openrouter query -- --import --yes
 ```
 
 Set `managed: true` on `api_keys[]` entries hdc should create or update.
@@ -28,10 +28,10 @@ Set `managed: true` on `api_keys[]` entries hdc should create or update.
 ## Commands
 
 ```bash
-node apps/hdc-cli/cli.mjs run infrastructure openrouter query --
-node apps/hdc-cli/cli.mjs run infrastructure openrouter query -- --import --yes
-node apps/hdc-cli/cli.mjs run infrastructure openrouter maintain --
-node apps/hdc-cli/cli.mjs run infrastructure openrouter maintain -- --key-id hermes --dry-run
+hdc run infrastructure openrouter query --
+hdc run infrastructure openrouter query -- --import --yes
+hdc run infrastructure openrouter maintain --
+hdc run infrastructure openrouter maintain -- --key-id hermes --dry-run
 ```
 
 See [docs/manually-deployed/openrouter.md](../../../docs/manually-deployed/openrouter.md) for full operator workflow.

@@ -28,14 +28,14 @@ Official references:
 4. **Vault secrets** (names only in config):
 
 ```bash
-node apps/hdc-cli/cli.mjs secrets set HDC_TWILIO_SIP_USERNAME
-node apps/hdc-cli/cli.mjs secrets set HDC_TWILIO_SIP_PASSWORD
+hdc secrets set HDC_TWILIO_SIP_USERNAME
+hdc secrets set HDC_TWILIO_SIP_PASSWORD
 ```
 
 5. Re-run maintain after secrets are set:
 
 ```bash
-node apps/hdc-cli/cli.mjs run service asterisk maintain --
+hdc run service asterisk maintain --
 ```
 
 ## Twilio Console (summary)

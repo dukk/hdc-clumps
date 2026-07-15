@@ -20,10 +20,10 @@ S3-compatible distributed object storage (MNMD cluster) on four Proxmox LXC node
 | `teardown` | Optional compose down, destroy LXC (reverse order d→a when full cluster) |
 
 ```bash
-node apps/hdc-cli/cli.mjs run service rustfs deploy --
-node apps/hdc-cli/cli.mjs run service rustfs deploy -- --instance a
-node apps/hdc-cli/cli.mjs run service rustfs query -- --live
-node apps/hdc-cli/cli.mjs run service rustfs maintain --
+hdc run service rustfs deploy --
+hdc run service rustfs deploy -- --instance a
+hdc run service rustfs query -- --live
+hdc run service rustfs maintain --
 ```
 
 ## Common flags
@@ -47,8 +47,8 @@ Default container user is UID **10001** — install scripts `chown` data and log
    - **Console site** (`rustfs-console`): upstream to any healthy node on port **9001**.
 6. **Maintain edge:**
    ```bash
-   node apps/hdc-cli/cli.mjs run service bind maintain --
-   node apps/hdc-cli/cli.mjs run service nginx-waf maintain -- --site rustfs-s3 --site rustfs-console
+   hdc run service bind maintain --
+   hdc run service nginx-waf maintain -- --site rustfs-s3 --site rustfs-console
    ```
 7. **Credentials:** rotate default RustFS admin credentials after first login; vault keys are used for S3 API access.
 

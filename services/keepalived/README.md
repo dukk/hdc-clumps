@@ -43,7 +43,7 @@ Vault: `HDC_KEEPALIVED_AUTH_PASS` (max **8 characters** — keepalived limit; au
 
 ## After deploy
 
-1. `node apps/hdc-cli/cli.mjs run service keepalived query -- --live` — confirm MASTER holds VIP.
+1. `hdc run service keepalived query -- --live` — confirm MASTER holds VIP.
 2. Add BIND A record for the VIP when publishing a hostname.
 3. Point nginx-waf upstreams (or Cloudflare) at the VIP instead of per-node IPs.
 4. Update inventory `access.nodes[].ip` on director systems from query output.
@@ -51,7 +51,7 @@ Vault: `HDC_KEEPALIVED_AUTH_PASS` (max **8 characters** — keepalived limit; au
 ## Example
 
 ```bash
-node apps/hdc-cli/cli.mjs run service keepalived deploy --
-node apps/hdc-cli/cli.mjs run service keepalived maintain --
-node apps/hdc-cli/cli.mjs run service keepalived query -- --live
+hdc run service keepalived deploy --
+hdc run service keepalived maintain --
+hdc run service keepalived query -- --live
 ```

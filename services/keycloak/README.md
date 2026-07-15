@@ -106,11 +106,11 @@ Optional `keycloak.api_url` overrides the Admin API base (else `external_url` / 
 | `teardown` | Optional compose down, destroy LXC |
 
 ```bash
-node apps/hdc-cli/cli.mjs secrets set HDC_KEYCLOAK_ADMIN_PASSWORD
-node apps/hdc-cli/cli.mjs secrets set HDC_KEYCLOAK_DB_PASSWORD
-node apps/hdc-cli/cli.mjs run service keycloak deploy --
-node apps/hdc-cli/cli.mjs run service keycloak maintain -- --dry-run
-node apps/hdc-cli/cli.mjs run service keycloak query -- --live
+hdc secrets set HDC_KEYCLOAK_ADMIN_PASSWORD
+hdc secrets set HDC_KEYCLOAK_DB_PASSWORD
+hdc run service keycloak deploy --
+hdc run service keycloak maintain -- --dry-run
+hdc run service keycloak query -- --live
 ```
 
 ## Related

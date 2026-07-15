@@ -46,18 +46,18 @@ QEMU defaults (typical): 8 GiB RAM, 4 vCPU, 32 GiB rootfs + optional `data_disk_
 Per-mailbox passwords use `domains[].mailboxes[].password_vault_key` (auto-generated on first maintain when missing).
 
 ```bash
-node apps/hdc-cli/cli.mjs secrets set HDC_MAILCOW_API_KEY
-node apps/hdc-cli/cli.mjs secrets set HDC_MAILCOW_MAILBOX_ADMIN_EXAMPLE_INVALID_PASSWORD
+hdc secrets set HDC_MAILCOW_API_KEY
+hdc secrets set HDC_MAILCOW_MAILBOX_ADMIN_EXAMPLE_INVALID_PASSWORD
 ```
 
 ## Commands
 
 ```bash
-node apps/hdc-cli/cli.mjs run service mailcow deploy -- --instance a
-node apps/hdc-cli/cli.mjs run service mailcow deploy -- --instance a --destroy-existing
-node apps/hdc-cli/cli.mjs run service mailcow maintain --
-node apps/hdc-cli/cli.mjs run service mailcow query -- --live
-node apps/hdc-cli/cli.mjs run service mailcow teardown -- --dry-run
+hdc run service mailcow deploy -- --instance a
+hdc run service mailcow deploy -- --instance a --destroy-existing
+hdc run service mailcow maintain --
+hdc run service mailcow query -- --live
+hdc run service mailcow teardown -- --dry-run
 ```
 
 ### Flags

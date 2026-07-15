@@ -18,9 +18,9 @@
 | `teardown` | Optional compose down, destroy LXC |
 
 ```bash
-node apps/hdc-cli/cli.mjs run service memos deploy -- --instance a
-node apps/hdc-cli/cli.mjs run service memos query -- --live
-node apps/hdc-cli/cli.mjs run service memos maintain --
+hdc run service memos deploy -- --instance a
+hdc run service memos query -- --live
+hdc run service memos maintain --
 ```
 
 ## Common flags

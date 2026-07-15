@@ -19,8 +19,8 @@
       "Set vault HDC_RUSTFS_ACCESS_KEY and HDC_RUSTFS_SECRET_KEY before production use (auto-generated on first deploy if missing).",
       "Add BIND A records for rustfs.s3_public_url and rustfs.console_public_url hostnames → nginx-waf WAN IP.",
       "Add nginx-waf sites: S3 API upstream pool to all four CT IPs on port 9000 with client_max_body_size \"0\"; console site to port 9001 on a healthy node.",
-      "Run: node apps/hdc-cli/cli.mjs run service bind maintain --",
-      "Run: node apps/hdc-cli/cli.mjs run service nginx-waf maintain -- --site rustfs-s3 --site rustfs-console",
+      "Run: hdc run service bind maintain --",
+      "Run: hdc run service nginx-waf maintain -- --site rustfs-s3 --site rustfs-console",
       "LAN S3 endpoint: http://<ct-ip>:9000; console: http://<ct-ip>:9001 (default credentials must be rotated after first login)."
     ]
   },

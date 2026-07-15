@@ -17,10 +17,10 @@ Infrastructure package for Ubuntu **hosts**: bootstrap the `hdc` Linux user and 
 | `query` | Placeholder for future host health checks |
 
 ```bash
-node apps/hdc-cli/cli.mjs run infrastructure ubuntu maintain --
-node apps/hdc-cli/cli.mjs run infrastructure ubuntu deploy -- create-container
-node apps/hdc-cli/cli.mjs users bootstrap-hdc --
-node apps/hdc-cli/cli.mjs help run infrastructure ubuntu
+hdc run infrastructure ubuntu maintain --
+hdc run infrastructure ubuntu deploy -- create-container
+hdc users bootstrap-hdc --
+hdc help run infrastructure ubuntu
 ```
 
 CLI id is **`ubuntu`** (infrastructure). Home workstations use **`client-ubuntu`** under `clumps/clients/ubuntu/`.

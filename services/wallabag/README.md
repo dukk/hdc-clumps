@@ -19,9 +19,9 @@ Self-hosted read-it-later on Proxmox LXC (Docker Compose + MariaDB + Redis). LAN
 | `teardown` | Optional compose down, destroy LXC |
 
 ```bash
-node apps/hdc-cli/cli.mjs run service wallabag deploy -- --instance a
-node apps/hdc-cli/cli.mjs run service wallabag query -- --live
-node apps/hdc-cli/cli.mjs run service wallabag maintain --
+hdc run service wallabag deploy -- --instance a
+hdc run service wallabag query -- --live
+hdc run service wallabag maintain --
 ```
 
 ## Common flags

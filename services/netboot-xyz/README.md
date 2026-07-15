@@ -29,9 +29,9 @@ The container provides a web UI for menus and asset mirroring, nginx for boot as
 | `teardown` | Optional compose down, then destroy LXC |
 
 ```bash
-node apps/hdc-cli/cli.mjs run service netboot-xyz deploy -- --instance a
-node apps/hdc-cli/cli.mjs run service netboot-xyz maintain --
-node apps/hdc-cli/cli.mjs run service netboot-xyz query -- --live
+hdc run service netboot-xyz deploy -- --instance a
+hdc run service netboot-xyz maintain --
+hdc run service netboot-xyz query -- --live
 ```
 
 ## Common flags

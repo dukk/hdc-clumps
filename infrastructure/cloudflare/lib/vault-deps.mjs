@@ -31,6 +31,6 @@ export async function resolveCloudflareToken(vault) {
   }
 
   throw new Error(
-    `${CLOUDFLARE_TOKEN_VAULT_KEY} is not set. Run: node apps/hdc-cli/cli.mjs secrets set ${CLOUDFLARE_TOKEN_VAULT_KEY} — or set it in repo .env`
+    `${CLOUDFLARE_TOKEN_VAULT_KEY} is not set. Run: hdc secrets set ${CLOUDFLARE_TOKEN_VAULT_KEY} — or set it in repo .env`
   );
 }

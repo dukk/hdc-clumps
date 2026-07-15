@@ -20,7 +20,7 @@ export async function resolveAwsSecretAccessKey(vault) {
   const secret = await vault.getSecret(AWS_SECRET_ACCESS_KEY_VAULT_KEY);
   if (!secret || !String(secret).trim()) {
     throw new Error(
-      `${AWS_SECRET_ACCESS_KEY_VAULT_KEY} is not set. Run: node apps/hdc-cli/cli.mjs secrets set ${AWS_SECRET_ACCESS_KEY_VAULT_KEY}`,
+      `${AWS_SECRET_ACCESS_KEY_VAULT_KEY} is not set. Run: hdc secrets set ${AWS_SECRET_ACCESS_KEY_VAULT_KEY}`,
     );
   }
   return String(secret).trim();

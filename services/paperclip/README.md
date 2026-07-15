@@ -20,9 +20,9 @@ Self-hosted [Paperclip](https://github.com/paperclipai/paperclip) AI agent orche
 | `teardown` | Optional compose down, destroy LXC |
 
 ```bash
-node apps/hdc-cli/cli.mjs run service paperclip deploy -- --instance a
-node apps/hdc-cli/cli.mjs run service paperclip query -- --live
-node apps/hdc-cli/cli.mjs run service paperclip maintain --
+hdc run service paperclip deploy -- --instance a
+hdc run service paperclip query -- --live
+hdc run service paperclip maintain --
 ```
 
 ## Common flags
@@ -36,7 +36,7 @@ Routine `maintain` **never** destroys Docker volumes when vault and guest passwo
 To factory-reset Paperclip (empty database, claim required):
 
 ```bash
-node apps/hdc-cli/cli.mjs run service paperclip maintain -- --reset-db --yes
+hdc run service paperclip maintain -- --reset-db --yes
 ```
 
 `--reset-db` without `--yes` is refused.
@@ -54,8 +54,8 @@ node apps/hdc-cli/cli.mjs run service paperclip maintain -- --reset-db --yes
 After claim, bootstrap the **Home Data Center** company (skills + agents for hdc-web-server / agent fleet):
 
 ```bash
-node apps/hdc-cli/cli.mjs run service paperclip query -- --bootstrap-company --dry-run
-node apps/hdc-cli/cli.mjs run service paperclip query -- --bootstrap-company --yes
+hdc run service paperclip query -- --bootstrap-company --dry-run
+hdc run service paperclip query -- --bootstrap-company --yes
 ```
 
 Skills live under [`skills/`](skills/). Manual runbook: [`docs/manually-deployed/paperclip-hdc-company.md`](../../../docs/manually-deployed/paperclip-hdc-company.md).

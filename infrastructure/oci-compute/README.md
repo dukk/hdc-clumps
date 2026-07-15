@@ -25,12 +25,12 @@ Deploy and maintain (when creates are planned) show fallback monthly USD estimat
 ## Commands
 
 ```bash
-node apps/hdc-cli/cli.mjs run infrastructure oci-compute query --
-node apps/hdc-cli/cli.mjs run infrastructure oci-compute query -- --live
-node apps/hdc-cli/cli.mjs run infrastructure oci-compute deploy -- --dry-run
-node apps/hdc-cli/cli.mjs run infrastructure oci-compute deploy -- --resource a --yes
-node apps/hdc-cli/cli.mjs run infrastructure oci-compute maintain --
-node apps/hdc-cli/cli.mjs run infrastructure oci-compute teardown -- --resource a --yes
+hdc run infrastructure oci-compute query --
+hdc run infrastructure oci-compute query -- --live
+hdc run infrastructure oci-compute deploy -- --dry-run
+hdc run infrastructure oci-compute deploy -- --resource a --yes
+hdc run infrastructure oci-compute maintain --
+hdc run infrastructure oci-compute teardown -- --resource a --yes
 ```
 
 ## Networking

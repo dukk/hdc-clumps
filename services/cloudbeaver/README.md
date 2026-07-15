@@ -9,7 +9,7 @@
 - **Vault:** `HDC_CLOUDBEAVER_ADMIN_PASSWORD` (auto-generated on first deploy if missing)
 
 ```bash
-node apps/hdc-cli/cli.mjs secrets set HDC_CLOUDBEAVER_ADMIN_PASSWORD
+hdc secrets set HDC_CLOUDBEAVER_ADMIN_PASSWORD
 ```
 
 ## Commands
@@ -22,9 +22,9 @@ node apps/hdc-cli/cli.mjs secrets set HDC_CLOUDBEAVER_ADMIN_PASSWORD
 | `teardown` | Optional compose down, destroy LXC |
 
 ```bash
-node apps/hdc-cli/cli.mjs run service cloudbeaver deploy -- --instance a
-node apps/hdc-cli/cli.mjs run service cloudbeaver query -- --live
-node apps/hdc-cli/cli.mjs run service cloudbeaver maintain --
+hdc run service cloudbeaver deploy -- --instance a
+hdc run service cloudbeaver query -- --live
+hdc run service cloudbeaver maintain --
 ```
 
 ## Common flags

@@ -69,7 +69,7 @@ export async function readRequiredVaultSecret(vaultAccess, vaultKey, hint) {
   const data = (await vaultAccess.readSecrets({})) ?? {};
   const val = typeof data[vaultKey] === "string" ? data[vaultKey].trim() : "";
   if (!val) {
-    throw new Error(`${hint} — run: node apps/hdc-cli/cli.mjs secrets set ${vaultKey}`);
+    throw new Error(`${hint} — run: hdc secrets set ${vaultKey}`);
   }
   return val;
 }

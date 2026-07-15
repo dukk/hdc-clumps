@@ -20,10 +20,10 @@ CrowdSec Local API (LAPI) on Proxmox LXC with Hub collections, UniFi syslog inge
 | `teardown` | Destroy LXC |
 
 ```bash
-node apps/hdc-cli/cli.mjs run service crowdsec deploy --
-node apps/hdc-cli/cli.mjs run service crowdsec maintain --
-node apps/hdc-cli/cli.mjs run service crowdsec maintain -- --sync-bouncers
-node apps/hdc-cli/cli.mjs run service crowdsec query -- --live
+hdc run service crowdsec deploy --
+hdc run service crowdsec maintain --
+hdc run service crowdsec maintain -- --sync-bouncers
+hdc run service crowdsec query -- --live
 ```
 
 ### Maintain flags

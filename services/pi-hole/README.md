@@ -17,9 +17,9 @@ Deploy Pi-hole on Proxmox LXC (multi-instance), sync allowlist exceptions, updat
 | `query` | Per-instance status via `pct exec`; `--live` compares configured vs live allowlist |
 
 ```bash
-node apps/hdc-cli/cli.mjs run service pi-hole deploy --
-node apps/hdc-cli/cli.mjs run service pi-hole maintain --
-node apps/hdc-cli/cli.mjs run service pi-hole query -- --live
+hdc run service pi-hole deploy --
+hdc run service pi-hole maintain --
+hdc run service pi-hole query -- --live
 ```
 
 ## Allowlist (exceptions)
@@ -52,7 +52,7 @@ Static IP in config: use `deployments[].proxmox.lxc.ip_config` as `192.0.2.4/24,
 
 ## After deploy
 
-1. Get IP: `node apps/hdc-cli/cli.mjs run service pi-hole query --` or set `access.nodes[].ip` in inventory sidecars.
+1. Get IP: `hdc run service pi-hole query --` or set `access.nodes[].ip` in inventory sidecars.
 2. **Web admin:** `http://<guest-ip>/admin` (password from `pihole.webpassword` in config).
 3. **DNS:** point clients or DHCP (e.g. UniFi) at both Pi-hole IPs for redundancy.
 

@@ -19,9 +19,9 @@ Self-hosted document signing on Proxmox LXC (Docker Compose + PostgreSQL). Publi
 | `teardown` | Optional compose down, destroy LXC |
 
 ```bash
-node apps/hdc-cli/cli.mjs run service docuseal deploy -- --instance a
-node apps/hdc-cli/cli.mjs run service docuseal query -- --live
-node apps/hdc-cli/cli.mjs run service docuseal maintain --
+hdc run service docuseal deploy -- --instance a
+hdc run service docuseal query -- --live
+hdc run service docuseal maintain --
 ```
 
 ## Common flags

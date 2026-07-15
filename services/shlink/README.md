@@ -19,9 +19,9 @@ Self-hosted URL shortener on Proxmox LXC (Docker Compose + PostgreSQL + Redis + 
 | `teardown` | Optional compose down, destroy LXC |
 
 ```bash
-node apps/hdc-cli/cli.mjs run service shlink deploy -- --instance a
-node apps/hdc-cli/cli.mjs run service shlink query -- --live
-node apps/hdc-cli/cli.mjs run service shlink maintain --
+hdc run service shlink deploy -- --instance a
+hdc run service shlink query -- --live
+hdc run service shlink maintain --
 ```
 
 ## Common flags

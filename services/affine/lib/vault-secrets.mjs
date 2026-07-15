@@ -50,7 +50,7 @@ async function loadRequiredSecret(vault, key, label) {
       return fromBulk;
     }
     throw new Error(
-      `missing vault secret ${key} (${label}) — run: node apps/hdc-cli/cli.mjs secrets set ${key}`,
+      `missing vault secret ${key} (${label}) — run: hdc secrets set ${key}`,
     );
   }
   errout.write(`[hdc] affine: ${label} loaded from vault ${key}\n`);

@@ -36,27 +36,27 @@ MongoDB is not published on the host — Docker network only.
 
 ```bash
 # List agents + CT health
-node apps/hdc-cli/cli.mjs run service meshcentral query -- --live
+hdc run service meshcentral query -- --live
 
 # Import live agents into config devices[] + inventory/manual/systems (with hardware)
-node apps/hdc-cli/cli.mjs run service meshcentral query -- --import --yes
+hdc run service meshcentral query -- --import --yes
 
 # Identity/IP only (no remote hardware collect)
-node apps/hdc-cli/cli.mjs run service meshcentral query -- --import --yes --skip-hardware
+hdc run service meshcentral query -- --import --yes --skip-hardware
 
 # Disk for one device
-node apps/hdc-cli/cli.mjs run service meshcentral query -- --device lan-1
+hdc run service meshcentral query -- --device lan-1
 
 # Full hardware (CPU/RAM/GPU/disk) for one or more devices
-node apps/hdc-cli/cli.mjs run service meshcentral query -- --live --hardware --device lan-1
+hdc run service meshcentral query -- --live --hardware --device lan-1
 
 # Power, updates, software
-node apps/hdc-cli/cli.mjs run service meshcentral maintain -- --device lan-1 --power wake
-node apps/hdc-cli/cli.mjs run service meshcentral maintain -- --device lan-1 --power off
-node apps/hdc-cli/cli.mjs run service meshcentral maintain -- --device lan-1 --updates
-node apps/hdc-cli/cli.mjs run service meshcentral maintain -- --device lan-1 --install "Git.Git"
-node apps/hdc-cli/cli.mjs run service meshcentral maintain -- --device lan-1 --remove "Git.Git"
-node apps/hdc-cli/cli.mjs run service meshcentral maintain -- --device lan-1 --disk --dry-run
+hdc run service meshcentral maintain -- --device lan-1 --power wake
+hdc run service meshcentral maintain -- --device lan-1 --power off
+hdc run service meshcentral maintain -- --device lan-1 --updates
+hdc run service meshcentral maintain -- --device lan-1 --install "Git.Git"
+hdc run service meshcentral maintain -- --device lan-1 --remove "Git.Git"
+hdc run service meshcentral maintain -- --device lan-1 --disk --dry-run
 ```
 
 `--device` accepts hdc `id`, MeshCentral device `name`, or `node_id` (comma-separated or repeated). Mutating ops (except `--power wake`) require an online agent.

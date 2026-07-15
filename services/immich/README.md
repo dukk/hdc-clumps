@@ -20,10 +20,10 @@ Self-hosted photo and video library from the official Immich Docker Compose rele
 | `teardown` | Synology or Proxmox: optional compose down then destroy guest |
 
 ```bash
-node apps/hdc-cli/cli.mjs run service immich deploy -- --instance a
-node apps/hdc-cli/cli.mjs run service immich query -- --system-id vm-immich-a --import --yes
-node apps/hdc-cli/cli.mjs run service immich maintain -- --system-id vm-immich-a
-node apps/hdc-cli/cli.mjs run service immich query -- --system-id vm-immich-a --admin
+hdc run service immich deploy -- --instance a
+hdc run service immich query -- --system-id vm-immich-a --import --yes
+hdc run service immich maintain -- --system-id vm-immich-a
+hdc run service immich query -- --system-id vm-immich-a --admin
 ```
 
 ## Common flags

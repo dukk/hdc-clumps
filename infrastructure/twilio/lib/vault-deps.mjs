@@ -41,7 +41,7 @@ async function resolveSecret(envName, vaultKey, vault) {
   const fromVault = await resolveFromVault(vault, vaultKey);
   if (fromVault) return fromVault;
   throw new Error(
-    `${vaultKey} is not set. Run: node apps/hdc-cli/cli.mjs secrets set ${vaultKey} — or set ${envName} in repo .env`
+    `${vaultKey} is not set. Run: hdc secrets set ${vaultKey} — or set ${envName} in repo .env`
   );
 }
 

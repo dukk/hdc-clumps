@@ -18,9 +18,9 @@ Privacy-focused metasearch on Proxmox LXC via Docker Compose (official `searxng`
 | `teardown` | Optional compose down, then destroy LXC |
 
 ```bash
-node apps/hdc-cli/cli.mjs run service searxng deploy --
-node apps/hdc-cli/cli.mjs run service searxng maintain --
-node apps/hdc-cli/cli.mjs run service searxng query -- --live
+hdc run service searxng deploy --
+hdc run service searxng maintain --
+hdc run service searxng query -- --live
 ```
 
 ## Common flags

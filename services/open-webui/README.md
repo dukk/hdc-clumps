@@ -20,8 +20,8 @@ Chat UI for Ollama and optional OpenAI-compatible backends (e.g. LiteLLM) on Pro
 | `teardown` | Optional compose down, destroy LXC |
 
 ```bash
-node apps/hdc-cli/cli.mjs run service open-webui deploy --
-node apps/hdc-cli/cli.mjs run service open-webui query -- --live
+hdc run service open-webui deploy --
+hdc run service open-webui query -- --live
 ```
 
 ## Common flags

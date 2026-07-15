@@ -205,7 +205,7 @@ export async function resolveAzureClientSecret(vault, config, processEnv = env) 
       : "";
   if (fromEnv) {
     errout.write(
-      `[azure] warning: using ${keys.secret_value_vault_key} from .env; prefer vault: node apps/hdc-cli/cli.mjs secrets set ${keys.secret_value_vault_key}\n`
+      `[azure] warning: using ${keys.secret_value_vault_key} from .env; prefer vault: hdc secrets set ${keys.secret_value_vault_key}\n`
     );
     return fromEnv;
   }
@@ -227,6 +227,6 @@ export async function resolveAzureClientSecret(vault, config, processEnv = env) 
   }
 
   throw new Error(
-    `${keys.secret_value_vault_key} is not set. Run: node apps/hdc-cli/cli.mjs secrets set ${keys.secret_value_vault_key}`
+    `${keys.secret_value_vault_key} is not set. Run: hdc secrets set ${keys.secret_value_vault_key}`
   );
 }

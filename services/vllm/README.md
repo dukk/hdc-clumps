@@ -20,10 +20,10 @@ Deploy [vLLM](https://github.com/vllm-project/vllm) (OpenAI-compatible HTTP API)
 | `teardown` | Optional compose down, then destroy QEMU guest |
 
 ```bash
-node apps/hdc-cli/cli.mjs secrets set HDC_HF_TOKEN
-node apps/hdc-cli/cli.mjs run service vllm deploy -- --instance a
-node apps/hdc-cli/cli.mjs run service vllm query -- --live
-node apps/hdc-cli/cli.mjs run service vllm maintain -- --instance a
+hdc secrets set HDC_HF_TOKEN
+hdc run service vllm deploy -- --instance a
+hdc run service vllm query -- --live
+hdc run service vllm maintain -- --instance a
 ```
 
 ## Deploy mode

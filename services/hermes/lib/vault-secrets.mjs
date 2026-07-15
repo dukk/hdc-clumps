@@ -33,7 +33,7 @@ async function loadSecret(vault, key, opts = {}) {
     return generated;
   }
   throw new Error(
-    `missing vault secret ${key}${opts.label ? ` (${opts.label})` : ""} — run: node apps/hdc-cli/cli.mjs secrets set ${key}`,
+    `missing vault secret ${key}${opts.label ? ` (${opts.label})` : ""} — run: hdc secrets set ${key}`,
   );
 }
 
@@ -58,7 +58,7 @@ async function loadOpenrouterApiKey(vault, hermes) {
   }
 
   throw new Error(
-    `missing OpenRouter API key — run: node apps/hdc-cli/cli.mjs secrets set ${primaryKey}` +
+    `missing OpenRouter API key — run: hdc secrets set ${primaryKey}` +
       (primaryKey !== fallbackKey ? ` (or ${fallbackKey})` : ""),
   );
 }

@@ -4,12 +4,22 @@ Plugins under `{clients,infrastructure,services}/` automate home data center ope
 
 **Repo layout:** this tree is consumed by the main [hdc](https://github.com/dukk/hdc) CLI via `hdc clumps init` / `hdc clumps sync` (see `.hdc/clumps-repos.json` in hdc). Clone hdc and hdc-clumps as siblings, or set `HDC_CLUMPS_ROOT` to this directory.
 
+## Agent ownership
+
+This repository is owned by **`hdc-sre-engineer`**: package manifests, deploy/maintain/query scripts, `config.example.json`, and per-package READMEs. The agent implements and repairs package automation but does **not** run production deploy/maintain, edit live config in [**hdc-private**](../hdc-private/README.md), or change the CLI platform in [**hdc**](../hdc/README.md). After scripts are tested, hand off to **`hdc-sre-ops`** for approved production runs. See [multi-agent operations](../hdc/docs/multi-agent-ops.md).
+
+| Repository | Primary agent | Owns |
+| --- | --- | --- |
+| [**hdc**](../hdc/README.md) | `hdc-engineer` | CLI, schemas, shared runtime, agent fleet, tests |
+| **hdc-clumps** (this repo) | `hdc-sre-engineer` | Package scripts, manifests, examples |
+| [**hdc-private**](../hdc-private/README.md) | `hdc-sre-ops` | Live `config.json`, inventory, `operations/` |
+
 ## Quick reference
 
 ```bash
 # From hdc repo root (after hdc clumps init):
-node apps/hdc-cli/cli.mjs list
-node apps/hdc-cli/cli.mjs run <tier> <clump> <verb> [-- <args>]
+hdc list
+hdc run <tier> <clump> <verb> [-- <args>]
 ```
 
 | CLI tier | Directory | Example |
@@ -18,13 +28,20 @@ node apps/hdc-cli/cli.mjs run <tier> <clump> <verb> [-- <args>]
 | `infrastructure` | `infrastructure/` | `run infrastructure proxmox query --` |
 | `service` | `services/` | `run service pi-hole maintain --` |
 
-- **Config:** `clumps/<tier-dir>/<dir>/config.json` in hdc-private (this repo ships `config.example.json` only).
+- **Config:** `services/<id>/config.json` (or matching tier path) in hdc-private — this repo ships `config.example.json` only.
 - **Inventory:** `operations/inventory/{systems,services,targets}/` sidecars in hdc-private.
 - **Package runtime:** clump scripts import `hdc/package/*` (shared helpers in hdc `apps/hdc-cli/lib/package/`).
-- **Details:** per-clump README below; operator reference in [hdc AGENTS.md](../hdc/AGENTS.md).
+- **Details:** per-clump README below; operator reference in [hdc AGENTS.md](../hdc/AGENTS.md) and [AGENTS.md](AGENTS.md).
 - **Schemas:** [`apps/hdc-cli/schema/`](../hdc/apps/hdc-cli/schema/) in the hdc repo.
 
 When adding a package, add `manifest.json`, `config.example.json`, a package `README.md`, and a row in the tables below.
+
+## Repo hygiene
+
+- **Policy:** [docs/manually-deployed/public-repo-policy.md](docs/manually-deployed/public-repo-policy.md) — what belongs in this repo vs hdc-private.
+- **CI:** GitHub Actions `ci` (blocks tracked `config.json`, `.env`, and `10.0.0.x` in public examples) and `secret-scan` (gitleaks via [`.gitleaks.toml`](.gitleaks.toml)).
+- **IDE:** Open [hdc.code-workspace](hdc.code-workspace) for hdc-clumps + sibling hdc; agent rules under [`.cursor/rules/`](.cursor/rules/).
+- **Never commit:** live `config.json`, `.env` (except `.env.example`), inventory, operation reports under `**/reports/`.
 
 ## Home clients
 

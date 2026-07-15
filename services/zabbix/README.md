@@ -31,9 +31,9 @@ Single-node Zabbix stack on Proxmox using the official [zabbix/zabbix-docker](ht
 | `teardown` | Optional compose down, then destroy LXC or QEMU guest |
 
 ```bash
-node apps/hdc-cli/cli.mjs run service zabbix deploy --
-node apps/hdc-cli/cli.mjs run service zabbix deploy -- --instance a --destroy-existing
-node apps/hdc-cli/cli.mjs run service zabbix query -- --live
+hdc run service zabbix deploy --
+hdc run service zabbix deploy -- --instance a --destroy-existing
+hdc run service zabbix query -- --live
 ```
 
 QEMU example deployment block (merge into `config.json`):

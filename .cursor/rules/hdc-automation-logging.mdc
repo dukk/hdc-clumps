@@ -1,0 +1,29 @@
+---
+description: User-visible logging for HDC clump scripts (stderr; no secrets on stdout).
+globs: "{clients,infrastructure,services}/**/*.mjs"
+alwaysApply: false
+---
+
+# HDC packages — user logging
+
+Scripts under `{clients,infrastructure,services}/<id>/{deploy,maintain,query,teardown}/` are often spawned by `hdc run`, which **pipes stdout** for JSON on `query` / `deploy` / `teardown`. Treat **stdout as machine-only** (typically a single JSON object at the end). **User-facing progress belongs on stderr** (`console.error`, `console.warn`, or `process.stderr.write`).
+
+**Interactive prompts:** `readline` defaults to printing questions on **stdout**, which is **invisible** to the user under `hdc run … query|deploy`. Use `createInterface({ input: stdin, output: stderr })` (or equivalent) so prompts appear on stderr. Production `readLineQuestion` in `../hdc/apps/hdc-cli/lib/node-cli-deps.mjs` uses stderr. For **passwords, vault passphrases, and secret values**, use `readLineQuestion(prompt, { mask: true })` (raw TTY mode, echoes `*`); implementation: `../hdc/apps/hdc-cli/lib/readline-masked.mjs`.
+
+## Requirements for new or materially changed clump scripts
+
+1. **Startup** — Log the clump id (from `manifest.json`) and what the script is about to do in one or two lines (no secrets).
+2. **Configuration sources** — When resolving hosts, paths, or env-driven behavior, log *which source won* (for example env var name only, not its value; inventory path as repo-relative is fine).
+3. **External I/O** — Before and after meaningful remote calls (HTTPS, SSH, subprocess), log intent and outcome: success with a short summary (counts, HTTP status if useful), or failure with a safe error message (no response body that may contain tokens).
+4. **Vault / prompts** — Never log passphrases, API keys, cookies, or `Authorization` values. It is fine to log vault key *names* (for example `HDC_UNIFI_NETWORK_API_KEY`) when explaining what will be read or saved. Use **`readLineQuestion(..., { mask: true })`** for any typed secret or passphrase (see `readline-masked.mjs`).
+5. **Artifacts** — Log repo-relative paths when writing files under `operations/automated/` (hdc-private) or package directories.
+6. **Operation reports** — `deploy`, `maintain`, and `teardown` scripts should write a markdown report under `<package>/reports/<verb>-<timestamp>.md` via `hdc/package/operation-report.mjs` (unless `--no-report`). Default path is under **hdc-private** when that repo exists. Log the report path on **stderr** after write; never put report body on stdout. Optional `--report <path>` overrides the default path.
+7. **Completion** — Log a clear success or failure line before exit (stderr on failure; stdout may still carry JSON on success when required by `hdc run`).
+
+## PR / review checklist
+
+- [ ] No secrets on stderr or stdout.
+- [ ] Stdout remains suitable for `hdc run` JSON parsing (no extra print/logging on stdout unless the script is not used that way).
+- [ ] Secret and passphrase prompts use `{ mask: true }` when using `deps.readLineQuestion` (or equivalent masked reader).
+- [ ] A user running the verb interactively can follow progress without reading the code.
+- [ ] Deploy/maintain/teardown wrote an operation report (or documented `--no-report`) and logged its path on stderr.

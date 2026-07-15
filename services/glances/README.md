@@ -18,9 +18,9 @@
 | `teardown` | Optional compose down, destroy LXC |
 
 ```bash
-node apps/hdc-cli/cli.mjs run service glances deploy -- --instance a
-node apps/hdc-cli/cli.mjs run service glances query -- --live
-node apps/hdc-cli/cli.mjs run service glances maintain --
+hdc run service glances deploy -- --instance a
+hdc run service glances query -- --live
+hdc run service glances maintain --
 ```
 
 ## Common flags

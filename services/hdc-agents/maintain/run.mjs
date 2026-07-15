@@ -162,6 +162,7 @@ async function maintainOne(deployment, flags, vaultAccess) {
       composeEnv: guestSecrets.composeEnv,
       schedulesJson: guestSecrets.schedulesJson,
       mailboxJson: guestSecrets.mailboxJson,
+      notificationsJson: guestSecrets.notificationsJson,
       metaRoot,
     },
   );

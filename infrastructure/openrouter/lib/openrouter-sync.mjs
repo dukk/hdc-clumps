@@ -144,7 +144,7 @@ export async function applyKeySync(api, plan, ctx, opts = {}) {
         });
       } else if (created.key && !entry.inference_api_key_vault_key) {
         log(
-          `new key created for ${plan.name} — set inference_api_key_vault_key in config and run: node apps/hdc-cli/cli.mjs secrets set <KEY>`
+          `new key created for ${plan.name} — set inference_api_key_vault_key in config and run: hdc secrets set <KEY>`
         );
       } else if (!created.key) {
         log(`warning: create response did not include key string for ${plan.name}`);

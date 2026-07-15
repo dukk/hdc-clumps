@@ -28,8 +28,8 @@ Authoritative DNS on Proxmox QEMU VMs: primary/secondary pair, zone files from `
 | `query` | `named` status; per-zone `dig SOA` |
 
 ```bash
-node apps/hdc-cli/cli.mjs run service bind deploy -- --destroy-existing
-node apps/hdc-cli/cli.mjs run service bind maintain --
+hdc run service bind deploy -- --destroy-existing
+hdc run service bind maintain --
 ```
 
 ## Common flags

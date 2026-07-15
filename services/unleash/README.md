@@ -19,9 +19,9 @@ Self-hosted [Unleash](https://github.com/Unleash/unleash) feature-flag server on
 | `teardown` | Optional compose down, destroy LXC |
 
 ```bash
-node apps/hdc-cli/cli.mjs run service unleash deploy -- --instance a
-node apps/hdc-cli/cli.mjs run service unleash query -- --live
-node apps/hdc-cli/cli.mjs run service unleash maintain --
+hdc run service unleash deploy -- --instance a
+hdc run service unleash query -- --live
+hdc run service unleash maintain --
 ```
 
 ## Common flags

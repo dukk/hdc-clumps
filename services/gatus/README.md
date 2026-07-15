@@ -18,8 +18,8 @@ Lightweight health dashboard on Proxmox LXC; endpoints from `gatus.endpoints[]` 
 | `teardown` | Destroy LXC |
 
 ```bash
-node apps/hdc-cli/cli.mjs run service gatus deploy --
-node apps/hdc-cli/cli.mjs run service gatus query -- --live
+hdc run service gatus deploy --
+hdc run service gatus query -- --live
 ```
 
 ## Common flags

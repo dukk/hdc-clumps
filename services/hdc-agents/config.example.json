@@ -21,10 +21,9 @@
       "litellm_base_url": "http://REPLACE_LITELLM_IP:4000",
       "default_model": "lan-best-available",
       "public_url": null,
-      "oidc": {
-        "issuer": "https://keycloak.example.invalid/realms/dukk-sso",
-        "client_id": "hdc-web",
-        "client_secret_vault_key": "HDC_WEB_OIDC_CLIENT_SECRET"
+      "web": {
+        "admin_username": "admin",
+        "admin_password_vault_key": "HDC_WEB_ADMIN_PASSWORD"
       },
       "agents": [],
       "mail": {
@@ -59,6 +58,44 @@
         "public_key": null,
         "bot_token_vault_key": "HDC_OPS_DISCORD_BOT_TOKEN",
         "channel_id": null
+      },
+      "notifications": {
+        "channels": {
+          "email": {
+            "enabled": true,
+            "to": "ops@example.invalid",
+            "from": "manager@hdc.example.invalid",
+            "subject_prefix": "[HDC]"
+          },
+          "discord": {
+            "enabled": true,
+            "webhook_vault_key": "HDC_AGENTS_DISCORD_WEBHOOK_URL",
+            "fallback_webhook_vault_key": "HDC_OPS_DISCORD_WEBHOOK_URL",
+            "application_id": null,
+            "public_key": null,
+            "bot_token_vault_key": "HDC_OPS_DISCORD_BOT_TOKEN",
+            "channel_id": null
+          },
+          "slack": {
+            "enabled": false,
+            "webhook_vault_key": "HDC_AGENTS_SLACK_WEBHOOK_URL"
+          },
+          "teams": {
+            "enabled": false,
+            "webhook_vault_key": "HDC_AGENTS_TEAMS_WEBHOOK_URL"
+          },
+          "telegram": {
+            "enabled": false,
+            "bot_token_vault_key": "HDC_AGENTS_TELEGRAM_BOT_TOKEN",
+            "chat_id": "REPLACE_CHAT_ID"
+          }
+        },
+        "routes": {
+          "needs_decision": ["discord"],
+          "mailbox_received": ["discord"],
+          "mailbox_spoof": ["discord"],
+          "mailbox_task_update": ["discord"]
+        }
       },
       "schedules": [
         {

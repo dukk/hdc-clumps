@@ -17,9 +17,9 @@ Outbound SMTP relay on Proxmox LXC (or existing SSH host): Postfix + SASL to a p
 | `query` | Postfix/service status |
 
 ```bash
-node apps/hdc-cli/cli.mjs run service postfix-relay deploy --
-node apps/hdc-cli/cli.mjs run service postfix-relay maintain --
-node apps/hdc-cli/cli.mjs run service postfix-relay maintain -- --apply-network
+hdc run service postfix-relay deploy --
+hdc run service postfix-relay maintain --
+hdc run service postfix-relay maintain -- --apply-network
 ```
 
 ## Common flags

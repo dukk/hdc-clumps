@@ -20,9 +20,9 @@ Self-hosted [gethomepage.dev](https://gethomepage.dev/) dashboard on Proxmox LXC
 | `teardown` | Optional compose down, destroy LXC |
 
 ```bash
-node apps/hdc-cli/cli.mjs run service homepage deploy -- --instance a
-node apps/hdc-cli/cli.mjs run service homepage query -- --live
-node apps/hdc-cli/cli.mjs run service homepage maintain --
+hdc run service homepage deploy -- --instance a
+hdc run service homepage query -- --live
+hdc run service homepage maintain --
 ```
 
 ## Common flags
@@ -108,7 +108,7 @@ Additional gethomepage service widgets resolve credentials at maintain time and 
 1. Enable the `*_widget` block in homepage `config.json`.
 2. Add matching `widget:` blocks in `homepage/services.yaml` with `{{HOMEPAGE_VAR_*}}` placeholders.
 3. Set vault secrets / `uptime_kuma_widget.slug` (and optional `instances` / `slugs` for multiple Uptime Kuma deployments) as needed.
-4. Run `node apps/hdc-cli/cli.mjs run service homepage query -- --lint`, then `maintain`.
+4. Run `hdc run service homepage query -- --lint`, then `maintain`.
 
 Catalog and resolvers: [`lib/homepage-widget-catalog.mjs`](lib/homepage-widget-catalog.mjs), [`lib/homepage-widget-env.mjs`](lib/homepage-widget-env.mjs).
 
@@ -117,7 +117,7 @@ Catalog and resolvers: [`lib/homepage-widget-catalog.mjs`](lib/homepage-widget-c
 `homepage maintain` runs [`homepage-services-lint.mjs`](lib/homepage-services-lint.mjs) before pushing config. Check locally with:
 
 ```bash
-node apps/hdc-cli/cli.mjs run service homepage query -- --lint
+hdc run service homepage query -- --lint
 ```
 
 Rules: every tile needs `icon`; vendored `/icons/*.png` must exist under `homepage/icons/`; enabled widgets must match YAML placeholders. See [`.cursor/rules/hdc-homepage-dashboard.mdc`](../../../.cursor/rules/hdc-homepage-dashboard.mdc).

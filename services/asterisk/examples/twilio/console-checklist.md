@@ -25,8 +25,8 @@ Replace placeholders before use. Do not commit real credentials.
 - [ ] Attach credential list to trunk
 
 ```bash
-node apps/hdc-cli/cli.mjs secrets set HDC_TWILIO_SIP_USERNAME
-node apps/hdc-cli/cli.mjs secrets set HDC_TWILIO_SIP_PASSWORD
+hdc secrets set HDC_TWILIO_SIP_USERNAME
+hdc secrets set HDC_TWILIO_SIP_PASSWORD
 ```
 
 ## 3. Origination (inbound to Asterisk)
@@ -63,8 +63,8 @@ Use your **WAN/public IP** (`203.0.113.254` is documentation-only).
 ## 6. Apply HDC config
 
 ```bash
-node apps/hdc-cli/cli.mjs run service asterisk maintain --
-node apps/hdc-cli/cli.mjs run service asterisk query -- --live
+hdc run service asterisk maintain --
+hdc run service asterisk query -- --live
 ```
 
 ## 7. Smoke tests

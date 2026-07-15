@@ -19,9 +19,9 @@ Nextcloud AIO mastercontainer on Proxmox LXC (privileged, Docker nesting). First
 | `teardown` | Optional compose down then destroy LXC |
 
 ```bash
-node apps/hdc-cli/cli.mjs run service nextcloud deploy -- --instance a
-node apps/hdc-cli/cli.mjs run service nextcloud query -- --live
-node apps/hdc-cli/cli.mjs run service nextcloud maintain --
+hdc run service nextcloud deploy -- --instance a
+hdc run service nextcloud query -- --live
+hdc run service nextcloud maintain --
 ```
 
 ## Common flags

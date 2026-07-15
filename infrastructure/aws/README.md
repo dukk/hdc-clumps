@@ -12,17 +12,17 @@ Copy [`config.example.json`](config.example.json) to hdc-private as `clumps/infr
 - Vault: `HDC_AWS_SECRET_ACCESS_KEY` (required); optional `HDC_AWS_SESSION_TOKEN`
 
 ```bash
-node apps/hdc-cli/cli.mjs secrets set HDC_AWS_SECRET_ACCESS_KEY
+hdc secrets set HDC_AWS_SECRET_ACCESS_KEY
 ```
 
 ## Commands
 
 ```bash
-node apps/hdc-cli/cli.mjs run infrastructure aws query --
-node apps/hdc-cli/cli.mjs run infrastructure aws deploy -- --dry-run
-node apps/hdc-cli/cli.mjs run infrastructure aws deploy -- --yes
-node apps/hdc-cli/cli.mjs run infrastructure aws maintain --
-node apps/hdc-cli/cli.mjs run infrastructure aws teardown -- --resource vm-example-a --yes
+hdc run infrastructure aws query --
+hdc run infrastructure aws deploy -- --dry-run
+hdc run infrastructure aws deploy -- --yes
+hdc run infrastructure aws maintain --
+hdc run infrastructure aws teardown -- --resource vm-example-a --yes
 ```
 
 Deploy and maintain that **create** billable resources:

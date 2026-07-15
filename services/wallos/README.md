@@ -18,9 +18,9 @@
 | `teardown` | Optional compose down, destroy LXC |
 
 ```bash
-node apps/hdc-cli/cli.mjs run service wallos deploy -- --instance a
-node apps/hdc-cli/cli.mjs run service wallos query -- --live
-node apps/hdc-cli/cli.mjs run service wallos maintain --
+hdc run service wallos deploy -- --instance a
+hdc run service wallos query -- --live
+hdc run service wallos maintain --
 ```
 
 ## Common flags

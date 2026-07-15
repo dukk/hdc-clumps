@@ -17,8 +17,8 @@ Deploy PostgreSQL on Proxmox QEMU: standalone, primary, or standby with replicat
 | `query` | Service status, `pg_isready`, version, replication lag |
 
 ```bash
-node apps/hdc-cli/cli.mjs run service postgresql deploy -- --instance a
-node apps/hdc-cli/cli.mjs run service postgresql query --
+hdc run service postgresql deploy -- --instance a
+hdc run service postgresql query --
 ```
 
 ## Common flags

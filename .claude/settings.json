@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(hdc list*)",
+      "Bash(hdc help*)",
+      "Bash(hdc run*)",
+      "Bash(../hdc/hdc.cmd list*)",
+      "Bash(../hdc/hdc.cmd help*)",
+      "Bash(../hdc/hdc.cmd run*)",
+      "Bash(cd ../hdc && npm run test*)"
+    ],
+    "deny": [
+      "Bash(hdc secrets*)",
+      "Bash(../hdc/hdc.cmd secrets*)",
+      "Read(.env)",
+      "Read(.env.*)",
+      "Read(**/vault.enc)",
+      "Read(**/config.json)"
+    ]
+  }
+}

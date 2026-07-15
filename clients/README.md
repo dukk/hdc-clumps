@@ -21,9 +21,9 @@ Each client package has its own `config.json` (gitignored; copy from `config.exa
 | `raspberrypi` | [`raspberrypi/`](raspberrypi/) | SSH + apt (same behavior as client-ubuntu) |
 
 ```bash
-node apps/hdc-cli/cli.mjs run client windows query --
-node apps/hdc-cli/cli.mjs run client client-ubuntu maintain -- --host-id ws-example
-node apps/hdc-cli/cli.mjs run client raspberrypi maintain --
+hdc run client windows query --
+hdc run client client-ubuntu maintain -- --host-id ws-example
+hdc run client raspberrypi maintain --
 ```
 
 ## Inventory

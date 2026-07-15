@@ -163,7 +163,7 @@ export async function reconcileMailcowMailboxesForConfig(mailcowCfg, vault, opts
     mailboxesSkipped = true;
     aliasesSkipped = true;
     log(
-      `WARNING: ${configuredMailboxes.length} mailbox(es) and ${configuredAliases.length} alias(es) configured but API key missing — run: node apps/hdc-cli/cli.mjs secrets set HDC_MAILCOW_API_KEY`,
+      `WARNING: ${configuredMailboxes.length} mailbox(es) and ${configuredAliases.length} alias(es) configured but API key missing — run: hdc secrets set HDC_MAILCOW_API_KEY`,
     );
     return {
       mailbox_results: mailboxResults,

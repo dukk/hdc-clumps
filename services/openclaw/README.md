@@ -45,11 +45,11 @@ Add to `env_secrets`:
 ## Commands
 
 ```bash
-node apps/hdc-cli/cli.mjs run service openclaw query --
-node apps/hdc-cli/cli.mjs run service openclaw deploy -- --instance a
-node apps/hdc-cli/cli.mjs run service openclaw maintain --
-node apps/hdc-cli/cli.mjs run service openclaw query -- --live
-node apps/hdc-cli/cli.mjs run service openclaw teardown -- --instance a --yes
+hdc run service openclaw query --
+hdc run service openclaw deploy -- --instance a
+hdc run service openclaw maintain --
+hdc run service openclaw query -- --live
+hdc run service openclaw teardown -- --instance a --yes
 ```
 
 ### Deploy flags

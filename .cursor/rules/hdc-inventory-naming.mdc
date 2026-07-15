@@ -1,0 +1,51 @@
+---
+description: HDC system inventory id naming — class prefixes, slug style, alphabet instance suffixes.
+alwaysApply: true
+---
+
+# HDC inventory naming (systems)
+
+Applies to **`kind: "system"`** `id` values in manual and automated inventory (`operations/inventory/systems/*.json`, `operations/automated/systems/*.json` in **hdc-private**). The `id` must match the filename stem (`<id>.json`).
+
+## Class prefix in the id
+
+**Physical** hosts and **Proxmox LXC** containers use **no** class prefix. **QEMU/KVM VMs** use the `vm-` prefix. Other virtual roles may use `virt-`.
+
+| Workload | Prefix | `system_class` | Example id |
+|----------|--------|----------------|------------|
+| Physical host, appliance, hypervisor node | *(none)* | `physical` | `hypervisor-h`, `nas-primary` |
+| Virtual machine (QEMU/KVM, ESXi guest, etc.) | `vm-` | `virtual` | `vm-nginx-proxy-a` |
+| Container / LXC | *(none)* | `virtual` | `ollama-a`, `pi-hole-b` |
+| Other virtual roles (when not a VM or LXC) | `virt-` | `virtual` | `virt-vpn-endpoint-a` |
+
+- Prefix must agree with `system_class` and reality (Proxmox is authoritative for `system_class`; see inventory merge rules).
+- Do not use `vm-` on a bare-metal box, LXC container, or mislabel a full VM as unprefixed.
+
+## Slug body
+
+After the prefix (if any), use a short **lowercase slug** from the system's role or service:
+
+- Words separated by `-` only (no spaces, underscores, or dots).
+- Derive from hostname, service, or site role — not from MAC, IP, or vendor internal ids.
+- Keep it stable across rediscoveries; avoid dates and serial numbers in the id.
+
+## Instance suffix: letters, not numbers
+
+When multiple systems share the same role, distinguish instances with a **single lowercase letter** suffix after the slug:
+
+- `vm-nginx-proxy-a`, `vm-nginx-proxy-b`, `ollama-a`, `ollama-b`
+- **Not** `vm-nginx-proxy-1`, `vm-nginx-proxy-2`, or `vm-nginx-proxy-01`
+
+Letter order is arbitrary but stable once assigned. After `z`, continue with `aa`, `ab`, … (same pattern as spreadsheet columns).
+
+## Automated inventory from plugins
+
+- Plugins may create automated ids (e.g. UniFi `sys-<slug>` from the client name). When **authoring or renaming manual** systems, or when Proxmox/automation assigns a canonical id, follow this rule.
+- Prefer aligning manual ids with these conventions so `resolveSystemById` and operators see one consistent name.
+
+## Quick checklist
+
+- [ ] Physical / LXC → no `vm-` prefix
+- [ ] VM → `vm-…`
+- [ ] Multi-instance → `-a`, `-b`, not `-1`, `-2`
+- [ ] `id` matches filename and `system_class` is set correctly (Proxmox over UniFi for class)

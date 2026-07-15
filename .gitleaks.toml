@@ -1,0 +1,25 @@
+title = "hdc-clumps gitleaks config"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Known-safe test fixtures and example placeholders"
+paths = [
+  '''\.env\.example$''',
+  '''config\.example\.json$''',
+  '''_example\.json$''',
+  '''\.test\.mjs$''',
+  '''services\.example\.yaml$''',
+  '''scrub-public-examples\.mjs$''',
+  '''pve-version\.mjs$''',
+]
+
+regexes = [
+  '''AKIAIOSFODNN7EXAMPLE''',
+  '''ops@example\.invalid''',
+  '''192\.0\.2\.\d+''',
+  '''example\.invalid''',
+  '''session-key''',
+  '''ssh-ed25519 AAAA''',
+]

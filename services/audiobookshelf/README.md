@@ -28,11 +28,11 @@ No vault secrets for v1 — users and settings are stored in SQLite under `/conf
 ## Commands
 
 ```bash
-node apps/hdc-cli/cli.mjs run service audiobookshelf deploy -- --instance a
-node apps/hdc-cli/cli.mjs run service audiobookshelf deploy -- --instance a --destroy-existing
-node apps/hdc-cli/cli.mjs run service audiobookshelf maintain --
-node apps/hdc-cli/cli.mjs run service audiobookshelf query -- --live
-node apps/hdc-cli/cli.mjs run service audiobookshelf teardown -- --dry-run
+hdc run service audiobookshelf deploy -- --instance a
+hdc run service audiobookshelf deploy -- --instance a --destroy-existing
+hdc run service audiobookshelf maintain --
+hdc run service audiobookshelf query -- --live
+hdc run service audiobookshelf teardown -- --dry-run
 ```
 
 ### Flags

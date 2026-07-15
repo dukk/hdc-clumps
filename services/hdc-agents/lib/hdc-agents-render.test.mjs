@@ -4,8 +4,8 @@ import { enabledAgents, litellmA2aAgentEntries, renderComposeYaml, renderDockerf
 
 describe("hdc-agents-render", () => {
   it("defaults to full roster when agents empty", () => {
-    expect(enabledAgents({}).length).toBe(8);
-    expect(enabledAgents({ agents: [] }).length).toBe(8);
+    expect(enabledAgents({}).length).toBe(9);
+    expect(enabledAgents({ agents: [] }).length).toBe(9);
   });
 
   it("renders compose with manager on 9200", () => {
@@ -16,6 +16,8 @@ describe("hdc-agents-render", () => {
     expect(yaml).toContain("HDC_AGENT_ROLE: hdc-manager");
     expect(yaml).toContain('"9200:9200/tcp"');
     expect(yaml).toContain("hdc-engineer");
+    expect(yaml).toContain("hdc-sre-ops");
+    expect(yaml).toContain("hdc-sre-engineer");
     expect(yaml).toContain("hdc-scheduler");
     expect(yaml).toContain("hdc-web");
     expect(yaml).toContain("HDC_MCP_REQUIRE_API_KEY");
@@ -26,7 +28,7 @@ describe("hdc-agents-render", () => {
     expect(yaml).toContain("/opt/hdc-agents-meta:/opt/hdc-agents-meta:ro");
     expect(yaml).toContain("HDC_AGENTS_META_ROOT: /opt/hdc-agents-meta");
     expect(yaml).toContain("HDC_WEB_OIDC_ISSUER");
-    expect(yaml).toContain("HDC_WEB_OIDC_CLIENT_SECRET");
+    expect(yaml).toContain("HDC_WEB_ADMIN_PASSWORD");
     expect(yaml).not.toContain("HDC_WEB_UI_PASSWORD");
   });
 

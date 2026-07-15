@@ -1,0 +1,45 @@
+---
+description: Homepage dashboard tiles — icons and gethomepage service widgets
+globs:
+  - services/homepage/**
+  - "**/homepage/services.yaml"
+  - "**/homepage/config.json"
+alwaysApply: false
+---
+
+# Homepage dashboard (gethomepage)
+
+Live dashboard YAML lives in **hdc-private** (`services/homepage/homepage/services.yaml`). This repo holds examples, icon assets, resolvers, and lint.
+
+## Every service tile needs an icon
+
+- Prefer [dashboard-icons](https://github.com/homarr-labs/dashboard-icons) names in YAML: `immich.png`, `n8n.png`.
+- When no dashboard-icons entry exists, vendor PNG under `services/homepage/homepage/icons/` and reference `/icons/<file>.png` in `services.yaml`.
+- Update `homepage/icons/README.md` with upstream source URL.
+
+## Service widgets
+
+When [gethomepage](https://gethomepage.dev/widgets/services/) documents a widget for an app **and** hdc deploys that app on the dashboard:
+
+1. Add entry to [`homepage-widget-catalog.mjs`](services/homepage/lib/homepage-widget-catalog.mjs).
+2. Add resolver under `services/homepage/lib/homepage-*-widget.mjs` and wire in [`homepage-widget-env.mjs`](services/homepage/lib/homepage-widget-env.mjs).
+3. Enable `homepage.<id>_widget` in homepage `config.json` (schema in `../hdc/apps/hdc-cli/schema/homepage.config.schema.json`).
+4. Add `widget:` block in `services.yaml` using `{{HOMEPAGE_VAR_*}}` placeholders — **never** paste secrets in YAML.
+5. Document vault keys in `.env.example` and [`services/homepage/README.md`](services/homepage/README.md).
+
+Proxmox and Pi-hole follow the same pattern; see README sections.
+
+## Lint before maintain
+
+```bash
+hdc run service homepage query -- --lint
+```
+
+`homepage maintain` runs the same lint and fails on errors (missing icon, enabled widget without YAML block, orphan widget, missing vendored `/icons/` file).
+
+## Checklist for new tiles
+
+- [ ] `icon` set (dashboard-icons or vendored `/icons/…`)
+- [ ] Widget added if gethomepage supports it and secrets/config documented
+- [ ] `query --lint` passes
+- [ ] `homepage maintain` after YAML or config changes

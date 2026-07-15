@@ -16,8 +16,8 @@
 | `query` | Summary stub |
 
 ```bash
-node apps/hdc-cli/cli.mjs run service jenkins deploy --
-node apps/hdc-cli/cli.mjs run service jenkins maintain --
+hdc run service jenkins deploy --
+hdc run service jenkins maintain --
 ```
 
 ## Common flags

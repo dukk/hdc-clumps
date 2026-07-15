@@ -16,15 +16,15 @@ Pull sites, clients, networks, firewall policies, and port forwards from the Uni
 | `maintain` | Apply managed `port_forwards[]` to the controller |
 
 ```bash
-node apps/hdc-cli/cli.mjs run infrastructure unifi-network query --
-node apps/hdc-cli/cli.mjs run infrastructure unifi-network maintain --
-node apps/hdc-cli/cli.mjs help run infrastructure unifi-network
+hdc run infrastructure unifi-network query --
+hdc run infrastructure unifi-network maintain --
+hdc help run infrastructure unifi-network
 ```
 
 ### Bootstrap port forwards from live
 
 ```bash
-node apps/hdc-cli/cli.mjs run infrastructure unifi-network query -- --import-port-forwards --yes
+hdc run infrastructure unifi-network query -- --import-port-forwards --yes
 ```
 
 Replaces `port_forwards[]` in hdc-private `config.json` with the current controller rules (all marked `managed: true`). Imported rules include `destination_ip` (WAN bind address) when the controller provides it.

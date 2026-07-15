@@ -18,9 +18,9 @@ Decentralized search engine on Proxmox LXC via Docker Compose (`yacy/yacy_search
 | `teardown` | Optional compose down, then destroy LXC |
 
 ```bash
-node apps/hdc-cli/cli.mjs secrets set HDC_YACY_ADMIN_PASSWORD
-node apps/hdc-cli/cli.mjs run service yacy deploy --
-node apps/hdc-cli/cli.mjs run service yacy query -- --live
+hdc secrets set HDC_YACY_ADMIN_PASSWORD
+hdc run service yacy deploy --
+hdc run service yacy query -- --live
 ```
 
 ## Common flags

@@ -39,7 +39,7 @@ Download Windows 11 from [Microsoft](https://www.microsoft.com/software-download
 ### 2. Build template (once per hypervisor)
 
 ```bash
-node apps/hdc-cli/cli.mjs run service windows-desktop deploy -- \
+hdc run service windows-desktop deploy -- \
   --build-template --destroy-existing --wait-install
 ```
 
@@ -50,7 +50,7 @@ Builder VM runs full unattended install → Sysprep `/generalize /oobe /shutdown
 ### 3. Deploy instance
 
 ```bash
-node apps/hdc-cli/cli.mjs run service windows-desktop deploy -- \
+hdc run service windows-desktop deploy -- \
   --instance a --destroy-existing --wait-install
 ```
 
@@ -59,13 +59,13 @@ Clone from template → OEM ACPI passthrough → specialize-only autounattend (h
 ## Other commands
 
 ```bash
-node apps/hdc-cli/cli.mjs secrets set HDC_WINDOWS_DESKTOP_ADMIN_PASSWORD
+hdc secrets set HDC_WINDOWS_DESKTOP_ADMIN_PASSWORD
 
-node apps/hdc-cli/cli.mjs run service windows-desktop query -- --live
+hdc run service windows-desktop query -- --live
 
-node apps/hdc-cli/cli.mjs run service windows-desktop maintain -- --instance a
+hdc run service windows-desktop maintain -- --instance a
 
-node apps/hdc-cli/cli.mjs run infrastructure proxmox maintain --
+hdc run infrastructure proxmox maintain --
 ```
 
 Deploy flags: `--destroy-existing`, `--skip-oem`, `--skip-install`, `--wait-install`, `--install-timeout-minutes`.

@@ -9,7 +9,7 @@ SMTP relay credentials for [`postfix-relay`](../../services/postfix-relay/) rema
 Store the SMTP2GO API key in the hdc vault (never commit):
 
 ```bash
-node apps/hdc-cli/cli.mjs secrets set HDC_SMTP2GO_API_KEY
+hdc secrets set HDC_SMTP2GO_API_KEY
 ```
 
 Create the key in SMTP2GO Console → **Sending → API Keys** (enable sender domain, IP allowlist, and allowed-senders endpoints). You may also set `HDC_SMTP2GO_API_KEY` in repo `.env` (env takes precedence over vault).
@@ -19,7 +19,7 @@ Create the key in SMTP2GO Console → **Sending → API Keys** (enable sender do
 Copy `config.example.json` to **hdc-private** as `clumps/infrastructure/smtp2go/config.json`, or bootstrap from the live account:
 
 ```bash
-node apps/hdc-cli/cli.mjs run infrastructure smtp2go query -- --import --yes
+hdc run infrastructure smtp2go query -- --import --yes
 ```
 
 Set `managed: true` on sender domains, `ip_allow_list`, or `allowed_senders` sections you want `maintain` to enforce.
@@ -31,20 +31,20 @@ Set `managed: true` on sender domains, `ip_allow_list`, or `allowed_senders` sec
 ## Query
 
 ```bash
-node apps/hdc-cli/cli.mjs run infrastructure smtp2go query --
-node apps/hdc-cli/cli.mjs run infrastructure smtp2go query -- --domain hdc.example.invalid
-node apps/hdc-cli/cli.mjs run infrastructure smtp2go query -- --import --yes
+hdc run infrastructure smtp2go query --
+hdc run infrastructure smtp2go query -- --domain hdc.example.invalid
+hdc run infrastructure smtp2go query -- --import --yes
 ```
 
 ## Maintain
 
 ```bash
-node apps/hdc-cli/cli.mjs run infrastructure smtp2go maintain --
-node apps/hdc-cli/cli.mjs run infrastructure smtp2go maintain -- --dry-run
-node apps/hdc-cli/cli.mjs run infrastructure smtp2go maintain -- --domain-id hdc-example-invalid
-node apps/hdc-cli/cli.mjs run infrastructure smtp2go maintain -- --prune
-node apps/hdc-cli/cli.mjs run infrastructure smtp2go maintain -- --skip-ip-allow-list
-node apps/hdc-cli/cli.mjs run infrastructure smtp2go maintain -- --skip-allowed-senders
+hdc run infrastructure smtp2go maintain --
+hdc run infrastructure smtp2go maintain -- --dry-run
+hdc run infrastructure smtp2go maintain -- --domain-id hdc-example-invalid
+hdc run infrastructure smtp2go maintain -- --prune
+hdc run infrastructure smtp2go maintain -- --skip-ip-allow-list
+hdc run infrastructure smtp2go maintain -- --skip-allowed-senders
 ```
 
 See [`docs/manually-deployed/smtp2go.md`](../../../docs/manually-deployed/smtp2go.md).

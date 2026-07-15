@@ -44,7 +44,7 @@ export async function resolveDiscordBotToken(vault, vaultKey, opts = {}) {
   if (!required) return null;
 
   throw new Error(
-    `${vaultKey} is not set. Run: node apps/hdc-cli/cli.mjs secrets set ${vaultKey} — or set ${vaultKey} in repo .env`
+    `${vaultKey} is not set. Run: hdc secrets set ${vaultKey} — or set ${vaultKey} in repo .env`
   );
 }
 

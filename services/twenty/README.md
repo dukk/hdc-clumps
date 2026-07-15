@@ -19,9 +19,9 @@ Open-source CRM ([twentyhq/twenty](https://github.com/twentyhq/twenty)) on Proxm
 | `teardown` | Optional compose down, destroy guest |
 
 ```bash
-node apps/hdc-cli/cli.mjs run service twenty deploy -- --instance a
-node apps/hdc-cli/cli.mjs run service twenty query -- --live
-node apps/hdc-cli/cli.mjs run service twenty maintain --
+hdc run service twenty deploy -- --instance a
+hdc run service twenty query -- --live
+hdc run service twenty maintain --
 ```
 
 ## Resilience (outage prevention)

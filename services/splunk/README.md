@@ -17,8 +17,8 @@ Single Splunk Free node on Proxmox QEMU (optional data disk for `/opt/splunk/var
 | `query` | `splunk status`, version, HTTP/mgmt probes, disk usage |
 
 ```bash
-node apps/hdc-cli/cli.mjs run service splunk deploy -- --destroy-existing
-node apps/hdc-cli/cli.mjs run service splunk query --
+hdc run service splunk deploy -- --destroy-existing
+hdc run service splunk query --
 ```
 
 ## Common flags

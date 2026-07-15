@@ -19,9 +19,9 @@ Self-hosted [diagrams.net / draw.io](https://github.com/jgraph/docker-drawio) on
 | `teardown` | Optional compose down, destroy LXC |
 
 ```bash
-node apps/hdc-cli/cli.mjs run service draw-io deploy -- --instance a
-node apps/hdc-cli/cli.mjs run service draw-io query -- --live
-node apps/hdc-cli/cli.mjs run service draw-io maintain --
+hdc run service draw-io deploy -- --instance a
+hdc run service draw-io query -- --live
+hdc run service draw-io maintain --
 ```
 
 ## Common flags

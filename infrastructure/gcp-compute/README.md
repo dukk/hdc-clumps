@@ -18,11 +18,11 @@ Roles: Compute Admin (or narrower VM + disk scopes), Cloud Run Admin, Service Ac
 ## Commands
 
 ```bash
-node apps/hdc-cli/cli.mjs run infrastructure gcp-compute query --
-node apps/hdc-cli/cli.mjs run infrastructure gcp-compute deploy -- --instance a --dry-run
-node apps/hdc-cli/cli.mjs run infrastructure gcp-compute deploy -- --instance a
-node apps/hdc-cli/cli.mjs run infrastructure gcp-compute maintain --
-node apps/hdc-cli/cli.mjs run infrastructure gcp-compute teardown -- --instance a --yes
+hdc run infrastructure gcp-compute query --
+hdc run infrastructure gcp-compute deploy -- --instance a --dry-run
+hdc run infrastructure gcp-compute deploy -- --instance a
+hdc run infrastructure gcp-compute maintain --
+hdc run infrastructure gcp-compute teardown -- --instance a --yes
 ```
 
 See [`docs/manually-deployed/gcp-compute.md`](../../../docs/manually-deployed/gcp-compute.md).

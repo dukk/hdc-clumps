@@ -17,8 +17,8 @@ Three-master Redis cluster on Proxmox QEMU VMs with cluster bootstrap via `redis
 | `query` | Per-node `PING`, `CLUSTER INFO`; full cluster check when all three configured |
 
 ```bash
-node apps/hdc-cli/cli.mjs run service redis deploy --
-node apps/hdc-cli/cli.mjs run service redis maintain --
+hdc run service redis deploy --
+hdc run service redis maintain --
 ```
 
 ## Common flags
@@ -28,7 +28,7 @@ node apps/hdc-cli/cli.mjs run service redis maintain --
 ## After deploy
 
 1. **Port:** **6379** on each node; use cluster-aware clients with the password from vault.
-2. **Verify:** `node apps/hdc-cli/cli.mjs run service redis query --` for cluster state.
+2. **Verify:** `hdc run service redis query --` for cluster state.
 3. No web UI.
 
 ## Related

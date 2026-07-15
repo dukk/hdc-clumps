@@ -19,9 +19,9 @@ Workflow automation on Proxmox LXC (Docker Compose, SQLite). Public HTTPS access
 | `teardown` | Optional compose down, destroy LXC |
 
 ```bash
-node apps/hdc-cli/cli.mjs run service n8n deploy -- --instance a
-node apps/hdc-cli/cli.mjs run service n8n query -- --live
-node apps/hdc-cli/cli.mjs run service n8n maintain --
+hdc run service n8n deploy -- --instance a
+hdc run service n8n query -- --live
+hdc run service n8n maintain --
 ```
 
 ## Common flags

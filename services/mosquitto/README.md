@@ -21,10 +21,10 @@ Eclipse Mosquitto MQTT broker on Proxmox LXC with username/password auth and TLS
 | `teardown` | Destroy LXC (`--dry-run`, `--yes`) |
 
 ```bash
-node apps/hdc-cli/cli.mjs secrets set HDC_MOSQUITTO_PASSWORD_HOMEASSISTANT
-node apps/hdc-cli/cli.mjs run service mosquitto deploy -- --instance a
-node apps/hdc-cli/cli.mjs run service mosquitto query -- --live
-node apps/hdc-cli/cli.mjs run service mosquitto maintain -- --renew-certs
+hdc secrets set HDC_MOSQUITTO_PASSWORD_HOMEASSISTANT
+hdc run service mosquitto deploy -- --instance a
+hdc run service mosquitto query -- --live
+hdc run service mosquitto maintain -- --renew-certs
 ```
 
 ## Home Assistant

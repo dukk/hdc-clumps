@@ -17,8 +17,8 @@ Deploy Smallstep `step-ca` on Proxmox QEMU for internal certificate authority (A
 | `query` | CA service and health |
 
 ```bash
-node apps/hdc-cli/cli.mjs run service step-ca deploy --
-node apps/hdc-cli/cli.mjs run service step-ca maintain --
+hdc run service step-ca deploy --
+hdc run service step-ca maintain --
 ```
 
 ## Common flags

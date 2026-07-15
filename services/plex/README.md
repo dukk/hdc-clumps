@@ -19,9 +19,9 @@ Plex Media Server on Synology NAS via the native **PlexMediaServer** DSM package
 | `teardown` | `synopkg stop` only (`--yes` required; does not uninstall) |
 
 ```bash
-node apps/hdc-cli/cli.mjs run service plex query -- --live
-node apps/hdc-cli/cli.mjs run service plex deploy --
-node apps/hdc-cli/cli.mjs run service plex maintain -- --skip-upgrade
+hdc run service plex query -- --live
+hdc run service plex deploy --
+hdc run service plex maintain -- --skip-upgrade
 ```
 
 ## Common flags

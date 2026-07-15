@@ -16,9 +16,9 @@ Same as **client-ubuntu**: SSH disk checks and `apt` maintenance for Pis (or any
 | `query` | Disk + upgradable package count |
 
 ```bash
-node apps/hdc-cli/cli.mjs run client raspberrypi query --
-node apps/hdc-cli/cli.mjs run client raspberrypi maintain --
-node apps/hdc-cli/cli.mjs help run client raspberrypi
+hdc run client raspberrypi query --
+hdc run client raspberrypi maintain --
+hdc help run client raspberrypi
 ```
 
 ## Common flags

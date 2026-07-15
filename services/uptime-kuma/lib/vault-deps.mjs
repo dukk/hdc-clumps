@@ -39,8 +39,8 @@ export async function resolveUptimeKumaPassword(
     return fromVault.trim();
   }
   throw new Error(
-    `${passwordVaultKey} is not set. Run: node apps/hdc-cli/cli.mjs secrets set ${passwordVaultKey} ` +
-      `(check active backend with: node apps/hdc-cli/cli.mjs env; verify with: node apps/hdc-cli/cli.mjs secrets get ${passwordVaultKey})`,
+    `${passwordVaultKey} is not set. Run: hdc secrets set ${passwordVaultKey} ` +
+      `(check active backend with: hdc env; verify with: hdc secrets get ${passwordVaultKey})`,
   );
 }
 

@@ -19,9 +19,9 @@ GitLab Community Edition on Proxmox LXC (Docker Compose, Omnibus container). Pub
 | `teardown` | Optional compose down, destroy LXC |
 
 ```bash
-node apps/hdc-cli/cli.mjs run service gitlab deploy -- --instance a
-node apps/hdc-cli/cli.mjs run service gitlab query -- --live
-node apps/hdc-cli/cli.mjs run service gitlab maintain --
+hdc run service gitlab deploy -- --instance a
+hdc run service gitlab query -- --live
+hdc run service gitlab maintain --
 ```
 
 ## Common flags
@@ -37,7 +37,7 @@ node apps/hdc-cli/cli.mjs run service gitlab maintain --
 5. **BIND:** forward A record for the hostname in `gitlab.external_url`.
 6. **nginx-waf:** add a site with upstream to the CT IP on port 80.
 7. **Git SSH:** clones use `ssh_host_port` on the CT IP (default `2222`), not nginx-waf — e.g. `git clone ssh://git@gitlab.example.invalid:2222/group/project.git` when DNS points at the CT or you use the CT IP.
-8. **Nagios:** `node apps/hdc-cli/cli.mjs run service nagios maintain --` after BIND A record exists.
+8. **Nagios:** `hdc run service nagios maintain --` after BIND A record exists.
 
 ## Upgrades
 

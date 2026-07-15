@@ -17,8 +17,8 @@ Proxmox LXC node that installs Trivy from GitHub releases and runs configured re
 | `teardown` | Destroy LXC |
 
 ```bash
-node apps/hdc-cli/cli.mjs run service trivy deploy --
-node apps/hdc-cli/cli.mjs run service trivy maintain --
+hdc run service trivy deploy --
+hdc run service trivy maintain --
 ```
 
 ## `scan_targets[]`

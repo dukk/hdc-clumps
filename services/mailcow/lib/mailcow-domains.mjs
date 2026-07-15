@@ -72,7 +72,7 @@ export async function reconcileMailcowDomainsForConfig(mailcowCfg, vault, opts =
     domainsSkipped = true;
     if (configuredDomains.length > 0) {
       log(
-        `WARNING: ${configuredDomains.length} domain(s) configured but API key missing — run: node apps/hdc-cli/cli.mjs secrets set HDC_MAILCOW_API_KEY`,
+        `WARNING: ${configuredDomains.length} domain(s) configured but API key missing — run: hdc secrets set HDC_MAILCOW_API_KEY`,
       );
     }
     dnsChecklists = buildAllDnsChecklists(configuredDomains, hostname, {});

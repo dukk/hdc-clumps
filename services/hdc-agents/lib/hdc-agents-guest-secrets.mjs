@@ -5,6 +5,7 @@ import { randomBytes } from "node:crypto";
 
 import { mcpApiKeyVaultKey } from "../../../../apps/hdc-mcp-server/lib/api-keys.mjs";
 import { schedulesFromConfig } from "../../../../apps/hdc-agent-server/lib/scheduler-catalog.mjs";
+import { buildNotificationsJson } from "../../../../apps/hdc-cli/lib/notifications-config.mjs";
 import { ensureMcpApiKeysForAgents, mcpApiKeyRoles } from "./mcp-api-keys-ensure.mjs";
 /**
  * @param {{
@@ -61,13 +62,39 @@ export async function prepareAgentsGuestSecrets(opts) {
   const oidcIssuer =
     typeof oidc.issuer === "string" && oidc.issuer.trim()
       ? oidc.issuer.trim().replace(/\/+$/, "")
-      : "https://keycloak.hdc.dukk.org/realms/dukk-sso";
-  const oidcClientId =
-    typeof oidc.client_id === "string" && oidc.client_id.trim()
-      ? oidc.client_id.trim()
-      : "hdc-web";
-  envLines.push(`HDC_WEB_OIDC_ISSUER=${oidcIssuer}`);
-  envLines.push(`HDC_WEB_OIDC_CLIENT_ID=${oidcClientId}`);
+      : "";
+  if (oidcIssuer) {
+    const oidcClientId =
+      typeof oidc.client_id === "string" && oidc.client_id.trim()
+        ? oidc.client_id.trim()
+        : "hdc-web";
+    envLines.push(`HDC_WEB_OIDC_ISSUER=${oidcIssuer}`);
+    envLines.push(`HDC_WEB_OIDC_CLIENT_ID=${oidcClientId}`);
+
+    const oidcSecretKey =
+      typeof oidc.client_secret_vault_key === "string" && oidc.client_secret_vault_key.trim()
+        ? oidc.client_secret_vault_key.trim()
+        : "HDC_WEB_OIDC_CLIENT_SECRET";
+    const oidcSecret = String((await vault.getSecret(oidcSecretKey, { optional: true })) ?? "").trim();
+    if (oidcSecret) {
+      envLines.push(`HDC_WEB_OIDC_CLIENT_SECRET=${oidcSecret}`);
+    }
+  }
+
+  const web =
+    hdcAgents.web && typeof hdcAgents.web === "object"
+      ? /** @type {Record<string, unknown>} */ (hdcAgents.web)
+      : {};
+  const adminPasswordVaultKey =
+    typeof web.admin_password_vault_key === "string" && web.admin_password_vault_key.trim()
+      ? web.admin_password_vault_key.trim()
+      : "HDC_WEB_ADMIN_PASSWORD";
+  const adminPassword = String(
+    (await vault.getSecret(adminPasswordVaultKey, { optional: true })) ?? "",
+  ).trim();
+  if (adminPassword) {
+    envLines.push(`HDC_WEB_ADMIN_PASSWORD=${adminPassword}`);
+  }
 
   const publicUrl =
     typeof hdcAgents.public_url === "string" && hdcAgents.public_url.trim()
@@ -75,15 +102,6 @@ export async function prepareAgentsGuestSecrets(opts) {
       : "";
   if (publicUrl) {
     envLines.push(`HDC_WEB_PUBLIC_URL=${publicUrl}`);
-  }
-
-  const oidcSecretKey =
-    typeof oidc.client_secret_vault_key === "string" && oidc.client_secret_vault_key.trim()
-      ? oidc.client_secret_vault_key.trim()
-      : "HDC_WEB_OIDC_CLIENT_SECRET";
-  const oidcSecret = String((await vault.getSecret(oidcSecretKey, { optional: true })) ?? "").trim();
-  if (oidcSecret) {
-    envLines.push(`HDC_WEB_OIDC_CLIENT_SECRET=${oidcSecret}`);
   }
 
   const mail = hdcAgents.mail && typeof hdcAgents.mail === "object" ? hdcAgents.mail : {};
@@ -128,6 +146,9 @@ export async function prepareAgentsGuestSecrets(opts) {
     ...new Set([
       "HDC_OPS_DISCORD_WEBHOOK_URL",
       agentsWebhookVaultKey,
+      "HDC_AGENTS_SLACK_WEBHOOK_URL",
+      "HDC_AGENTS_TEAMS_WEBHOOK_URL",
+      "HDC_AGENTS_TELEGRAM_BOT_TOKEN",
       "HDC_LITELLM_MASTER_KEY",
       ...mcpApiKeyRoles(hdcAgents)
         .filter((r) => r !== "hdc-scheduler")
@@ -204,9 +225,14 @@ export async function prepareAgentsGuestSecrets(opts) {
     block_days: typeof mailbox.block_days === "number" ? mailbox.block_days : 30,
   };
 
+  const notificationsJson = buildNotificationsJson(
+    /** @type {Record<string, unknown>} */ (hdcAgents),
+  );
+
   return {
     composeEnv: `${envLines.join("\n")}\n`,
     schedulesJson: `${JSON.stringify({ schedules }, null, 2)}\n`,
     mailboxJson: `${JSON.stringify(mailboxJson, null, 2)}\n`,
+    notificationsJson: `${JSON.stringify(notificationsJson, null, 2)}\n`,
   };
 }
