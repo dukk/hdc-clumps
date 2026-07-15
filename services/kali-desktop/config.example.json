@@ -1,0 +1,49 @@
+{
+  "schema_version": 2,
+  "kali_desktop": {
+    "user": "kali",
+    "password_vault_key": "HDC_KALI_DESKTOP_PASSWORD",
+    "image": {
+      "url": "https://cdimage.kali.org/current/kali-linux-2026.1-qemu-amd64.7z"
+    },
+    "template_name": "kali-cloud-template"
+  },
+  "defaults": {
+    "mode": "proxmox-qemu",
+    "proxmox": {
+      "host_id": "pve-c",
+      "qemu": {
+        "template_vmid": 9050,
+        "storage": "local-lvm",
+        "image_storage": "local",
+        "cores": 4,
+        "memory_mb": 8192,
+        "rootfs_gb": 64
+      },
+      "network": {
+        "bridge": "vmbr0",
+        "gateway": "192.0.2.1",
+        "dns": ["192.0.2.2", "192.0.2.3"]
+      }
+    }
+  },
+  "deployments": [
+    {
+      "system_id": "vm-kali-a",
+      "hostname": "kali-a",
+      "proxmox": {
+        "host_id": "pve-c",
+        "qemu": {
+          "vmid": null,
+          "ip": "192.0.2.189/24"
+        }
+      },
+      "configure": {
+        "ssh": {
+          "host": "192.0.2.189",
+          "user": "kali"
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,120 @@
+{
+  "schema_version": 1,
+  "aws": {
+    "region": "us-east-1",
+    "default_tags": {
+      "hdc:managed": "true",
+      "Environment": "hdc"
+    }
+  },
+  "cost": {
+    "confirm_before_deploy": true,
+    "hours_per_month": 730
+  },
+  "vpcs": [
+    {
+      "id": "vpc-main",
+      "managed": true,
+      "cidr": "10.10.0.0/16",
+      "enable_nat_gateway": false
+    }
+  ],
+  "subnets": [
+    {
+      "id": "subnet-public-a",
+      "managed": true,
+      "vpc_id": "vpc-main",
+      "cidr": "10.10.1.0/24",
+      "az": "us-east-1a",
+      "public": true
+    },
+    {
+      "id": "subnet-private-a",
+      "managed": true,
+      "vpc_id": "vpc-main",
+      "cidr": "10.10.2.0/24",
+      "az": "us-east-1a",
+      "public": false
+    }
+  ],
+  "security_groups": [
+    {
+      "id": "sg-web",
+      "managed": true,
+      "vpc_id": "vpc-main",
+      "description": "HDC web ingress",
+      "ingress": [
+        { "protocol": "tcp", "from_port": 80, "to_port": 80, "cidr": "0.0.0.0/0" },
+        { "protocol": "tcp", "from_port": 443, "to_port": 443, "cidr": "0.0.0.0/0" }
+      ],
+      "egress": [
+        { "protocol": "-1", "cidr": "0.0.0.0/0" }
+      ]
+    }
+  ],
+  "iam_roles": [
+    {
+      "id": "role-ec2-default",
+      "managed": true,
+      "name": "hdc-ec2-default",
+      "trust": "ec2",
+      "policies": ["arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"]
+    }
+  ],
+  "ebs_volumes": [],
+  "ec2_instances": [
+    {
+      "id": "vm-example-a",
+      "managed": true,
+      "name": "vm-example-a",
+      "instance_type": "t3.small",
+      "ami": "ami-0c7217cd92b166775",
+      "subnet_id": "subnet-public-a",
+      "security_group_ids": ["sg-web"],
+      "key_name": null,
+      "root_volume_gb": 30,
+      "root_volume_type": "gp3",
+      "iam_instance_profile": "hdc-ec2-default"
+    }
+  ],
+  "s3_buckets": [
+    {
+      "id": "bucket-logs",
+      "managed": true,
+      "name": "hdc-example-logs-unique-suffix",
+      "versioning": false,
+      "encryption": true,
+      "estimated_size_gb": 50
+    }
+  ],
+  "ecs_clusters": [
+    {
+      "id": "ecs-main",
+      "managed": true,
+      "name": "hdc-ecs-main"
+    }
+  ],
+  "ecs_services": [
+    {
+      "id": "scanopy-ecs",
+      "managed": true,
+      "cluster_id": "ecs-main",
+      "name": "scanopy",
+      "cpu": 512,
+      "memory": 1024,
+      "desired_count": 1,
+      "subnet_ids": ["subnet-public-a"],
+      "security_group_ids": ["sg-web"],
+      "task_definition": {
+        "containers": [
+          {
+            "name": "scanopy",
+            "image": "scanopy/scanopy:latest",
+            "port_mappings": [{ "container_port": 60072, "host_port": 60072 }],
+            "environment": []
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,89 @@
+{
+  "schema_version": 1,
+  "oci": {
+    "region": "us-ashburn-1",
+    "compartment_id": "ocid1.compartment.oc1..example",
+    "availability_domain": "AD-1",
+    "default_tags": {
+      "managed-by": "hdc"
+    }
+  },
+  "cost": {
+    "confirm_before_deploy": true,
+    "hours_per_month": 730
+  },
+  "vcns": [
+    {
+      "id": "vcn-main",
+      "managed": true,
+      "cidr": "10.50.0.0/16",
+      "dns_label": "hdcvcn"
+    }
+  ],
+  "subnets": [
+    {
+      "id": "subnet-public-a",
+      "managed": true,
+      "vcn_id": "vcn-main",
+      "cidr": "10.50.1.0/24",
+      "public": true,
+      "dns_label": "hdcsubnet"
+    }
+  ],
+  "network_security_groups": [
+    {
+      "id": "nsg-default",
+      "managed": true,
+      "vcn_id": "vcn-main",
+      "ingress": [
+        {
+          "protocol": "tcp",
+          "port_min": 22,
+          "port_max": 22,
+          "source": "0.0.0.0/0"
+        }
+      ],
+      "egress": [
+        {
+          "protocol": "all",
+          "destination": "0.0.0.0/0"
+        }
+      ]
+    }
+  ],
+  "instances": [
+    {
+      "id": "a",
+      "managed": true,
+      "system_id": "virt-oci-a",
+      "subnet_id": "subnet-public-a",
+      "nsg_ids": ["nsg-default"],
+      "shape": "VM.Standard.E2.1.Micro",
+      "ocpus": 1,
+      "memory_gb": 1,
+      "boot_volume_gb": 50,
+      "image_ocid": "ocid1.image.oc1.iad.example",
+      "assign_public_ip": true
+    }
+  ],
+  "container_instances": [
+    {
+      "id": "b",
+      "managed": true,
+      "system_id": "virt-oci-container-a",
+      "subnet_id": "subnet-public-a",
+      "nsg_ids": ["nsg-default"],
+      "shape": "CI.Standard.E4.Flex",
+      "ocpus": 1,
+      "memory_gb": 2,
+      "assign_public_ip": true,
+      "containers": [
+        {
+          "name": "app",
+          "image": "ghcr.io/example/app:latest",
+          "ports": [8080]
+        }
+      ]
+    }
+  ]
+}

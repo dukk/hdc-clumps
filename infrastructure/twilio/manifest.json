@@ -1,0 +1,33 @@
+{
+  "id": "twilio",
+  "title": "Twilio",
+  "env_required": [],
+  "inventory_docs": [
+    "clumps/infrastructure/twilio/config.json"
+  ],
+  "services": [
+    {
+      "id": "twilio-query",
+      "title": "Twilio query",
+      "verb": "query",
+      "summary": "Diff SIP trunks and phone numbers vs config; optional --import from live API (JSON on stdout)."
+    }
+  ],
+  "verbs": {
+    "query": {
+      "script": "run.mjs"
+    },
+    "health": {
+      "script": "run.mjs"
+    }
+  },
+  "operation_report": {
+    "next_steps": [
+      "Run `hdc run infrastructure twilio query -- --import --yes` to refresh hdc-private config from the live account.",
+      "Copy `termination_domain` from sip_trunks[] into asterisk config when using Elastic SIP Trunking."
+    ]
+  },
+  "health": {
+    "family": "infra-api"
+  }
+}

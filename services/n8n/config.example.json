@@ -1,0 +1,48 @@
+{
+  "schema_version": 2,
+  "defaults": {
+    "mode": "proxmox-lxc",
+    "proxmox": {
+      "lxc": {
+        "ostemplate": "local:vztmpl/ubuntu-22.04-standard_22.04-1_amd64.tar.zst",
+        "storage": "local-lvm",
+        "rootfs_gb": 20,
+        "memory_mb": 2048,
+        "cores": 2,
+        "bridge": "vmbr0",
+        "ip_config": "dhcp",
+        "unprivileged": 0,
+        "features": "nesting=1,keyctl=1",
+        "onboot": 1
+      }
+    },
+    "n8n": {
+      "image_tag": "latest",
+      "host_port": 5678,
+      "public_url": "https://n8n.example.invalid",
+      "timezone": "America/New_York",
+      "encryption_key_vault_key": "HDC_N8N_ENCRYPTION_KEY",
+      "mail": {
+        "enabled": false,
+        "to": "ops@example.invalid",
+        "from": "noreply@example.invalid"
+      }
+    },
+    "install": {
+      "enabled": true,
+      "compose_dir": "/opt/n8n"
+    }
+  },
+  "deployments": [
+    {
+      "system_id": "n8n-a",
+      "proxmox": {
+        "host_id": "REPLACE_PVE_NODE",
+        "lxc": {
+          "vmid": 0,
+          "hostname": "n8n-a"
+        }
+      }
+    }
+  ]
+}

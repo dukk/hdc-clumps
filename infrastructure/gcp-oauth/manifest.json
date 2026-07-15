@@ -1,0 +1,42 @@
+{
+  "id": "gcp-oauth",
+  "title": "GCP OAuth (Google Auth Platform)",
+  "env_required": [],
+  "inventory_docs": [
+    "clumps/infrastructure/gcp-oauth/config.json"
+  ],
+  "services": [
+    {
+      "id": "oauth-query",
+      "title": "GCP OAuth drift query",
+      "verb": "query",
+      "summary": "Diff desired OAuth clients vs Console import and vault keys (JSON on stdout)."
+    },
+    {
+      "id": "oauth-sync",
+      "title": "GCP OAuth maintain",
+      "verb": "maintain",
+      "summary": "Validate config, import credentials to vault, print Console checklist."
+    }
+  ],
+  "verbs": {
+    "maintain": {
+      "script": "run.mjs"
+    },
+    "query": {
+      "script": "run.mjs"
+    },
+    "health": {
+      "script": "run.mjs"
+    }
+  },
+  "operation_report": {
+    "next_steps": [
+      "Run `hdc run infrastructure gcp-oauth query -- --import <console-json>` after Console changes.",
+      "Store client secrets in vault immediately after creating clients in Google Cloud Console."
+    ]
+  },
+  "health": {
+    "family": "infra-api"
+  }
+}

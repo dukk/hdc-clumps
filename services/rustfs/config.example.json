@@ -1,0 +1,87 @@
+{
+  "schema_version": 2,
+  "rustfs": {
+    "image": "rustfs/rustfs:latest",
+    "s3_port": 9000,
+    "console_port": 9001,
+    "drives_per_node": 4,
+    "data_path_prefix": "/data/rustfs",
+    "access_key_vault_key": "HDC_RUSTFS_ACCESS_KEY",
+    "secret_key_vault_key": "HDC_RUSTFS_SECRET_KEY",
+    "s3_public_url": "https://s3.REPLACE_DOMAIN",
+    "console_public_url": "https://rustfs.REPLACE_DOMAIN",
+    "console_cors_allowed_origins": "*",
+    "cluster_dns_suffix": "",
+    "unsafe_bypass_disk_check": false
+  },
+  "defaults": {
+    "mode": "proxmox-lxc",
+    "proxmox": {
+      "network": {
+        "gateway": "REPLACE_GATEWAY"
+      },
+      "lxc": {
+        "ostemplate": "local:vztmpl/ubuntu-22.04-standard_22.04-1_amd64.tar.zst",
+        "storage": "local-lvm",
+        "rootfs_gb": 128,
+        "memory_mb": 8192,
+        "cores": 4,
+        "bridge": "vmbr0",
+        "ip_config": "ip=REPLACE_IP/24,gw=REPLACE_GATEWAY",
+        "unprivileged": 0,
+        "features": "nesting=1,keyctl=1",
+        "onboot": 1
+      }
+    },
+    "install": {
+      "enabled": true,
+      "compose_dir": "/opt/rustfs"
+    }
+  },
+  "deployments": [
+    {
+      "system_id": "rustfs-a",
+      "proxmox": {
+        "host_id": "REPLACE_PVE_NODE",
+        "lxc": {
+          "vmid": 0,
+          "hostname": "rustfs-a",
+          "ip_config": "ip=REPLACE_IP_A/24,gw=REPLACE_GATEWAY"
+        }
+      }
+    },
+    {
+      "system_id": "rustfs-b",
+      "proxmox": {
+        "host_id": "REPLACE_PVE_NODE",
+        "lxc": {
+          "vmid": 0,
+          "hostname": "rustfs-b",
+          "ip_config": "ip=REPLACE_IP_B/24,gw=REPLACE_GATEWAY"
+        }
+      }
+    },
+    {
+      "system_id": "rustfs-c",
+      "proxmox": {
+        "host_id": "REPLACE_PVE_NODE",
+        "lxc": {
+          "vmid": 0,
+          "hostname": "rustfs-c",
+          "ip_config": "ip=REPLACE_IP_C/24,gw=REPLACE_GATEWAY"
+        }
+      }
+    },
+    {
+      "system_id": "rustfs-d",
+      "proxmox": {
+        "host_id": "REPLACE_PVE_NODE",
+        "lxc": {
+          "vmid": 0,
+          "hostname": "rustfs-d",
+          "ip_config": "ip=REPLACE_IP_D/24,gw=REPLACE_GATEWAY"
+        }
+      }
+    }
+  ]
+}

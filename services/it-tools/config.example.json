@@ -1,0 +1,41 @@
+{
+  "schema_version": 2,
+  "defaults": {
+    "mode": "proxmox-lxc",
+    "proxmox": {
+      "lxc": {
+        "ostemplate": "local:vztmpl/ubuntu-22.04-standard_22.04-1_amd64.tar.zst",
+        "storage": "local-lvm",
+        "rootfs_gb": 8,
+        "memory_mb": 512,
+        "cores": 1,
+        "bridge": "vmbr0",
+        "ip_config": "dhcp",
+        "unprivileged": 0,
+        "features": "nesting=1,keyctl=1",
+        "onboot": 1
+      }
+    },
+    "it_tools": {
+      "image": "corentinth/it-tools:latest",
+      "host_port": 8080,
+      "public_url": null
+    },
+    "install": {
+      "enabled": true,
+      "compose_dir": "/opt/it-tools"
+    }
+  },
+  "deployments": [
+    {
+      "system_id": "it-tools-a",
+      "proxmox": {
+        "host_id": "REPLACE_PVE_NODE",
+        "lxc": {
+          "vmid": 0,
+          "hostname": "it-tools-a"
+        }
+      }
+    }
+  ]
+}

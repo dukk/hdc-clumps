@@ -1,0 +1,51 @@
+{
+  "schema_version": 2,
+  "defaults": {
+    "mode": "proxmox-lxc",
+    "proxmox": {
+      "lxc": {
+        "ostemplate": "local:vztmpl/ubuntu-22.04-standard_22.04-1_amd64.tar.zst",
+        "storage": "local-lvm",
+        "rootfs_gb": 20,
+        "memory_mb": 2048,
+        "cores": 2,
+        "bridge": "vmbr0",
+        "ip_config": "dhcp",
+        "unprivileged": 0,
+        "features": "nesting=1,keyctl=1",
+        "onboot": 1
+      }
+    },
+    "listmonk": {
+      "image_tag": "latest",
+      "postgres_image_tag": "17-alpine",
+      "host_port": 9000,
+      "public_url": "https://newsletter.example.invalid",
+      "timezone": "America/New_York",
+      "admin_user": "admin",
+      "admin_password_vault_key": "HDC_LISTMONK_ADMIN_PASSWORD",
+      "db_password_vault_key": "HDC_LISTMONK_DB_PASSWORD",
+      "mail": {
+        "enabled": false,
+        "to": "ops@example.invalid",
+        "from": "noreply@example.invalid"
+      }
+    },
+    "install": {
+      "enabled": true,
+      "compose_dir": "/opt/listmonk"
+    }
+  },
+  "deployments": [
+    {
+      "system_id": "listmonk-a",
+      "proxmox": {
+        "host_id": "REPLACE_PVE_NODE",
+        "lxc": {
+          "vmid": 0,
+          "hostname": "listmonk-a"
+        }
+      }
+    }
+  ]
+}

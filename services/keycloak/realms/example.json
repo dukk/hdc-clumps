@@ -1,0 +1,55 @@
+{
+  "id": "example",
+  "realm": "example",
+  "enabled": true,
+  "display_name": "Example",
+  "login_with_email_allowed": true,
+  "registration_allowed": false,
+  "reset_password_allowed": true,
+  "remember_me": true,
+  "verify_email": false,
+  "ssl_required": "external",
+  "mail": {
+    "enabled": true,
+    "from_display_name": "Example"
+  },
+  "users": [
+    {
+      "username": "alice",
+      "email": "alice@example.invalid",
+      "enabled": true,
+      "email_verified": true,
+      "first_name": "Alice",
+      "last_name": "Example",
+      "password_vault_key": "HDC_KEYCLOAK_USER_EXAMPLE_ALICE_PASSWORD",
+      "temporary_password": false
+    }
+  ],
+  "clients": [
+    {
+      "client_id": "example-app",
+      "name": "Example App",
+      "enabled": true,
+      "public_client": false,
+      "standard_flow_enabled": true,
+      "direct_access_grants_enabled": false,
+      "service_accounts_enabled": false,
+      "redirect_uris": ["https://example.invalid/api/auth/oidc/callback"],
+      "web_origins": ["https://example.invalid"],
+      "secret_vault_key": "HDC_KEYCLOAK_CLIENT_EXAMPLE_APP_SECRET"
+    }
+  ],
+  "identity_providers": [
+    {
+      "alias": "microsoft",
+      "provider_id": "microsoft",
+      "enabled": true,
+      "display_name": "Microsoft",
+      "trust_email": true,
+      "sync_mode": "IMPORT",
+      "default_scope": "openid profile email",
+      "client_id": "00000000-0000-0000-0000-000000000000",
+      "client_secret_vault_key": "HDC_KEYCLOAK_IDP_EXAMPLE_MICROSOFT_CLIENT_SECRET"
+    }
+  ]
+}

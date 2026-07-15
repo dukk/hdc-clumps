@@ -1,0 +1,61 @@
+{
+  "id": "cloudflare-workers",
+  "title": "Cloudflare Workers and Pages",
+  "env_required": [],
+  "inventory_docs": [
+    "clumps/infrastructure/cloudflare-workers/config.json"
+  ],
+  "services": [
+    {
+      "id": "workers-query",
+      "title": "Workers and Pages query",
+      "verb": "query",
+      "summary": "List Workers scripts, routes, Pages projects; diff vs config; optional --import --yes (JSON on stdout)."
+    },
+    {
+      "id": "workers-deploy",
+      "title": "Workers and Pages deploy",
+      "verb": "deploy",
+      "summary": "Deploy managed workers via wrangler deploy and Pages via wrangler pages deploy; push secrets from vault."
+    },
+    {
+      "id": "workers-maintain",
+      "title": "Workers and Pages maintain",
+      "verb": "maintain",
+      "summary": "Sync routes and secrets from config; optional --redeploy to refresh worker code."
+    },
+    {
+      "id": "workers-teardown",
+      "title": "Workers and Pages teardown",
+      "verb": "teardown",
+      "summary": "Delete managed Workers scripts or Pages projects (requires --yes)."
+    }
+  ],
+  "verbs": {
+    "deploy": {
+      "script": "run.mjs"
+    },
+    "maintain": {
+      "script": "run.mjs"
+    },
+    "query": {
+      "script": "run.mjs"
+    },
+    "health": {
+      "script": "run.mjs"
+    },
+    "teardown": {
+      "script": "run.mjs"
+    }
+  },
+  "operation_report": {
+    "next_steps": [
+      "Run `hdc run infrastructure cloudflare-workers query --` to verify drift after deploy or maintain.",
+      "Bootstrap: `query -- --import --yes` to seed workers[] and pages[] from the live account.",
+      "Ensure wrangler is installed (`npm install -g wrangler` or per-project devDependency)."
+    ]
+  },
+  "health": {
+    "family": "infra-api"
+  }
+}

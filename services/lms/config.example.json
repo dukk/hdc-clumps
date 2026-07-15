@@ -1,0 +1,46 @@
+{
+  "schema_version": 2,
+  "defaults": {
+    "mode": "proxmox-qemu",
+    "proxmox": {
+      "qemu": {
+        "template_vmid": 9022,
+        "storage": "local-lvm",
+        "full": 1,
+        "bridge": "vmbr0",
+        "memory_mb": 16384,
+        "cores": 4,
+        "rootfs_gb": 128
+      }
+    },
+    "install": {
+      "enabled": true,
+      "linux_user": "lms",
+      "gpu": false
+    },
+    "lms": {
+      "models": ["openai/gpt-oss-20b"],
+      "load_on_start": null,
+      "server": {
+        "host": "0.0.0.0",
+        "port": 1234
+      }
+    }
+  },
+  "deployments": [
+    {
+      "system_id": "vm-lms-a",
+      "proxmox": {
+        "host_id": "hypervisor-d",
+        "qemu": {
+          "vmid": 475,
+          "ip": "192.0.2.28/24",
+          "hostpci": []
+        }
+      },
+      "configure": {
+        "ssh": { "host": "192.0.2.28" }
+      }
+    }
+  ]
+}

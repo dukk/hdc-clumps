@@ -1,0 +1,39 @@
+{
+  "id": "mailcow",
+  "title": "Mailcow (full mail server stack)",
+  "env_required": [
+    "HDC_MAILCOW_API_KEY"
+  ],
+  "inventory_docs": [
+    "operations/inventory/systems/mailcow-a.json",
+    "operations/inventory/services/mailcow.json"
+  ],
+  "operation_report": {
+    "next_steps": [
+      "Set access.nodes[0].ip on operations/inventory/systems/mailcow-a.json from deploy/query --live ct_ip.",
+      "Add BIND or Cloudflare A record for mailcow.hostname pointing at the CT IP (and WAN A if public).",
+      "Log in at admin_url (default admin / moohoo) and change the admin password.",
+      "Create an API key in Mailcow admin → Configuration → API → secrets set HDC_MAILCOW_API_KEY.",
+      "Run maintain to reconcile domains, DKIM keys, and postfix-relay assignment per domain outbound.mode.",
+      "Publish DNS records from query --live (MX, SPF, DKIM, DMARC) to BIND or Cloudflare manually.",
+      "Optional: nginx-waf sites[] for HTTPS admin UI; Cloudflare A for WAN exposure."
+    ]
+  },
+  "verbs": {
+    "deploy": {
+      "script": "run.mjs"
+    },
+    "maintain": {
+      "script": "run.mjs"
+    },
+    "query": {
+      "script": "run.mjs"
+    },
+    "health": {
+      "script": "run.mjs"
+    },
+    "teardown": {
+      "script": "run.mjs"
+    }
+  }
+}

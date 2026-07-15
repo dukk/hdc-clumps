@@ -1,0 +1,46 @@
+{
+  "schema_version": 2,
+  "defaults": {
+    "mode": "proxmox-lxc",
+    "proxmox": {
+      "network": {
+        "gateway": "192.0.2.1"
+      },
+      "lxc": {
+        "ostemplate": "local:vztmpl/ubuntu-22.04-standard_22.04-1_amd64.tar.zst",
+        "storage": "local-lvm",
+        "rootfs_gb": 8,
+        "memory_mb": 512,
+        "cores": 1,
+        "bridge": "vmbr0",
+        "ip_config": "dhcp",
+        "unprivileged": 0,
+        "features": "nesting=1,keyctl=1",
+        "onboot": 1
+      }
+    },
+    "glances": {
+      "image": "nicolargo/glances:latest-full",
+      "host_port": 61208,
+      "browser_mode": false,
+      "public_url": null,
+      "timezone": "America/New_York"
+    },
+    "install": {
+      "enabled": true,
+      "compose_dir": "/opt/glances"
+    }
+  },
+  "deployments": [
+    {
+      "system_id": "glances-a",
+      "proxmox": {
+        "host_id": "REPLACE_PVE_NODE",
+        "lxc": {
+          "vmid": 0,
+          "hostname": "glances-a"
+        }
+      }
+    }
+  ]
+}

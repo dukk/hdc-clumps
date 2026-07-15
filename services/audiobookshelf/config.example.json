@@ -1,0 +1,52 @@
+{
+  "schema_version": 2,
+  "defaults": {
+    "mode": "proxmox-qemu",
+    "proxmox": {
+      "network": {
+        "gateway": "192.0.2.1"
+      },
+      "qemu": {
+        "template_vmid": 9022,
+        "storage": "local-lvm",
+        "data_disk_storage": "local-lvm-data",
+        "full": 1,
+        "cores": 4,
+        "memory_mb": 8192,
+        "rootfs_gb": 32,
+        "data_disk_gb": 512,
+        "bridge": "vmbr0"
+      }
+    },
+    "audiobookshelf": {
+      "image_tag": "latest",
+      "host_port": 13378,
+      "public_url": "https://bookshelf.example.invalid",
+      "timezone": "America/Chicago"
+    },
+    "install": {
+      "enabled": true,
+      "compose_dir": "/opt/audiobookshelf",
+      "data_mount": "/data/audiobookshelf"
+    }
+  },
+  "deployments": [
+    {
+      "system_id": "vm-audiobookshelf-a",
+      "hostname": "audiobookshelf-a",
+      "proxmox": {
+        "host_id": "REPLACE_PVE_NODE",
+        "qemu": {
+          "vmid": 0,
+          "template_vmid": 9022,
+          "ip": "192.0.2.160/24"
+        }
+      },
+      "configure": {
+        "ssh": {
+          "host": "192.0.2.160"
+        }
+      }
+    }
+  ]
+}

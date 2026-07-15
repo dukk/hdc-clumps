@@ -1,0 +1,23 @@
+{
+  "id": "raspberrypi",
+  "title": "Home Raspberry Pi OS",
+  "env_required": [],
+  "inventory_docs": [
+    "clumps/clients/raspberrypi/config.json",
+    "operations/inventory/systems/ (physical hosts with automation_targets: [\"client\"])"
+  ],
+  "verbs": {
+    "maintain": {
+      "script": "run.mjs"
+    },
+    "query": {
+      "script": "run.mjs"
+    },
+    "health": {
+      "script": "run.mjs"
+    }
+  },
+  "health": {
+    "family": "client"
+  }
+}

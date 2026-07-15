@@ -1,0 +1,22 @@
+{
+  "id": "bind",
+  "title": "BIND DNS",
+  "env_required": [],
+  "inventory_docs": [
+    "operations/inventory/systems/vm-bind-a.json"
+  ],
+  "verbs": {
+    "deploy": {
+      "script": "run.mjs"
+    },
+    "maintain": {
+      "script": "run.mjs"
+    },
+    "query": {
+      "script": "run.mjs"
+    },
+    "health": {
+      "script": "run.mjs"
+    }
+  }
+}

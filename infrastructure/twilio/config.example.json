@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "twilio": {
+    "account_sid": null,
+    "friendly_name": null,
+    "status": null,
+    "api_base_url": "https://api.twilio.com",
+    "trunking_api_base_url": "https://trunking.twilio.com",
+    "auth": {
+      "account_sid_vault_key": "HDC_TWILIO_ACCOUNT_SID",
+      "auth_token_vault_key": "HDC_TWILIO_AUTH_TOKEN"
+    }
+  },
+  "sip_trunks": [],
+  "phone_numbers": []
+}

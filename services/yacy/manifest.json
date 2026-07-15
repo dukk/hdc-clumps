@@ -1,0 +1,40 @@
+{
+  "id": "yacy",
+  "title": "YaCy decentralized search",
+  "env_required": [
+    "HDC_YACY_ADMIN_PASSWORD"
+  ],
+  "inventory_docs": [
+    "operations/inventory/systems/yacy-a.json",
+    "operations/inventory/systems/yacy-b.json",
+    "operations/inventory/services/yacy.json"
+  ],
+  "operation_report": {
+    "next_steps": [
+      "Open http://<ct-ip>:8090 from the LAN (admin user admin; password from vault HDC_YACY_ADMIN_PASSWORD).",
+      "Update inventory access.nodes[].ip if deploy assigned a different address.",
+      "BIND A records yacy-a / yacy-b are in bind config; run bind maintain if DNS is stale."
+    ]
+  },
+  "verbs": {
+    "deploy": {
+      "script": "run.mjs"
+    },
+    "maintain": {
+      "script": "run.mjs"
+    },
+    "query": {
+      "script": "run.mjs"
+    },
+    "health": {
+      "script": "run.mjs"
+    },
+    "teardown": {
+      "script": "run.mjs"
+    }
+  },
+  "health": {
+    "path": "/",
+    "port": 8090
+  }
+}

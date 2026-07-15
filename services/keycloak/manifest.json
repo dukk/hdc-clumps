@@ -1,0 +1,42 @@
+{
+  "id": "keycloak",
+  "title": "Keycloak identity and access management",
+  "env_required": [
+    "HDC_KEYCLOAK_ADMIN_PASSWORD"
+  ],
+  "inventory_docs": [
+    "operations/inventory/systems/keycloak-a.json",
+    "operations/inventory/services/keycloak.json"
+  ],
+  "operation_report": {
+    "next_steps": [
+      "Set access.nodes[0].ip on operations/inventory/systems/keycloak-a.json from query output.",
+      "Configure nginx-waf to proxy keycloak.external_url to the CT upstream URL.",
+      "Declare realms under keycloak.realms[] (optional $hdc.include files under realms/) and run maintain.",
+      "Declare OIDC clients under realms[].clients[] (secret_vault_key for confidential clients).",
+      "Declare identity providers under realms[].identity_providers[] (client_id + client_secret_vault_key; Entra secret is not auto-minted)."
+    ]
+  },
+  "verbs": {
+    "deploy": {
+      "script": "run.mjs"
+    },
+    "maintain": {
+      "script": "run.mjs"
+    },
+    "query": {
+      "script": "run.mjs"
+    },
+    "health": {
+      "script": "run.mjs"
+    },
+    "teardown": {
+      "script": "run.mjs"
+    }
+  },
+  "health": {
+    "family": "docker-lxc",
+    "path": "/health/ready",
+    "port": 8080
+  }
+}

@@ -1,0 +1,34 @@
+{
+  "id": "scanopy",
+  "title": "Scanopy network discovery",
+  "env_required": [
+    "HDC_SCANOPY_POSTGRES_PASSWORD"
+  ],
+  "inventory_docs": [
+    "operations/inventory/systems/scanopy-a.json",
+    "operations/inventory/services/scanopy.json"
+  ],
+  "operation_report": {
+    "next_steps": [
+      "Open http://<ct-ip>:60072 and create your account.",
+      "Use Create Daemon in the UI for integrated discovery, or deploy remote daemons per Scanopy docs."
+    ]
+  },
+  "verbs": {
+    "deploy": {
+      "script": "run.mjs"
+    },
+    "maintain": {
+      "script": "run.mjs"
+    },
+    "query": {
+      "script": "run.mjs"
+    },
+    "health": {
+      "script": "run.mjs"
+    },
+    "teardown": {
+      "script": "run.mjs"
+    }
+  }
+}

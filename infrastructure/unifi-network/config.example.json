@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "controller_base_url": "https://unifi.example.com:8443",
+  "default_site_id": "",
+  "wan_ips": {
+    ".234": "203.0.113.234",
+    ".235": "203.0.113.235",
+    ".236": "203.0.113.236"
+  },
+  "ip_block": {
+    "group_name": "hdc-auto-block",
+    "default_days": 30
+  },
+  "port_forwards": [
+    {
+      "id": "pf-example-service",
+      "managed": true,
+      "name": "Example service (.234)",
+      "enabled": true,
+      "pfwd_interface": "wan",
+      "destination_ip": "203.0.113.234",
+      "proto": "tcp",
+      "dst_port": "443",
+      "fwd": "192.168.1.10",
+      "fwd_port": "443",
+      "log": false,
+      "src": "any"
+    }
+  ]
+}

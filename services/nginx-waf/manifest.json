@@ -1,0 +1,33 @@
+{
+  "id": "nginx-waf",
+  "title": "Nginx WAF reverse proxy",
+  "env_required": [
+    "HDC_NGINX_WAF_LE_EMAIL"
+  ],
+  "env_includes": [
+    "bind"
+  ],
+  "inventory_docs": [
+    "operations/inventory/systems/vm-nginx-waf-a.json",
+    "operations/inventory/systems/vm-nginx-waf-b.json"
+  ],
+  "verbs": {
+    "deploy": {
+      "script": "run.mjs"
+    },
+    "maintain": {
+      "script": "run.mjs"
+    },
+    "query": {
+      "script": "run.mjs"
+    },
+    "health": {
+      "script": "run.mjs"
+    }
+  },
+  "health": {
+    "family": "self-edge",
+    "path": "/",
+    "port": 443
+  }
+}

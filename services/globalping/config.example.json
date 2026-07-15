@@ -1,0 +1,44 @@
+{
+  "schema_version": 2,
+  "defaults": {
+    "mode": "proxmox-lxc",
+    "proxmox": {
+      "network": {
+        "gateway": "192.0.2.1"
+      },
+      "lxc": {
+        "ostemplate": "local:vztmpl/ubuntu-22.04-standard_22.04-1_amd64.tar.zst",
+        "storage": "local-lvm",
+        "rootfs_gb": 8,
+        "memory_mb": 512,
+        "cores": 1,
+        "bridge": "vmbr0",
+        "ip_config": "192.0.2.108/24,gw=192.0.2.1",
+        "unprivileged": 0,
+        "features": "nesting=1,keyctl=1",
+        "onboot": 1
+      }
+    },
+    "globalping": {
+      "image": "globalping/globalping-probe:latest",
+      "adoption_token_vault_key": "HDC_GLOBALPING_ADOPTION_TOKEN"
+    },
+    "install": {
+      "enabled": true,
+      "compose_dir": "/opt/globalping"
+    }
+  },
+  "deployments": [
+    {
+      "system_id": "globalping-a",
+      "proxmox": {
+        "host_id": "REPLACE_PVE_NODE",
+        "lxc": {
+          "vmid": 568,
+          "hostname": "globalping-a",
+          "ip_config": "192.0.2.108/24,gw=192.0.2.1"
+        }
+      }
+    }
+  ]
+}

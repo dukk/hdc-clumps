@@ -1,0 +1,39 @@
+{
+  "id": "searxng",
+  "title": "SearXNG metasearch",
+  "env_required": [
+    "HDC_SEARXNG_SECRET"
+  ],
+  "inventory_docs": [
+    "operations/inventory/systems/searxng-a.json",
+    "operations/inventory/services/searxng.json"
+  ],
+  "operation_report": {
+    "next_steps": [
+      "Open http://<ct-ip>:8080 from the LAN (or ui_url from deploy output).",
+      "Set access.nodes[0].ip on operations/inventory/systems/searxng-a.json from query --live.",
+      "For public HTTPS later, set searxng.public_url and add BIND + nginx-waf upstream manually."
+    ]
+  },
+  "verbs": {
+    "deploy": {
+      "script": "run.mjs"
+    },
+    "maintain": {
+      "script": "run.mjs"
+    },
+    "query": {
+      "script": "run.mjs"
+    },
+    "health": {
+      "script": "run.mjs"
+    },
+    "teardown": {
+      "script": "run.mjs"
+    }
+  },
+  "health": {
+    "path": "/",
+    "port": 8080
+  }
+}

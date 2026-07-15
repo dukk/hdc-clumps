@@ -1,0 +1,48 @@
+{
+  "schema_version": 2,
+  "defaults": {
+    "mode": "proxmox-lxc",
+    "proxmox": {
+      "lxc": {
+        "ostemplate": "local:vztmpl/ubuntu-22.04-standard_22.04-1_amd64.tar.zst",
+        "storage": "local-lvm",
+        "rootfs_gb": 20,
+        "memory_mb": 8192,
+        "cores": 4,
+        "bridge": "vmbr0",
+        "ip_config": "dhcp",
+        "unprivileged": 1,
+        "onboot": 1
+      }
+    },
+    "postiz": {
+      "version": "latest",
+      "public_url": null,
+      "listen_port": 80,
+      "storage_provider": "local",
+      "db_password_vault_key": "HDC_POSTIZ_DB_PASSWORD",
+      "jwt_secret_vault_key": "HDC_POSTIZ_JWT_SECRET",
+      "mail": {
+        "enabled": false,
+        "to": "ops@example.invalid",
+        "from": "noreply@example.invalid"
+      }
+    },
+    "install": {
+      "enabled": true,
+      "app_dir": "/opt/postiz"
+    }
+  },
+  "deployments": [
+    {
+      "system_id": "postiz-a",
+      "proxmox": {
+        "host_id": "REPLACE_PVE_NODE",
+        "lxc": {
+          "vmid": 0,
+          "hostname": "postiz-a"
+        }
+      }
+    }
+  ]
+}

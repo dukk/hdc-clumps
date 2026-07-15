@@ -1,0 +1,43 @@
+{
+  "schema_version": 2,
+  "homeassistant": {
+    "release": "16.0",
+    "public_url": "https://ha.example.invalid"
+  },
+  "defaults": {
+    "mode": "proxmox-qemu-haos",
+    "proxmox": {
+      "qemu": {
+        "storage": "local-lvm",
+        "image_storage": "local",
+        "cores": 2,
+        "memory_mb": 4096,
+        "rootfs_gb": 32,
+        "bridge": "vmbr0"
+      },
+      "network": {
+        "gateway": "192.0.2.1",
+        "dns": ["192.0.2.2"]
+      }
+    }
+  },
+  "deployments": [
+    {
+      "system_id": "vm-homeassistant-a",
+      "hostname": "ha",
+      "homeassistant": {
+        "release": "16.0",
+        "public_url": "https://ha.example.invalid"
+      },
+      "proxmox": {
+        "host_id": "hypervisor-h",
+        "qemu": {
+          "vmid": 120,
+          "name": "ha",
+          "ip": "192.0.2.30/24",
+          "usb": []
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,87 @@
+{
+  "schema_version": 2,
+  "defaults": {
+    "mode": "proxmox-qemu",
+    "proxmox": {
+      "qemu": {
+        "template_vmid": 9024,
+        "storage": "local-lvm",
+        "data_disk_storage": "nas-1",
+        "full": 1,
+        "cores": 4,
+        "memory_mb": 8192,
+        "rootfs_gb": 32,
+        "data_disk_gb": 256
+      },
+      "network": {
+        "bridge": "vmbr0",
+        "gateway": "192.0.2.1"
+      }
+    },
+    "immich": {
+      "release": "latest",
+      "port": 2283,
+      "public_url": null,
+      "upload_location": "/data/immich/library",
+      "db_data_location": "/data/immich/postgres",
+      "db_password_vault_key": "HDC_IMMICH_DB_PASSWORD",
+      "api_key_vault_key": "HDC_IMMICH_API_KEY",
+      "timezone": "UTC",
+      "disable_machine_learning": false,
+      "mail": {
+        "enabled": false,
+        "from": "",
+        "reply_to": ""
+      },
+      "system_config": null
+    },
+    "install": {
+      "enabled": true,
+      "compose_dir": "/opt/immich"
+    },
+    "configure": {
+      "ssh": {
+      }
+    },
+    "synology": {
+      "instance": "a",
+      "stack_id": "immich"
+    }
+  },
+  "deployments": [
+    {
+      "system_id": "vm-immich-a",
+      "hostname": "immich-a",
+      "mode": "proxmox-qemu",
+      "proxmox": {
+        "host_id": "hypervisor-a",
+        "qemu": {
+          "vmid": 487,
+          "ip": "192.0.2.40/24"
+        }
+      },
+      "configure": {
+        "ssh": {
+          "host": "192.0.2.40"
+        }
+      }
+    },
+    {
+      "system_id": "immich-a",
+      "hostname": "immich-a",
+      "mode": "synology-docker",
+      "synology": {
+        "instance": "a",
+        "stack_id": "immich"
+      },
+      "immich": {
+        "public_url": "https://immich.example.org",
+        "upload_location": "/volume1/docker/immich/library",
+        "db_data_location": "/volume1/docker/immich/postgres"
+      },
+      "install": {
+        "compose_dir": "/volume1/docker/immich"
+      }
+    }
+  ]
+}

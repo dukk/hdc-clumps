@@ -1,0 +1,36 @@
+{
+  "id": "gitlab",
+  "title": "GitLab CE (Community Edition)",
+  "env_required": [],
+  "inventory_docs": [
+    "operations/inventory/systems/gitlab-a.json",
+    "operations/inventory/services/gitlab.json"
+  ],
+  "operation_report": {
+    "next_steps": [
+      "Set access.nodes[0].ip on operations/inventory/systems/gitlab-a.json from query --live upstream_url.",
+      "Add a BIND forward A record for the gitlab.external_url hostname pointing at the CT IP.",
+      "Configure nginx-waf sites[] with proxy_pass to the CT HTTP upstream (http://<ct-ip>:80).",
+      "Sign in as root using the initial password from /etc/gitlab/initial_root_password inside the gitlab container (expires after 24h on first boot).",
+      "Change the root password and confirm signups_enabled matches config.",
+      "For Git over SSH, use ssh_host_port on the CT IP (default 2222) — nginx-waf proxies HTTP only."
+    ]
+  },
+  "verbs": {
+    "deploy": {
+      "script": "run.mjs"
+    },
+    "maintain": {
+      "script": "run.mjs"
+    },
+    "query": {
+      "script": "run.mjs"
+    },
+    "health": {
+      "script": "run.mjs"
+    },
+    "teardown": {
+      "script": "run.mjs"
+    }
+  }
+}

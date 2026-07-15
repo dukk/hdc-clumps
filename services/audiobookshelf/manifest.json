@@ -1,0 +1,34 @@
+{
+  "id": "audiobookshelf",
+  "title": "Audiobookshelf (self-hosted audiobook/podcast server)",
+  "inventory_docs": [
+    "operations/inventory/systems/vm-audiobookshelf-a.json",
+    "operations/inventory/services/audiobookshelf.json"
+  ],
+  "operation_report": {
+    "next_steps": [
+      "Set access.nodes[0].ip on operations/inventory/systems/vm-audiobookshelf-a.json from deploy/query upstream_url.",
+      "Add BIND forward A record audiobookshelf-a → guest IP.",
+      "Point nginx-waf site bookshelf upstream to http://<guest-ip>:13378.",
+      "Migrate libraries/config from legacy host before cutover (see plan.md).",
+      "Open public_url or http://<guest-ip>:13378 and verify login and playback."
+    ]
+  },
+  "verbs": {
+    "deploy": {
+      "script": "run.mjs"
+    },
+    "maintain": {
+      "script": "run.mjs"
+    },
+    "query": {
+      "script": "run.mjs"
+    },
+    "health": {
+      "script": "run.mjs"
+    },
+    "teardown": {
+      "script": "run.mjs"
+    }
+  }
+}

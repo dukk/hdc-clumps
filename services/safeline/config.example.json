@@ -1,0 +1,55 @@
+{
+  "schema_version": 1,
+  "defaults": {
+    "mode": "proxmox-lxc",
+    "proxmox": {
+      "network": {
+        "gateway": "192.0.2.1"
+      },
+      "lxc": {
+        "ostemplate": "local:vztmpl/ubuntu-22.04-standard_22.04-1_amd64.tar.zst",
+        "storage": "local-lvm",
+        "rootfs_gb": 32,
+        "memory_mb": 4096,
+        "cores": 2,
+        "bridge": "vmbr0",
+        "ip_config": "dhcp",
+        "unprivileged": 0,
+        "features": "nesting=1,keyctl=1",
+        "onboot": 1
+      }
+    },
+    "safeline": {
+      "image_tag": "9.3.4",
+      "image_prefix": "chaitin",
+      "region": "-g",
+      "arch_suffix": "",
+      "release": "",
+      "mgt_port": 9443,
+      "subnet_prefix": "172.22.222",
+      "postgres_password_vault_key": "HDC_SAFELINE_POSTGRES_PASSWORD",
+      "admin_password_vault_key": "HDC_SAFELINE_ADMIN_PASSWORD",
+      "api_token_vault_key": "HDC_SAFELINE_API_TOKEN",
+      "admin_reset_on_deploy": true
+    },
+    "sites": [],
+    "install": {
+      "enabled": true,
+      "compose_dir": "/opt/safeline"
+    }
+  },
+  "deployments": [
+    {
+      "system_id": "safeline-a",
+      "proxmox": {
+        "host_id": "REPLACE_PVE_NODE",
+        "lxc": {
+          "vmid": 0,
+          "hostname": "safeline-a",
+          "ip_config": "REPLACE_CIDR,gw=192.0.2.1"
+        }
+      },
+      "sites": []
+    }
+  ]
+}

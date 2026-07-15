@@ -1,0 +1,35 @@
+{
+  "id": "netboot-xyz",
+  "title": "netboot.xyz PXE boot server",
+  "env_required": [],
+  "inventory_docs": [
+    "operations/inventory/systems/netboot-xyz-a.json",
+    "operations/inventory/services/netboot-xyz.json"
+  ],
+  "operation_report": {
+    "next_steps": [
+      "Open http://<ct-ip>:3000 to manage menus and asset mirroring.",
+      "Configure existing LAN DHCP with next-server=<ct-ip> and boot-filename netboot.xyz.kpxe (BIOS) or netboot.xyz.efi (UEFI).",
+      "Allow UDP 69 and TCP 80/8080 from PXE clients to the CT; web UI 3000 is LAN-admin only.",
+      "Run query --live and copy dhcp_hints from JSON for your DHCP vendor.",
+      "After deploy, create hdc-private inventory sidecars and set access.nodes[].ip."
+    ]
+  },
+  "verbs": {
+    "deploy": {
+      "script": "run.mjs"
+    },
+    "maintain": {
+      "script": "run.mjs"
+    },
+    "query": {
+      "script": "run.mjs"
+    },
+    "health": {
+      "script": "run.mjs"
+    },
+    "teardown": {
+      "script": "run.mjs"
+    }
+  }
+}

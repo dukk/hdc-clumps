@@ -1,0 +1,36 @@
+{
+  "id": "nextcloud",
+  "title": "Nextcloud All-in-One",
+  "inventory_docs": [
+    "operations/inventory/systems/nextcloud-a.json",
+    "operations/inventory/services/nextcloud.json"
+  ],
+  "operation_report": {
+    "next_steps": [
+      "Open https://<ct-ip>:8080 in a browser (use the CT IP address, not a domain, per AIO HSTS guidance).",
+      "Complete the AIO setup wizard (domain, admin account, optional apps).",
+      "For nginx-waf exposure, enable nextcloud.aio.reverse_proxy in config and follow https://github.com/nextcloud/all-in-one/blob/main/reverse-proxy.md",
+      "Stack updates after first setup are managed in the AIO UI; hdc maintain refreshes the mastercontainer image only."
+    ]
+  },
+  "verbs": {
+    "deploy": {
+      "script": "run.mjs"
+    },
+    "maintain": {
+      "script": "run.mjs"
+    },
+    "query": {
+      "script": "run.mjs"
+    },
+    "health": {
+      "script": "run.mjs"
+    },
+    "teardown": {
+      "script": "run.mjs"
+    }
+  },
+  "health": {
+    "path": "/"
+  }
+}

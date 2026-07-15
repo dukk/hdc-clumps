@@ -1,0 +1,39 @@
+{
+  "schema_version": 1,
+  "defaults": {
+    "ssh": {
+      "user": "admin",
+      "user_env": "HDC_SYNOLOGY_SSH_USER"
+    },
+    "maintain": {
+      "reboot_wait_seconds": 600,
+      "dsm_upgrade": true,
+      "package_upgrade": true,
+      "docker_ensure": true,
+      "ssh_keys": {
+        "enabled": true
+      }
+    },
+    "docker": {
+      "compose_base_dir": "/volume1/docker"
+    }
+  },
+  "deployments": [
+    {
+      "instance": "a",
+      "system_id": "nas-a",
+      "hostname": "nas-a",
+      "ssh": {
+        "host": "192.0.2.9"
+      }
+    },
+    {
+      "instance": "b",
+      "system_id": "nas-b",
+      "hostname": "nas-b",
+      "ssh": {
+        "host": "192.0.2.10"
+      }
+    }
+  ]
+}

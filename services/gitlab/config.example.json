@@ -1,0 +1,48 @@
+{
+  "schema_version": 2,
+  "defaults": {
+    "mode": "proxmox-lxc",
+    "proxmox": {
+      "lxc": {
+        "ostemplate": "local:vztmpl/ubuntu-22.04-standard_22.04-1_amd64.tar.zst",
+        "storage": "local-lvm",
+        "rootfs_gb": 64,
+        "memory_mb": 8192,
+        "cores": 4,
+        "bridge": "vmbr0",
+        "ip_config": "dhcp",
+        "unprivileged": 0,
+        "features": "nesting=1,keyctl=1",
+        "onboot": 1
+      }
+    },
+    "gitlab": {
+      "image_tag": "17.5.5-ce.0",
+      "host_port": 80,
+      "ssh_host_port": 2222,
+      "external_url": "https://gitlab.example.invalid",
+      "signups_enabled": false,
+      "mail": {
+        "enabled": false,
+        "to": "ops@example.invalid",
+        "from": "noreply@example.invalid"
+      }
+    },
+    "install": {
+      "enabled": true,
+      "compose_dir": "/opt/gitlab"
+    }
+  },
+  "deployments": [
+    {
+      "system_id": "gitlab-a",
+      "proxmox": {
+        "host_id": "REPLACE_PVE_NODE",
+        "lxc": {
+          "vmid": 0,
+          "hostname": "gitlab-a"
+        }
+      }
+    }
+  ]
+}

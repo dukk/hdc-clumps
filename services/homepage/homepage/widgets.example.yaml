@@ -1,0 +1,7 @@
+- datetime:
+    text_size: xl
+    locale: en-US
+    format:
+      dateStyle: long
+      timeStyle: short
+      hour12: true

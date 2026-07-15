@@ -1,0 +1,38 @@
+{
+  "id": "hermes",
+  "title": "Hermes Agent",
+  "env_required": [
+    "HDC_HERMES_OPENROUTER_API_KEY",
+    "HDC_HERMES_DASHBOARD_PASSWORD",
+    "HDC_HERMES_DISCORD_BOT_TOKEN"
+  ],
+  "inventory_docs": [
+    "operations/inventory/systems/hermes-a.json",
+    "operations/inventory/services/hermes.json"
+  ],
+  "operation_report": {
+    "next_steps": [
+      "Open http://<guest-ip>:9119 from the LAN and sign in with dashboard basic auth.",
+      "Set access.nodes[0].ip and web_ui on operations/inventory/systems/hermes-a.json from query --live.",
+      "Confirm Discord gateway connected: docker logs hermes on the guest.",
+      "Optional: docker exec -it hermes hermes model — override model selection interactively."
+    ]
+  },
+  "verbs": {
+    "deploy": {
+      "script": "run.mjs"
+    },
+    "maintain": {
+      "script": "run.mjs"
+    },
+    "query": {
+      "script": "run.mjs"
+    },
+    "health": {
+      "script": "run.mjs"
+    },
+    "teardown": {
+      "script": "run.mjs"
+    }
+  }
+}

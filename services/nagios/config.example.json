@@ -1,0 +1,63 @@
+{
+  "schema_version": 2,
+  "bind_config_path": "clumps/services/bind/config.json",
+  "notifications": {
+    "admin_email": "ops@example.invalid"
+  },
+  "defaults": {
+    "mode": "proxmox-lxc",
+    "proxmox": {
+      "network": {
+        "gateway": "192.0.2.1"
+      },
+      "lxc": {
+        "ostemplate": "local:vztmpl/ubuntu-22.04-standard_22.04-1_amd64.tar.zst",
+        "storage": "local-lvm",
+        "rootfs_gb": 8,
+        "memory_mb": 512,
+        "cores": 1,
+        "bridge": "vmbr0",
+        "unprivileged": 1,
+        "onboot": 1
+      }
+    },
+    "install": {
+      "enabled": true
+    }
+  },
+  "deployments": [
+    {
+      "system_id": "nagios-a",
+      "proxmox": {
+        "host_id": "pve-b",
+        "lxc": {
+          "vmid": 150,
+          "hostname": "nagios-a",
+          "ip_config": "192.0.2.100/24,gw=192.0.2.1"
+        }
+      }
+    },
+    {
+      "system_id": "nagios-b",
+      "proxmox": {
+        "host_id": "pve-c",
+        "lxc": {
+          "vmid": 151,
+          "hostname": "nagios-b",
+          "ip_config": "192.0.2.101/24,gw=192.0.2.1"
+        }
+      }
+    },
+    {
+      "system_id": "nagios-c",
+      "proxmox": {
+        "host_id": "pve-d",
+        "lxc": {
+          "vmid": 152,
+          "hostname": "nagios-c",
+          "ip_config": "192.0.2.102/24,gw=192.0.2.1"
+        }
+      }
+    }
+  ]
+}

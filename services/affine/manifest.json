@@ -1,0 +1,39 @@
+{
+  "id": "affine",
+  "title": "AFFiNE workspace",
+  "env_required": [
+    "HDC_AFFINE_DB_PASSWORD"
+  ],
+  "inventory_docs": [
+    "operations/inventory/systems/affine-a.json",
+    "operations/inventory/services/affine.json"
+  ],
+  "operation_report": {
+    "next_steps": [
+      "Open http://<ct-ip>:3010 from the LAN and create the first admin account in the web UI.",
+      "Set access.nodes[0].ip on operations/inventory/systems/affine-a.json from query --live upstream_url.",
+      "Keep HDC_AFFINE_DB_PASSWORD backed up — changing it after Postgres init breaks the database volume.",
+      "For public HTTPS later, set affine.public_url and add BIND + nginx-waf upstream with WebSockets enabled."
+    ]
+  },
+  "verbs": {
+    "deploy": {
+      "script": "run.mjs"
+    },
+    "maintain": {
+      "script": "run.mjs"
+    },
+    "query": {
+      "script": "run.mjs"
+    },
+    "health": {
+      "script": "run.mjs"
+    },
+    "teardown": {
+      "script": "run.mjs"
+    }
+  },
+  "health": {
+    "path": "/"
+  }
+}

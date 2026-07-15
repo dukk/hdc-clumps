@@ -1,0 +1,84 @@
+{
+  "schema_version": 1,
+  "discord": {
+    "api_base_url": "https://discord.com/api/v10",
+    "developer_portal_url": "https://discord.com/developers/applications"
+  },
+  "defaults": {
+    "managed": false
+  },
+  "applications": [
+    {
+      "id": "hdc-ops",
+      "managed": false,
+      "match": {
+        "application_id": null
+      },
+      "display_name": "HDC Ops",
+      "bot_token_vault_key": "HDC_OPS_DISCORD_BOT_TOKEN",
+      "public_key": null,
+      "ops_decisions": {
+        "channel_id": null
+      },
+      "description": "Ops decision buttons (Approve/Deny) for hdc-agents task escalations",
+      "redirect_uris": [],
+      "interactions_endpoint_url": null,
+      "tags": [],
+      "bot_public": false,
+      "bot_require_code_grant": false,
+      "portal_checklist": {
+        "privileged_intents": [],
+        "notes": "Invite the bot to the ops guild with Send Messages. Set Interactions Endpoint URL to https://<hdc-web>/api/discord/interactions. Copy Public Key into public_key and channel snowflake into ops_decisions.channel_id. Mirror the same fields under hdc-agents.defaults.hdc_agents.discord."
+      },
+      "consumer": "hdc-agents-a",
+      "notes": "Bot token vault key HDC_OPS_DISCORD_BOT_TOKEN; guest also needs webhook HDC_OPS_DISCORD_WEBHOOK_URL for non-decision alerts."
+    },
+    {
+      "id": "hermes",
+      "managed": false,
+      "match": {
+        "application_id": null
+      },
+      "display_name": "Hermes Agent",
+      "bot_token_vault_key": "HDC_HERMES_DISCORD_BOT_TOKEN",
+      "description": "Home data center AI agent",
+      "redirect_uris": [],
+      "interactions_endpoint_url": null,
+      "tags": [],
+      "bot_public": true,
+      "bot_require_code_grant": false,
+      "portal_checklist": {
+        "privileged_intents": ["message_content"],
+        "notes": "Enable Message Content Intent for Hermes Discord channel replies."
+      },
+      "consumer": "hermes-a",
+      "notes": "Bot token shared with clumps/services/hermes compose."
+    },
+    {
+      "id": "example-oauth",
+      "managed": false,
+      "match": {
+        "application_id": null
+      },
+      "display_name": "Example OAuth App",
+      "bot_token_vault_key": "HDC_DISCORD_EXAMPLE_OAUTH_BOT_TOKEN",
+      "description": "Example OAuth2 application with redirect URIs from nginx-waf",
+      "redirect_uris": [],
+      "interactions_endpoint_url": null,
+      "tags": [],
+      "bot_public": true,
+      "bot_require_code_grant": false,
+      "derive_from": {
+        "nginx_waf_config_path": "clumps/services/nginx-waf/config.json",
+        "site_id": "example-app",
+        "callback_path": "/oauth/callback"
+      },
+      "portal_checklist": {
+        "privileged_intents": [],
+        "notes": "Create the application in the Developer Portal before import."
+      },
+      "consumer": null,
+      "notes": "Remove or replace when not used."
+    }
+  ]
+}

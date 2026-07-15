@@ -1,0 +1,64 @@
+{
+  "id": "aws",
+  "title": "AWS infrastructure",
+  "env_required": [
+    "HDC_AWS_ACCESS_KEY_ID"
+  ],
+  "inventory_docs": [
+    "operations/inventory/targets/aws.json",
+    "clumps/infrastructure/aws/config.json"
+  ],
+  "services": [
+    {
+      "id": "aws-query",
+      "title": "AWS query",
+      "verb": "query",
+      "summary": "Diff VPC, EC2, ECS, S3, and EBS vs config; optional --import --yes (JSON on stdout)."
+    },
+    {
+      "id": "aws-deploy",
+      "title": "AWS deploy",
+      "verb": "deploy",
+      "summary": "Plan resources, estimate monthly cost, confirm, then create managed infrastructure."
+    },
+    {
+      "id": "aws-maintain",
+      "title": "AWS maintain",
+      "verb": "maintain",
+      "summary": "Reconcile drift; billable creates require cost confirmation; optional --prune."
+    },
+    {
+      "id": "aws-teardown",
+      "title": "AWS teardown",
+      "verb": "teardown",
+      "summary": "Destroy managed resources by --resource or --all (--yes required non-interactive)."
+    }
+  ],
+  "verbs": {
+    "deploy": {
+      "script": "run.mjs"
+    },
+    "maintain": {
+      "script": "run.mjs"
+    },
+    "query": {
+      "script": "run.mjs"
+    },
+    "health": {
+      "script": "run.mjs"
+    },
+    "teardown": {
+      "script": "run.mjs"
+    }
+  },
+  "operation_report": {
+    "next_steps": [
+      "Run `hdc run infrastructure aws query --` after deploy or maintain.",
+      "Bootstrap: `query -- --import --yes` to refresh hdc-private config.",
+      "Review the Cost estimate section in the operation report before recurring charges accrue."
+    ]
+  },
+  "health": {
+    "family": "infra-api"
+  }
+}

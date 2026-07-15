@@ -1,0 +1,52 @@
+{
+  "schema_version": 2,
+  "defaults": {
+    "mode": "proxmox-lxc",
+    "proxmox": {
+      "network": {
+        "gateway": "192.0.2.1"
+      },
+      "lxc": {
+        "ostemplate": "local:vztmpl/ubuntu-22.04-standard_22.04-1_amd64.tar.zst",
+        "storage": "local-lvm",
+        "rootfs_gb": 32,
+        "memory_mb": 2048,
+        "cores": 2,
+        "bridge": "vmbr0",
+        "ip_config": "dhcp",
+        "unprivileged": 0,
+        "features": "nesting=1,keyctl=1",
+        "onboot": 1
+      }
+    },
+    "docuseal": {
+      "image_tag": "2.4.0",
+      "postgres_image_tag": "16",
+      "host_port": 3000,
+      "public_url": "https://sign.example.invalid",
+      "timezone": "America/New_York",
+      "secret_key_base_vault_key": "HDC_DOCUSEAL_SECRET_KEY_BASE",
+      "db_password_vault_key": "HDC_DOCUSEAL_DB_PASSWORD",
+      "mail": {
+        "enabled": true,
+        "from": "noreply@hdc.example.invalid"
+      }
+    },
+    "install": {
+      "enabled": true,
+      "compose_dir": "/opt/docuseal"
+    }
+  },
+  "deployments": [
+    {
+      "system_id": "docuseal-a",
+      "proxmox": {
+        "host_id": "REPLACE_PVE_NODE",
+        "lxc": {
+          "vmid": 0,
+          "hostname": "docuseal-a"
+        }
+      }
+    }
+  ]
+}

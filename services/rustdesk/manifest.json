@@ -1,0 +1,34 @@
+{
+  "id": "rustdesk",
+  "title": "RustDesk ID and relay server (OSS)",
+  "env_required": [],
+  "inventory_docs": [
+    "operations/inventory/systems/rustdesk-a.json",
+    "operations/inventory/services/rustdesk.json"
+  ],
+  "operation_report": {
+    "next_steps": [
+      "Run query --live and note id_server and public_key for RustDesk client Settings → Network → ID/Relay server.",
+      "Set access.nodes[0].ip on operations/inventory/systems/rustdesk-a.json from query --live ct_ip.",
+      "Ensure LAN firewall allows TCP 21115-21119 and UDP 21116 to the CT when clients are on other subnets.",
+      "Leave Relay server and API server blank for OSS; Key field is the public_key from query --live."
+    ]
+  },
+  "verbs": {
+    "deploy": {
+      "script": "run.mjs"
+    },
+    "maintain": {
+      "script": "run.mjs"
+    },
+    "query": {
+      "script": "run.mjs"
+    },
+    "health": {
+      "script": "run.mjs"
+    },
+    "teardown": {
+      "script": "run.mjs"
+    }
+  }
+}

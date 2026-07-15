@@ -1,0 +1,65 @@
+{
+  "schema_version": 2,
+  "defaults": {
+    "mode": "proxmox-lxc",
+    "proxmox": {
+      "lxc": {
+        "ostemplate": "local:vztmpl/ubuntu-22.04-standard_22.04-1_amd64.tar.zst",
+        "storage": "local-lvm",
+        "rootfs_gb": 8,
+        "memory_mb": 512,
+        "cores": 1,
+        "bridge": "vmbr0",
+        "ip_config": "dhcp",
+        "unprivileged": 1,
+        "onboot": 1
+      },
+      "network": {
+        "gateway": "192.0.2.1"
+      }
+    },
+    "mosquitto": {
+      "tls": {
+        "enabled": true,
+        "cert_name": "mqtt.home.example.invalid",
+        "listener_port": 8883,
+        "step_ca_config_path": "clumps/services/step-ca/config.json",
+        "root_ca_path": "/etc/ssl/certs/hdc-step-ca-root.crt",
+        "acme_email_env": "HDC_MOSQUITTO_ACME_EMAIL"
+      },
+      "plain_listener": {
+        "enabled": false,
+        "port": 1883
+      },
+      "users": [
+        {
+          "username": "homeassistant",
+          "password_vault_key": "HDC_MOSQUITTO_PASSWORD_HOMEASSISTANT"
+        }
+      ],
+      "acl": [
+        {
+          "user": "homeassistant",
+          "topic": "#",
+          "access": "readwrite"
+        }
+      ]
+    },
+    "install": {
+      "enabled": true
+    }
+  },
+  "deployments": [
+    {
+      "system_id": "mosquitto-a",
+      "proxmox": {
+        "host_id": "REPLACE_PVE_NODE",
+        "lxc": {
+          "vmid": 0,
+          "hostname": "mosquitto-a",
+          "ip": "REPLACE_STATIC_IP/24"
+        }
+      }
+    }
+  ]
+}

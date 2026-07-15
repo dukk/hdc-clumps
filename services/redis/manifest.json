@@ -1,0 +1,28 @@
+{
+  "id": "redis",
+  "title": "Redis Cluster",
+  "env_required": [
+    "HDC_REDIS_PASSWORD"
+  ],
+  "inventory_docs": [
+    "operations/inventory/systems/vm-redis-a.json",
+    "operations/inventory/systems/vm-redis-b.json",
+    "operations/inventory/systems/vm-redis-c.json",
+    "operations/inventory/services/redis.json",
+    "clumps/services/redis/config.json (copy config.example.json)"
+  ],
+  "verbs": {
+    "deploy": {
+      "script": "run.mjs"
+    },
+    "maintain": {
+      "script": "run.mjs"
+    },
+    "query": {
+      "script": "run.mjs"
+    },
+    "health": {
+      "script": "run.mjs"
+    }
+  }
+}

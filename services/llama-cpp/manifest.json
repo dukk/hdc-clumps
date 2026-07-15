@@ -1,0 +1,28 @@
+{
+  "id": "llama-cpp",
+  "title": "Llama.cpp llama-server",
+  "env_required": [],
+  "inventory_docs": [
+    "operations/inventory/systems/llama-cpp-{a,b,c}.json (optional per instance)",
+    "clumps/services/llama-cpp/config.json (schema_version 2 deployments[]; deploy all if no --instance)",
+    "hdc run llama-cpp deploy — Proxmox LXC + llama-server from GitHub releases (per-deployment install.backend)",
+    "hdc run llama-cpp teardown — destroy guests; --dry-run, --yes, --instance <letter>"
+  ],
+  "verbs": {
+    "deploy": {
+      "script": "run.mjs"
+    },
+    "maintain": {
+      "script": "run.mjs"
+    },
+    "query": {
+      "script": "run.mjs"
+    },
+    "health": {
+      "script": "run.mjs"
+    },
+    "teardown": {
+      "script": "run.mjs"
+    }
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "id": "splunk",
+  "title": "Splunk Free (standalone)",
+  "env_required": [
+    "HDC_SPLUNK_ADMIN_PASSWORD"
+  ],
+  "inventory_docs": [
+    "operations/inventory/systems/vm-splunk-a.json",
+    "operations/inventory/services/splunk.json",
+    "clumps/services/splunk/config.json (copy config.example.json)"
+  ],
+  "verbs": {
+    "deploy": {
+      "script": "run.mjs"
+    },
+    "maintain": {
+      "script": "run.mjs"
+    },
+    "query": {
+      "script": "run.mjs"
+    },
+    "health": {
+      "script": "run.mjs"
+    }
+  }
+}

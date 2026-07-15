@@ -1,0 +1,131 @@
+{
+  "schema_version": 2,
+  "keepalived": {
+    "auth_pass_vault_key": "HDC_KEEPALIVED_AUTH_PASS",
+    "router_id": "HDC_LVS"
+  },
+  "vrrp_instances": [
+    {
+      "id": "wan-vip",
+      "virtual_router_id": 51,
+      "interface": "eth0",
+      "virtual_ipaddress": ["192.0.2.50/24"],
+      "track_scripts": [
+        {
+          "id": "chk_nginx",
+          "script": "systemctl is-active --quiet nginx",
+          "interval": 2,
+          "weight": -20
+        }
+      ]
+    }
+  ],
+  "virtual_servers": [
+    {
+      "id": "https",
+      "vrrp_instance_id": "wan-vip",
+      "vip": "192.0.2.50",
+      "port": 443,
+      "protocol": "TCP",
+      "lb_kind": "NAT",
+      "lb_algo": "rr",
+      "real_servers": [
+        {
+          "address": "192.0.2.40",
+          "port": 443,
+          "weight": 1,
+          "system_id": "vm-nginx-waf-a"
+        },
+        {
+          "address": "192.0.2.41",
+          "port": 443,
+          "weight": 1,
+          "system_id": "vm-nginx-waf-b"
+        }
+      ]
+    }
+  ],
+  "defaults": {
+    "mode": "proxmox-qemu",
+    "proxmox": {
+      "qemu": {
+        "template_vmid": 9024,
+        "storage": "local-lvm",
+        "full": 1,
+        "cores": 1,
+        "memory_mb": 512,
+        "rootfs_gb": 8,
+        "onboot": 1
+      },
+      "network": {
+        "bridge": "vmbr0",
+        "gateway": "192.0.2.1"
+      }
+    },
+    "install": {
+      "enabled": true
+    }
+  },
+  "deployments": [
+    {
+      "deployment_kind": "director",
+      "system_id": "vm-keepalived-a",
+      "role": "master",
+      "state": "MASTER",
+      "priority": 150,
+      "mode": "proxmox-qemu",
+      "vrrp_instance_ids": ["wan-vip"],
+      "hostname": "keepalived-a",
+      "proxmox": {
+        "host_id": "hypervisor-a",
+        "qemu": {
+          "vmid": 310,
+          "ip": "192.0.2.45/24"
+        }
+      },
+      "configure": {
+        "ssh": {
+          "host": "192.0.2.45"
+        }
+      }
+    },
+    {
+      "deployment_kind": "director",
+      "system_id": "vm-keepalived-b",
+      "role": "backup",
+      "state": "BACKUP",
+      "priority": 100,
+      "mode": "configure-only",
+      "vrrp_instance_ids": ["wan-vip"],
+      "configure": {
+        "ssh": {
+          "host": "192.0.2.46"
+        }
+      }
+    },
+    {
+      "deployment_kind": "real_server",
+      "system_id": "vm-nginx-waf-a",
+      "mode": "configure-only",
+      "lb_kind": "NAT",
+      "virtual_server_ids": ["https"],
+      "configure": {
+        "ssh": {
+          "host": "192.0.2.40"
+        }
+      }
+    },
+    {
+      "deployment_kind": "real_server",
+      "system_id": "vm-nginx-waf-b",
+      "mode": "configure-only",
+      "lb_kind": "NAT",
+      "virtual_server_ids": ["https"],
+      "configure": {
+        "ssh": {
+          "host": "192.0.2.41"
+        }
+      }
+    }
+  ]
+}

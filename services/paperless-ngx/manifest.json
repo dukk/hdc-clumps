@@ -1,0 +1,41 @@
+{
+  "id": "paperless-ngx",
+  "title": "Paperless-ngx document management",
+  "env_required": [
+    "HDC_PAPERLESS_SECRET_KEY",
+    "HDC_PAPERLESS_DB_PASSWORD"
+  ],
+  "inventory_docs": [
+    "operations/inventory/systems/paperless-ngx-a.json",
+    "operations/inventory/services/paperless-ngx.json"
+  ],
+  "operation_report": {
+    "next_steps": [
+      "Open http://<ct-ip>:8000 from the LAN and sign in (or complete first-run admin setup if admin bootstrap is disabled).",
+      "Drop files into /opt/paperless-ngx/consume on the CT for automatic import.",
+      "Set access.nodes[0].ip on operations/inventory/systems/paperless-ngx-a.json from query --live upstream_url.",
+      "Optional later: set paperless_ngx.public_url, add BIND A record and nginx-waf upstream when exposing via HTTPS."
+    ]
+  },
+  "verbs": {
+    "deploy": {
+      "script": "run.mjs"
+    },
+    "maintain": {
+      "script": "run.mjs"
+    },
+    "query": {
+      "script": "run.mjs"
+    },
+    "health": {
+      "script": "run.mjs"
+    },
+    "teardown": {
+      "script": "run.mjs"
+    }
+  },
+  "health": {
+    "path": "/",
+    "port": 8000
+  }
+}

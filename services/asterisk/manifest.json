@@ -1,0 +1,39 @@
+{
+  "id": "asterisk",
+  "title": "Asterisk PBX (PJSIP)",
+  "env_required": [
+    "HDC_TWILIO_SIP_USERNAME",
+    "HDC_TWILIO_SIP_PASSWORD"
+  ],
+  "inventory_docs": [
+    "operations/inventory/systems/asterisk-a.json",
+    "operations/inventory/systems/vm-asterisk-a.json",
+    "operations/inventory/services/asterisk.json",
+    "clumps/services/asterisk/config.json (copy config.example.json)"
+  ],
+  "operation_report": {
+    "next_steps": [
+      "Complete Twilio Console steps in clumps/services/asterisk/examples/twilio/",
+      "Set asterisk.nat.external_* to your WAN IP if behind NAT",
+      "Forward SIP (5060) and RTP (10000-20000) on edge firewall to the guest IP",
+      "Run: node apps/hdc-cli/cli.mjs run service asterisk query -- --live"
+    ]
+  },
+  "verbs": {
+    "deploy": {
+      "script": "run.mjs"
+    },
+    "maintain": {
+      "script": "run.mjs"
+    },
+    "query": {
+      "script": "run.mjs"
+    },
+    "health": {
+      "script": "run.mjs"
+    },
+    "teardown": {
+      "script": "run.mjs"
+    }
+  }
+}

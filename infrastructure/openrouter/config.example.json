@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "openrouter": {
+    "api_base_url": "https://openrouter.ai/api/v1",
+    "auth": {
+      "management_api_key_vault_key": "HDC_OPENROUTER_MANAGEMENT_API_KEY"
+    }
+  },
+  "defaults": {
+    "limit_usd": null,
+    "limit_reset": null,
+    "include_byok_in_limit": false
+  },
+  "credits": {
+    "low_balance_usd": 5
+  },
+  "api_keys": [
+    {
+      "id": "hermes",
+      "name": "Hermes Agent",
+      "managed": false,
+      "inference_api_key_vault_key": "HDC_HERMES_OPENROUTER_API_KEY",
+      "openrouter_hash": null,
+      "limit_usd": null,
+      "limit_reset": null,
+      "include_byok_in_limit": false,
+      "disabled": false,
+      "consumer": "hermes-a",
+      "notes": "Feeds OPENROUTER_API_KEY in hermes compose — set managed true after import to allow maintain."
+    }
+  ]
+}

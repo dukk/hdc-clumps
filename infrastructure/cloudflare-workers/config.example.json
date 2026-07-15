@@ -1,0 +1,49 @@
+{
+  "schema_version": 1,
+  "cloudflare_workers": {
+    "account_id": null,
+    "api_base_url": "https://api.cloudflare.com/client/v4",
+    "wrangler": {
+      "binary": "wrangler"
+    },
+    "zone_filter": {
+      "mode": "all",
+      "names": []
+    }
+  },
+  "workers": [
+    {
+      "id": "example-worker",
+      "managed": true,
+      "project_dir": "workers/example-worker",
+      "script_name": "example-worker",
+      "wrangler_env": null,
+      "npm_install": true,
+      "routes": [
+        {
+          "pattern": "api.example.com/hello*",
+          "zone_name": "example.com"
+        }
+      ],
+      "secrets": [
+        {
+          "name": "API_KEY",
+          "vault_key": "HDC_EXAMPLE_WORKER_API_KEY"
+        }
+      ]
+    }
+  ],
+  "pages": [
+    {
+      "id": "example-site",
+      "managed": true,
+      "project_dir": "pages/example-site",
+      "project_name": "example-site",
+      "deploy_dir": "dist",
+      "build_command": "npm run build",
+      "production_branch": "main",
+      "npm_install": true,
+      "create_project": true
+    }
+  ]
+}

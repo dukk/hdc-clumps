@@ -1,0 +1,37 @@
+{
+  "id": "gcp-compute",
+  "title": "GCP compute",
+  "env_required": [
+    "HDC_GCP_COMPUTE_PROJECT_ID"
+  ],
+  "inventory_docs": [
+    "operations/inventory/targets/gcp-compute.json",
+    "clumps/infrastructure/gcp-compute/config.json"
+  ],
+  "verbs": {
+    "deploy": {
+      "script": "run.mjs"
+    },
+    "maintain": {
+      "script": "run.mjs"
+    },
+    "query": {
+      "script": "run.mjs"
+    },
+    "health": {
+      "script": "run.mjs"
+    },
+    "teardown": {
+      "script": "run.mjs"
+    }
+  },
+  "operation_report": {
+    "next_steps": [
+      "Run `hdc run infrastructure gcp-compute query -- --live` after deploy.",
+      "Review the Cost estimate section before the next deploy."
+    ]
+  },
+  "health": {
+    "family": "infra-api"
+  }
+}

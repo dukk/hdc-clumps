@@ -1,0 +1,43 @@
+{
+  "id": "discord",
+  "title": "Discord applications",
+  "env_required": [],
+  "inventory_docs": [
+    "clumps/infrastructure/discord/config.json"
+  ],
+  "services": [
+    {
+      "id": "discord-query",
+      "title": "Discord query",
+      "verb": "query",
+      "summary": "Diff Developer applications vs config per bot token; optional --import from live API (JSON on stdout)."
+    },
+    {
+      "id": "discord-maintain",
+      "title": "Discord maintain",
+      "verb": "maintain",
+      "summary": "PATCH managed applications for API-supported fields; print Developer Portal checklist."
+    }
+  ],
+  "verbs": {
+    "maintain": {
+      "script": "run.mjs"
+    },
+    "query": {
+      "script": "run.mjs"
+    },
+    "health": {
+      "script": "run.mjs"
+    }
+  },
+  "operation_report": {
+    "next_steps": [
+      "Run `hdc run infrastructure discord query --` to verify application drift.",
+      "Bootstrap: `query -- --import --yes` after bot tokens are in vault.",
+      "Enable privileged Gateway Intents in the Discord Developer Portal when query reports portal_checklist items."
+    ]
+  },
+  "health": {
+    "family": "infra-api"
+  }
+}

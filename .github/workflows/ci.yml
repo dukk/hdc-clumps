@@ -1,0 +1,30 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  guard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Block live clump configs
+        run: |
+          set -euo pipefail
+          bad=$(git ls-files '**/config.json' | grep -v 'manifest.json' || true)
+          if [ -n "$bad" ]; then
+            echo "Tracked config.json files are not allowed:"
+            echo "$bad"
+            exit 1
+          fi
+      - name: Block .env except examples
+        run: |
+          set -euo pipefail
+          bad=$(git ls-files '**/.env' | grep -v '.env.example' || true)
+          if [ -n "$bad" ]; then
+            echo "Tracked .env files are not allowed:"
+            echo "$bad"
+            exit 1
+          fi

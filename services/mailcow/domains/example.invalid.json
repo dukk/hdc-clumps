@@ -1,0 +1,31 @@
+{
+  "name": "example.invalid",
+  "description": "Primary mail domain",
+  "dkim_selector": "dkim",
+  "dkim_key_size": 2048,
+  "outbound": {
+    "mode": "direct"
+  },
+  "dns": {
+    "mx_priority": 10,
+    "spf": "v=spf1 mx a ~all",
+    "dmarc": "v=DMARC1; p=quarantine; rua=mailto:dmarc@example.invalid",
+    "notes": "Publish these records in BIND or Cloudflare. DKIM TXT is filled after maintain generates the key. Prefer domains/<fqdn>.json includes from root config."
+  },
+  "mailboxes": [
+    {
+      "local_part": "admin",
+      "name": "Example Admin",
+      "quota_mb": 3072,
+      "password_vault_key": "HDC_MAILCOW_MAILBOX_ADMIN_EXAMPLE_INVALID_PASSWORD"
+    }
+  ],
+  "aliases": [
+    {
+      "address": "info@example.invalid",
+      "goto": [
+        "admin@example.invalid"
+      ]
+    }
+  ]
+}

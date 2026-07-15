@@ -1,0 +1,60 @@
+{
+  "schema_version": 1,
+  "splunk": {
+    "version": "9.4.1",
+    "build": "REPLACE_WITH_BUILD_FROM_SPLUNK_DOWNLOADS",
+    "license": "free",
+    "admin_vault_key": "HDC_SPLUNK_ADMIN_PASSWORD",
+    "http_port": 8000,
+    "mgmt_port": 8089,
+    "splunk_home": "/opt/splunk",
+    "var_mount": "/opt/splunk/var"
+  },
+  "defaults": {
+    "mode": "proxmox-qemu",
+    "role": "standalone",
+    "proxmox": {
+      "qemu": {
+        "template_vmid": 9024,
+        "storage": "local-lvm",
+        "full": 1,
+        "cores": 4,
+        "memory_mb": 16384,
+        "rootfs_gb": 32,
+        "data_disk_gb": 200
+      },
+      "network": {
+        "bridge": "vmbr0",
+        "gateway": "192.0.2.1"
+      }
+    },
+    "install": {
+      "enabled": true
+    },
+    "configure": {
+      "ssh": {
+      }
+    }
+  },
+  "deployments": [
+    {
+      "system_id": "vm-splunk-a",
+      "hostname": "splunk-a",
+      "proxmox": {
+        "host_id": "hypervisor-a",
+        "qemu": {
+          "vmid": 130,
+          "ip": "192.0.2.30/24"
+        }
+      },
+      "configure": {
+        "ssh": {
+          "host": "192.0.2.30"
+        }
+      },
+      "splunk": {
+        "server_name": "splunk-a"
+      }
+    }
+  ]
+}

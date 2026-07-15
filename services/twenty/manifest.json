@@ -1,0 +1,43 @@
+{
+  "id": "twenty",
+  "title": "Twenty CRM",
+  "env_required": [
+    "HDC_TWENTY_ENCRYPTION_KEY",
+    "HDC_TWENTY_DB_PASSWORD"
+  ],
+  "inventory_docs": [
+    "operations/inventory/systems/vm-twenty-a.json",
+    "operations/inventory/services/twenty.json"
+  ],
+  "operation_report": {
+    "next_steps": [
+      "Complete first-run signup in the browser — first user becomes admin (no vault admin password).",
+      "Allow 1–2 minutes after deploy for DB migrations; verify GET /healthz before opening the UI.",
+      "Set access.nodes[0].ip on operations/inventory/systems/twenty-a.json from query --live upstream_url.",
+      "For HTTPS: set twenty.public_url before first login, add BIND A record, nginx-waf site upstream http://<ct-ip>:3000.",
+      "For LAN-only: omit public_url; browse http://<ct-ip>:3000.",
+      "Keep worker running for background jobs; backup HDC_TWENTY_ENCRYPTION_KEY and HDC_TWENTY_DB_PASSWORD with Postgres volume (database name default).",
+      "Optional: configure SMTP/OAuth/S3 in Twenty Admin Panel after deploy."
+    ]
+  },
+  "verbs": {
+    "deploy": {
+      "script": "run.mjs"
+    },
+    "maintain": {
+      "script": "run.mjs"
+    },
+    "query": {
+      "script": "run.mjs"
+    },
+    "health": {
+      "script": "run.mjs"
+    },
+    "teardown": {
+      "script": "run.mjs"
+    }
+  },
+  "health": {
+    "path": "/healthz"
+  }
+}

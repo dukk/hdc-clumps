@@ -1,0 +1,106 @@
+{
+  "schema_version": 2,
+  "asterisk": {
+    "sip_port": 5060,
+    "sip_transport": "udp",
+    "rtp_port_min": 10000,
+    "rtp_port_max": 20000,
+    "nat": {
+      "enabled": true,
+      "local_net": "192.0.2.0/24",
+      "external_signaling_address": "203.0.113.254",
+      "external_media_address": "203.0.113.254"
+    },
+    "twilio": {
+      "enabled": true,
+      "trunk_name": "twilio0",
+      "termination_domain": "mytrunk.pstn.example.invalid",
+      "outbound_proxy": "pstn.ashburn.twilio.com",
+      "credential_username_vault_key": "HDC_TWILIO_SIP_USERNAME",
+      "credential_password_vault_key": "HDC_TWILIO_SIP_PASSWORD",
+      "identify_cidrs": [
+        "54.172.60.0/23",
+        "54.244.51.0/24",
+        "54.171.127.192/26",
+        "35.156.191.128/25",
+        "35.171.247.128/25"
+      ],
+      "origination": {
+        "enabled": true,
+        "context": "from-twilio"
+      },
+      "termination": {
+        "enabled": true,
+        "context": "outbound-twilio",
+        "dial_prefix": "9"
+      }
+    },
+    "endpoints": [
+      {
+        "id": "1001",
+        "auth_username_vault_key": "HDC_ASTERISK_EXT_1001_PASSWORD",
+        "context": "from-internal",
+        "comment": "Example SIP phone — see examples/twilio/"
+      }
+    ]
+  },
+  "defaults": {
+    "mode": "proxmox-lxc",
+    "proxmox": {
+      "network": {
+        "gateway": "192.0.2.1"
+      },
+      "lxc": {
+        "ostemplate": "local:vztmpl/ubuntu-22.04-standard_22.04-1_amd64.tar.zst",
+        "storage": "local-lvm",
+        "rootfs_gb": 16,
+        "memory_mb": 2048,
+        "cores": 2,
+        "bridge": "vmbr0",
+        "unprivileged": 1,
+        "onboot": 1
+      },
+      "qemu": {
+        "template_vmid": 9024,
+        "storage": "local-lvm",
+        "full": 1,
+        "cores": 2,
+        "memory_mb": 2048,
+        "rootfs_gb": 16
+      }
+    },
+    "install": {
+      "enabled": true
+    }
+  },
+  "deployments": [
+    {
+      "system_id": "asterisk-a",
+      "proxmox": {
+        "host_id": "REPLACE_PVE_NODE",
+        "lxc": {
+          "vmid": 0,
+          "hostname": "asterisk-a",
+          "ip_config": "192.0.2.150/24,gw=192.0.2.1"
+        }
+      }
+    }
+  ],
+  "_comment_qemu_example": {
+    "system_id": "vm-asterisk-a",
+    "mode": "proxmox-qemu",
+    "proxmox": {
+      "host_id": "REPLACE_PVE_NODE",
+      "qemu": {
+        "vmid": 126,
+        "template_vmid": 9024,
+        "ip": "192.0.2.151/24"
+      }
+    },
+    "configure": {
+      "ssh": {
+        "host": "192.0.2.151"
+      }
+    }
+  }
+}

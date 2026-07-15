@@ -1,0 +1,68 @@
+{
+  "id": "proxmox",
+  "title": "Proxmox virtualization",
+  "env_required": [],
+  "inventory_docs": [
+    "operations/inventory/systems/ (hypervisors with tag proxmox or automation_targets: [\"proxmox\"])",
+    "operations/inventory/targets/proxmox.json",
+    "clumps/infrastructure/proxmox/config.json"
+  ],
+  "services": [
+    {
+      "id": "lxc-create",
+      "title": "Create LXC container",
+      "verb": "deploy",
+      "invoke": "create-container",
+      "summary": "Provision an LXC guest on a cluster node via the Proxmox API (ostemplate from config or flags)."
+    },
+    {
+      "id": "qemu-clone",
+      "title": "Clone QEMU VM",
+      "verb": "deploy",
+      "invoke": "create-vm",
+      "summary": "Full clone from a QEMU template; resolves the template node automatically."
+    },
+    {
+      "id": "qemu-list-templates",
+      "title": "List QEMU templates",
+      "verb": "deploy",
+      "invoke": "list-templates",
+      "summary": "List QEMU templates in the cluster (use vmid for create-vm or provision.qemu.template_vmid)."
+    },
+    {
+      "id": "verify-templates",
+      "title": "Verify provision templates",
+      "verb": "maintain",
+      "summary": "SSH keys, version-aware hdc API token ACL (PVE 8/9), Ubuntu LTS templates, NAS storage, scheduled backup jobs, host OS upgrades, QEMU guest agent report; optional --expand-guest-rootfs for usage-based Linux guest root disk grow."
+    },
+    {
+      "id": "cluster-snapshot",
+      "title": "Cluster inventory snapshot",
+      "verb": "query",
+      "summary": "Query hypervisors and guests from config.json; JSON systems[] on stdout. Flags: --guest, --find-template, --host-capacity."
+    },
+    {
+      "id": "guest-destroy",
+      "title": "Destroy guest by VMID",
+      "verb": "teardown",
+      "summary": "Stop and destroy QEMU/LXC by --vmid (optional --any-node --purge --yes)."
+    }
+  ],
+  "verbs": {
+    "deploy": {
+      "script": "run.mjs"
+    },
+    "maintain": {
+      "script": "run.mjs"
+    },
+    "query": {
+      "script": "run.mjs"
+    },
+    "health": {
+      "script": "run.mjs"
+    },
+    "teardown": {
+      "script": "run.mjs"
+    }
+  }
+}

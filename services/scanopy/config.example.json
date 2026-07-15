@@ -1,0 +1,47 @@
+{
+  "schema_version": 2,
+  "defaults": {
+    "mode": "proxmox-lxc",
+    "proxmox": {
+      "network": {
+        "gateway": "192.0.2.1"
+      },
+      "lxc": {
+        "ostemplate": "local:vztmpl/ubuntu-22.04-standard_22.04-1_amd64.tar.zst",
+        "storage": "local-lvm",
+        "rootfs_gb": 32,
+        "memory_mb": 4096,
+        "cores": 4,
+        "bridge": "vmbr0",
+        "ip_config": "192.0.2.110/24,gw=192.0.2.1",
+        "unprivileged": 0,
+        "features": "nesting=1,keyctl=1",
+        "onboot": 1
+      }
+    },
+    "scanopy": {
+      "release": "latest",
+      "port": 60072,
+      "public_url": null,
+      "postgres_password_vault_key": "HDC_SCANOPY_POSTGRES_PASSWORD",
+      "log_level": "info"
+    },
+    "install": {
+      "enabled": true,
+      "compose_dir": "/opt/scanopy"
+    }
+  },
+  "deployments": [
+    {
+      "system_id": "scanopy-a",
+      "proxmox": {
+        "host_id": "pve-c",
+        "lxc": {
+          "vmid": 485,
+          "hostname": "scanopy-a",
+          "ip_config": "192.0.2.110/24,gw=192.0.2.1"
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,108 @@
+{
+  "schema_version": 2,
+  "defaults": {
+    "mode": "proxmox-lxc",
+    "proxmox": {
+      "lxc": {
+        "ostemplate": "local:vztmpl/ubuntu-22.04-standard_22.04-1_amd64.tar.zst",
+        "storage": "local-lvm",
+        "rootfs_gb": 32,
+        "memory_mb": 8192,
+        "cores": 4,
+        "bridge": "vmbr0",
+        "ip_config": "dhcp",
+        "unprivileged": 0,
+        "features": "nesting=1,keyctl=1",
+        "onboot": 1
+      }
+    },
+    "hdc_agents": {
+      "image_tag": "latest",
+      "litellm_base_url": "http://REPLACE_LITELLM_IP:4000",
+      "default_model": "lan-best-available",
+      "public_url": null,
+      "oidc": {
+        "issuer": "https://keycloak.example.invalid/realms/dukk-sso",
+        "client_id": "hdc-web",
+        "client_secret_vault_key": "HDC_WEB_OIDC_CLIENT_SECRET"
+      },
+      "agents": [],
+      "mail": {
+        "enabled": true,
+        "to": "ops@example.invalid",
+        "from": "manager@hdc.example.invalid",
+        "subject_prefix": "[HDC]",
+        "on_failure_only": false,
+        "role_from": {
+          "hdc-manager": "manager@hdc.example.invalid",
+          "hdc-monitor": "monitor@hdc.example.invalid"
+        }
+      },
+      "mailbox": {
+        "enabled": true,
+        "host": "mailcow-a.hdc.example.invalid",
+        "port": 993,
+        "user": "manager@hdc.example.invalid",
+        "password_vault_key": "HDC_MAILCOW_MAILBOX_MANAGER_HDC_EXAMPLE_INVALID_PASSWORD",
+        "tls_reject_unauthorized": false,
+        "folders": ["INBOX", "Junk"],
+        "trusted_senders": ["ops@example.invalid"],
+        "wazuh_alert_level_min": 10,
+        "block_days": 30
+      },
+      "discord": {
+        "enabled": true,
+        "title_prefix": "[HDC]",
+        "on_failure_only": false,
+        "webhook_vault_key": "HDC_AGENTS_DISCORD_WEBHOOK_URL",
+        "application_id": null,
+        "public_key": null,
+        "bot_token_vault_key": "HDC_OPS_DISCORD_BOT_TOKEN",
+        "channel_id": null
+      },
+      "schedules": [
+        {
+          "id": "daily-maintain",
+          "cron": "0 3 * * *",
+          "cli": ["maintain", "daily"],
+          "cli_args": ["--skip-clients"],
+          "mail": { "enabled": true, "on_failure_only": false },
+          "discord": { "enabled": true, "on_failure_only": false }
+        },
+        {
+          "id": "hdc-ops-daily",
+          "cron": "15 3 * * *",
+          "cli": ["run-daily"],
+          "cli_args": [],
+          "discord": { "enabled": true, "on_failure_only": false }
+        },
+        {
+          "id": "bind-maintain-weekly",
+          "cron": "30 4 * * 0",
+          "cli": ["run", "service", "bind", "maintain"],
+          "cli_args": ["--no-reboot", "--skip-resources"]
+        }
+      ],
+      "sync": {
+        "exclude": [".git", "node_modules", "**/reports"]
+      }
+    },
+    "install": {
+      "enabled": true,
+      "compose_dir": "/opt/hdc-agents",
+      "meta_root": "/opt/hdc-agents-meta"
+    }
+  },
+  "deployments": [
+    {
+      "system_id": "hdc-agents-a",
+      "proxmox": {
+        "host_id": "REPLACE_PVE_NODE",
+        "lxc": {
+          "vmid": 0,
+          "hostname": "hdc-agents-a"
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,99 @@
+{
+  "schema_version": 2,
+  "zones": [
+    { "$hdc.include": "zones/100.51.198.in-addr.arpa.json" },
+    { "$hdc.include": "zones/2.0.192.in-addr.arpa.json" },
+    { "$hdc.include": "zones/example.invalid.json" },
+    { "$hdc.include": "zones/hdc.example.invalid.json" },
+    { "$hdc.include": "zones/lan.example.invalid.json" }
+  ],
+  "bind": {
+    "primary_ip": "192.0.2.2",
+    "secondary_ip": "192.0.2.3",
+    "hostmaster": "hostmaster.hdc.example.invalid",
+    "allow_query_cidrs": ["192.0.2.0/24", "198.51.100.0/24", "127.0.0.0/8"],
+    "recursion": true,
+    "dnssec_validation": false,
+    "forward_upstream": {
+      "mode": "odoh",
+      "server": "odoh-cloudflare",
+      "relay": "odohrelay-crypto-sx",
+      "listen": "127.0.0.1:5300"
+    },
+    "forwarders": ["1.1.1.1", "1.0.0.1"],
+    "tsig_vault_key": "HDC_BIND_TSIG_KEY",
+    "log_purge": {
+      "enabled": true,
+      "threshold_free_percent": 15
+    }
+  },
+  "defaults": {
+    "mode": "proxmox-qemu",
+    "proxmox": {
+      "qemu": {
+        "template_vmid": 9024,
+        "storage": "local-lvm",
+        "full": 1,
+        "cores": 2,
+        "memory_mb": 2048,
+        "rootfs_gb": 16,
+        "onboot": 1,
+        "startup": { "order": 1 }
+      },
+      "network": {
+        "bridge": "vmbr0",
+        "gateway": "192.0.2.1"
+      }
+    },
+    "backup": {
+      "profile": "daily"
+    },
+    "replication": {
+      "enabled": true,
+      "profile": "frequent"
+    },
+    "ha": {
+      "enabled": true
+    }
+  },
+  "deployments": [
+    {
+      "system_id": "vm-bind-a",
+      "role": "primary",
+      "hostname": "dns-a",
+      "proxmox": {
+        "host_id": "hypervisor-b",
+        "qemu": {
+          "ip": "192.0.2.2/24"
+        }
+      },
+      "replication": {
+        "target_host_id": "hypervisor-c"
+      },
+      "configure": {
+        "ssh": {
+          "host": "192.0.2.2"
+        }
+      }
+    },
+    {
+      "system_id": "vm-bind-b",
+      "role": "secondary",
+      "hostname": "dns-b",
+      "proxmox": {
+        "host_id": "hypervisor-c",
+        "qemu": {
+          "ip": "192.0.2.3/24"
+        }
+      },
+      "replication": {
+        "target_host_id": "hypervisor-b"
+      },
+      "configure": {
+        "ssh": {
+          "host": "192.0.2.3"
+        }
+      }
+    }
+  ]
+}

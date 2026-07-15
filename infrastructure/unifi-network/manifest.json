@@ -1,0 +1,44 @@
+{
+  "id": "unifi-network",
+  "title": "UniFi Network",
+  "env_required": [
+    "HDC_UNIFI_NETWORK_API_KEY"
+  ],
+  "inventory_docs": [
+    "clumps/infrastructure/unifi-network/config.json"
+  ],
+  "services": [
+    {
+      "id": "network-snapshot",
+      "title": "UniFi network snapshot",
+      "verb": "query",
+      "summary": "Sites, clients, networks, firewall policies, port forwards (JSON on stdout)."
+    },
+    {
+      "id": "port-forward-sync",
+      "title": "UniFi port forward sync",
+      "verb": "maintain",
+      "summary": "Apply port_forwards[] from config to the UniFi controller."
+    }
+  ],
+  "verbs": {
+    "maintain": {
+      "script": "run.mjs"
+    },
+    "query": {
+      "script": "run.mjs"
+    },
+    "health": {
+      "script": "run.mjs"
+    }
+  },
+  "operation_report": {
+    "next_steps": [
+      "Run `hdc run infrastructure unifi-network query --` to verify port forward diffs after maintain.",
+      "Bootstrap config from live: `query -- --import-port-forwards --yes`."
+    ]
+  },
+  "health": {
+    "family": "infra-api"
+  }
+}

@@ -1,0 +1,43 @@
+{
+  "id": "immich",
+  "title": "Immich photo library",
+  "env_required": [
+    "HDC_IMMICH_DB_PASSWORD"
+  ],
+  "inventory_docs": [
+    "operations/inventory/systems/immich-a.json",
+    "operations/inventory/systems/vm-immich-a.json",
+    "operations/inventory/services/immich.json"
+  ],
+  "operation_report": {
+    "next_steps": [
+      "Open the web UI (public_url or http://<host>:2283) and register the first admin account.",
+      "Synology: run synology-nas maintain first; set synology.instance and storage paths under /volume1/docker/immich.",
+      "HTTPS: add nginx-waf site for immich.example.invalid upstream to NAS:2283; set immich.public_url.",
+      "Public DNS: cloudflare maintain for immich.example.invalid pointing at your WAF WAN IP.",
+      "Proxmox VM path: set inventory access.nodes[0].ip after deploy; optional data_disk_gb for library storage."
+    ]
+  },
+  "verbs": {
+    "deploy": {
+      "script": "run.mjs"
+    },
+    "maintain": {
+      "script": "run.mjs"
+    },
+    "query": {
+      "script": "run.mjs"
+    },
+    "health": {
+      "script": "run.mjs"
+    },
+    "teardown": {
+      "script": "run.mjs"
+    }
+  },
+  "health": {
+    "family": "synology",
+    "path": "/api/server/ping",
+    "port": 2283
+  }
+}

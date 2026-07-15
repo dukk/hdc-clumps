@@ -1,0 +1,45 @@
+{
+  "schema_version": 2,
+  "defaults": {
+    "mode": "proxmox-lxc",
+    "proxmox": {
+      "lxc": {
+        "ostemplate": "local:vztmpl/ubuntu-22.04-standard_22.04-1_amd64.tar.zst",
+        "storage": "local-lvm",
+        "rootfs_gb": 16,
+        "memory_mb": 2048,
+        "cores": 2,
+        "bridge": "vmbr0",
+        "ip_config": "dhcp",
+        "unprivileged": 1,
+        "onboot": 1
+      }
+    },
+    "trivy": {
+      "version": "v0.56.2",
+      "scan_targets": [
+        {
+          "id": "vm-nginx-a",
+          "host": "192.0.2.40",
+          "paths": ["/etc/nginx", "/opt/app"],
+          "docker_compose_dirs": ["/opt/compose"]
+        }
+      ]
+    },
+    "install": {
+      "enabled": true
+    }
+  },
+  "deployments": [
+    {
+      "system_id": "trivy-a",
+      "proxmox": {
+        "host_id": "hypervisor-a",
+        "lxc": {
+          "vmid": 580,
+          "hostname": "trivy-a"
+        }
+      }
+    }
+  ]
+}

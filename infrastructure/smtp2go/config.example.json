@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "smtp2go": {
+    "api_base_url": "https://api.smtp2go.com/v3",
+    "auth": {
+      "api_key_vault_key": "HDC_SMTP2GO_API_KEY"
+    }
+  },
+  "defaults": {
+    "tracking_subdomain": "link",
+    "returnpath_subdomain": null,
+    "auto_verify": false
+  },
+  "sender_domains": [
+    {
+      "id": "example-com",
+      "domain": "example.com",
+      "managed": false,
+      "tracking_subdomain": "link",
+      "notes": "Set managed true after import to allow maintain add/verify."
+    }
+  ],
+  "ip_allow_list": {
+    "managed": false,
+    "enabled": false,
+    "entries": [
+      {
+        "ip_address": "203.0.113.10",
+        "description": "postfix-relay WAN egress"
+      }
+    ]
+  },
+  "allowed_senders": {
+    "managed": false,
+    "mode": "disabled",
+    "senders": ["noreply@example.com"]
+  }
+}

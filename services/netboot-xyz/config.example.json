@@ -1,0 +1,49 @@
+{
+  "schema_version": 2,
+  "defaults": {
+    "mode": "proxmox-lxc",
+    "proxmox": {
+      "lxc": {
+        "ostemplate": "local:vztmpl/ubuntu-22.04-standard_22.04-1_amd64.tar.zst",
+        "storage": "local-lvm",
+        "rootfs_gb": 128,
+        "memory_mb": 2048,
+        "cores": 2,
+        "bridge": "vmbr0",
+        "unprivileged": 0,
+        "features": "nesting=1,keyctl=1",
+        "onboot": 1
+      }
+    },
+    "netboot_xyz": {
+      "image": "ghcr.io/netbootxyz/netbootxyz",
+      "image_tag": "latest",
+      "menu_version": null,
+      "web_app_port": 3000,
+      "nginx_port": 80,
+      "nginx_host_port": 8080,
+      "tftp_host_port": 69,
+      "tftpd_opts": "--tftp-single-port",
+      "timezone": "America/New_York",
+      "puid": 1000,
+      "pgid": 1000
+    },
+    "install": {
+      "enabled": true,
+      "compose_dir": "/opt/netboot-xyz"
+    }
+  },
+  "deployments": [
+    {
+      "system_id": "netboot-xyz-a",
+      "proxmox": {
+        "host_id": "REPLACE_PVE_NODE",
+        "lxc": {
+          "vmid": 0,
+          "hostname": "netboot-xyz-a",
+          "ip_config": "ip=REPLACE_STATIC_IP/24,gw=REPLACE_GATEWAY"
+        }
+      }
+    }
+  ]
+}

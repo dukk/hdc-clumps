@@ -1,0 +1,35 @@
+{
+  "id": "globalping",
+  "title": "Globalping network probe",
+  "env_required": [
+    "HDC_GLOBALPING_ADOPTION_TOKEN"
+  ],
+  "inventory_docs": [
+    "operations/inventory/systems/globalping-a.json",
+    "operations/inventory/services/globalping.json"
+  ],
+  "operation_report": {
+    "next_steps": [
+      "Confirm the probe appears as adopted on https://dash.globalping.io/probes",
+      "Set access.nodes[0].ip on operations/inventory/systems/globalping-a.json from query --live ct_ip if needed.",
+      "Optional: add an Uptime Kuma monitor or homepage entry for the CT (SSH/docker health only — no HTTP UI)."
+    ]
+  },
+  "verbs": {
+    "deploy": {
+      "script": "run.mjs"
+    },
+    "maintain": {
+      "script": "run.mjs"
+    },
+    "query": {
+      "script": "run.mjs"
+    },
+    "health": {
+      "script": "run.mjs"
+    },
+    "teardown": {
+      "script": "run.mjs"
+    }
+  }
+}

@@ -1,0 +1,37 @@
+{
+  "id": "wallabag",
+  "title": "Wallabag read-it-later",
+  "env_required": [
+    "HDC_WALLABAG_DB_PASSWORD",
+    "HDC_WALLABAG_SECRET"
+  ],
+  "inventory_docs": [
+    "operations/inventory/systems/wallabag-a.json",
+    "operations/inventory/services/wallabag.json"
+  ],
+  "operation_report": {
+    "next_steps": [
+      "Open https://wallabag.hdc.dukk.org (or http://<ct-ip>:80) and create the first admin account in the web UI.",
+      "Set access.nodes[0].ip on operations/inventory/systems/wallabag-a.json from query --live upstream_url.",
+      "BIND CNAME wallabag → nginx-waf-a and nginx-waf site upstream http://<ct-ip>:80 (internal-lan).",
+      "Keep HDC_WALLABAG_DB_PASSWORD backed up — losing it makes the MariaDB volume unrecoverable."
+    ]
+  },
+  "verbs": {
+    "deploy": {
+      "script": "run.mjs"
+    },
+    "maintain": {
+      "script": "run.mjs"
+    },
+    "query": {
+      "script": "run.mjs"
+    },
+    "health": {
+      "script": "run.mjs"
+    },
+    "teardown": {
+      "script": "run.mjs"
+    }
+  }
+}

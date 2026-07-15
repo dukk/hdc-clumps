@@ -1,0 +1,35 @@
+{
+  "id": "solidtime",
+  "title": "SolidTime time tracking",
+  "env_required": [],
+  "inventory_docs": [
+    "operations/inventory/systems/solidtime-a.json",
+    "operations/inventory/services/solidtime.json"
+  ],
+  "operation_report": {
+    "next_steps": [
+      "Open the deployed URL and register the first account via the web UI.",
+      "Optional: put HTTPS in front with clumps/services/nginx or nginx-waf."
+    ]
+  },
+  "verbs": {
+    "deploy": {
+      "script": "run.mjs"
+    },
+    "maintain": {
+      "script": "run.mjs"
+    },
+    "query": {
+      "script": "run.mjs"
+    },
+    "health": {
+      "script": "run.mjs"
+    },
+    "teardown": {
+      "script": "run.mjs"
+    }
+  },
+  "health": {
+    "path": "/"
+  }
+}

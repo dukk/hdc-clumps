@@ -1,0 +1,38 @@
+{
+  "id": "openclaw",
+  "title": "OpenClaw personal AI agent",
+  "env_required": [
+    "HDC_OPENCLAW_GATEWAY_TOKEN",
+    "HDC_OPENCLAW_ANTHROPIC_API_KEY"
+  ],
+  "inventory_docs": [
+    "operations/inventory/systems/vm-openclaw-a.json",
+    "operations/inventory/services/openclaw.json"
+  ],
+  "operation_report": {
+    "next_steps": [
+      "SSH tunnel: ssh -L 18789:127.0.0.1:18789 hdc@<vm-ip> then open http://127.0.0.1:18789",
+      "Paste gateway token from vault HDC_OPENCLAW_GATEWAY_TOKEN in Control UI Settings if prompted.",
+      "Add messaging channels in clumps/services/openclaw/config.json openclaw.channels[] then run maintain.",
+      "See https://docs.openclaw.ai/channels for channel setup.",
+      "Pin openclaw.version in config after first successful deploy."
+    ]
+  },
+  "verbs": {
+    "deploy": {
+      "script": "run.mjs"
+    },
+    "maintain": {
+      "script": "run.mjs"
+    },
+    "query": {
+      "script": "run.mjs"
+    },
+    "health": {
+      "script": "run.mjs"
+    },
+    "teardown": {
+      "script": "run.mjs"
+    }
+  }
+}

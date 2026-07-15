@@ -1,0 +1,83 @@
+{
+  "schema_version": 2,
+  "defaults": {
+    "mode": "proxmox-qemu",
+    "proxmox": {
+      "network": { "gateway": "192.0.2.1" },
+      "qemu": {
+        "template_vmid": 9024,
+        "storage": "local-lvm",
+        "full": 1,
+        "bridge": "vmbr0"
+      }
+    },
+    "install": {
+      "enabled": true,
+      "device": "cuda",
+      "compose_dir": "/opt/vllm",
+      "hf_cache_dir": "/var/lib/vllm/hf-cache",
+      "cuda_image": "vllm/vllm-openai:latest",
+      "cpu_image": "vllm/vllm-openai-cpu:latest"
+    },
+    "vllm": {
+      "port": 8000,
+      "host": "0.0.0.0",
+      "model": null,
+      "served_model_name": null,
+      "max_model_len": 32768,
+      "gpu_memory_utilization": 0.9,
+      "dtype": null,
+      "extra_args": [],
+      "cpu_kv_cache_space_gb": 8,
+      "public_url": null,
+      "hf_token_vault_key": "HDC_HF_TOKEN"
+    }
+  },
+  "deployments": [
+    {
+      "system_id": "vm-vllm-a",
+      "hostname": "vllm-a",
+      "install": { "device": "cuda" },
+      "vllm": {
+        "model": "google/gemma-4-E4B-it",
+        "max_model_len": 32768
+      },
+      "proxmox": {
+        "host_id": "hypervisor-d",
+        "network": { "gateway": "192.0.2.1" },
+        "qemu": {
+          "vmid": 490,
+          "template_vmid": 9024,
+          "cores": 8,
+          "memory_mb": 32768,
+          "rootfs_gb": 128,
+          "ip": "192.0.2.90/24",
+          "hostpci": [{ "id": "0000:01:00.0", "pcie": true, "rombar": false }]
+        }
+      },
+      "configure": { "ssh": { "host": "192.0.2.90" } }
+    }
+  ],
+  "_comment_cpu_example": {
+    "system_id": "vm-vllm-b",
+    "hostname": "vllm-b",
+    "install": { "device": "cpu" },
+    "vllm": {
+      "model": "facebook/opt-125m",
+      "cpu_kv_cache_space_gb": 8
+    },
+    "proxmox": {
+      "host_id": "hypervisor-a",
+      "network": { "gateway": "192.0.2.1" },
+      "qemu": {
+        "vmid": 491,
+        "template_vmid": 9024,
+        "cores": 8,
+        "memory_mb": 16384,
+        "rootfs_gb": 64,
+        "ip": "192.0.2.91/24"
+      }
+    },
+    "configure": { "ssh": { "host": "192.0.2.91" } }
+  }
+}

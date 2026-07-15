@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "gcp": {
+    "project_id": "your-gcp-project",
+    "console_url": "https://console.cloud.google.com/apis/credentials?project=your-gcp-project"
+  },
+  "defaults": {
+    "client_type": "web",
+    "vault_id_suffix_from_app_id": true
+  },
+  "applications": [
+    {
+      "id": "example-app",
+      "display_name": "Example App",
+      "client_type": "web",
+      "redirect_uris": ["https://app.example.invalid/oauth/callback"],
+      "javascript_origins": ["https://app.example.invalid"],
+      "scopes": ["openid", "email", "profile"],
+      "derive_from": {
+        "nginx_waf_config_path": "clumps/services/nginx-waf/config.json",
+        "site_id": "example-app",
+        "callback_path": "/oauth/callback"
+      },
+      "vault": {
+        "client_id_key": "HDC_GCP_OAUTH_EXAMPLE_APP_CLIENT_ID",
+        "client_secret_key": "HDC_GCP_OAUTH_EXAMPLE_APP_CLIENT_SECRET"
+      },
+      "existing_client_id": null,
+      "import_match": null
+    }
+  ]
+}

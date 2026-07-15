@@ -1,0 +1,38 @@
+{
+  "id": "wazuh",
+  "title": "Wazuh single-node stack",
+  "env_required": [
+    "HDC_WAZUH_API_PASSWORD",
+    "HDC_WAZUH_AGENT_PASSWORD"
+  ],
+  "inventory_docs": [
+    "operations/inventory/systems/wazuh-a.json",
+    "operations/inventory/services/wazuh.json"
+  ],
+  "operation_report": {
+    "next_steps": [
+      "Open https://<ct-ip>:443 and finish Wazuh dashboard setup.",
+      "Use maintain to refresh compose images and baseline."
+    ]
+  },
+  "verbs": {
+    "deploy": {
+      "script": "run.mjs"
+    },
+    "maintain": {
+      "script": "run.mjs"
+    },
+    "query": {
+      "script": "run.mjs"
+    },
+    "health": {
+      "script": "run.mjs"
+    },
+    "teardown": {
+      "script": "run.mjs"
+    }
+  },
+  "health": {
+    "path": "/"
+  }
+}

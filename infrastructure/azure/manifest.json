@@ -1,0 +1,72 @@
+{
+  "id": "azure",
+  "title": "Azure (Entra + compute)",
+  "env_required": [
+    "HDC_AZURE_ENTRA_TENANT_ID",
+    "HDC_AZURE_ENTRA_HDC_APPLICATION_ID"
+  ],
+  "inventory_docs": [
+    "operations/inventory/targets/azure.json",
+    "clumps/infrastructure/azure/config.json"
+  ],
+  "services": [
+    {
+      "id": "app-discovery",
+      "title": "Entra app discovery",
+      "verb": "query",
+      "summary": "List tenant app registrations and diff vs config (JSON on stdout). Use --section entra|compute|all."
+    },
+    {
+      "id": "app-deploy",
+      "title": "Entra app deploy",
+      "verb": "deploy",
+      "summary": "Create managed app registrations missing from the tenant (--section entra)."
+    },
+    {
+      "id": "app-maintain",
+      "title": "Entra app maintain",
+      "verb": "maintain",
+      "summary": "Reconcile redirect URIs and API permissions for managed apps (--section entra)."
+    },
+    {
+      "id": "compute-deploy",
+      "title": "Azure compute deploy",
+      "verb": "deploy",
+      "summary": "Provision Azure VMs / ACI with cost confirmation (--section compute)."
+    },
+    {
+      "id": "compute-maintain",
+      "title": "Azure compute maintain",
+      "verb": "maintain",
+      "summary": "Reconcile Azure compute resources (--section compute)."
+    }
+  ],
+  "verbs": {
+    "deploy": {
+      "script": "run.mjs"
+    },
+    "maintain": {
+      "script": "run.mjs"
+    },
+    "query": {
+      "script": "run.mjs"
+    },
+    "teardown": {
+      "script": "run.mjs"
+    },
+    "health": {
+      "script": "run.mjs"
+    }
+  },
+  "operation_report": {
+    "next_steps": [
+      "Run `hdc run infrastructure azure query -- --section all` after deploy or maintain.",
+      "Entra bootstrap: `query -- --section entra --import --yes` to refresh entra/applications.",
+      "Compute: `hdc run infrastructure azure query -- --section compute --live`.",
+      "Grant admin consent in Entra portal when required_resource_access changes."
+    ]
+  },
+  "health": {
+    "family": "infra-api"
+  }
+}

@@ -1,0 +1,202 @@
+{
+  "schema_version": 4,
+  "defaults": {
+    "mode": "configure-only",
+    "proxmox": {
+      "qemu": {
+        "template_vmid": 9024,
+        "storage": "local-lvm",
+        "full": 1,
+        "cores": 2,
+        "memory_mb": 2048,
+        "rootfs_gb": 32,
+        "onboot": 1,
+        "startup": { "order": 2 }
+      },
+      "network": {
+        "bridge": "vmbr0",
+        "gateway": "192.0.2.1"
+      }
+    },
+    "nginx_waf": {
+      "modsecurity": {
+        "enabled": true,
+        "rule_engine": "On",
+        "crs_setup": "/etc/modsecurity/crs/crs-setup.conf",
+        "crs_rules_glob": "/usr/share/modsecurity-crs/rules/*.conf",
+        "audit_log": "/var/log/nginx/modsec_audit.log",
+        "audit_log_format": "json"
+      },
+      "trusted_cidrs": ["192.0.2.0/8", "172.16.0.0/12", "192.168.0.0/16", "127.0.0.0/8"],
+      "cloudflare_ipv4": true,
+      "client_ip": "remote_addr",
+      "client_max_body_size": "64m",
+      "proxy_read_timeout": "300s",
+      "proxy_connect_timeout": "60s",
+      "policy_definitions": {
+        "cloudflare-only": {
+          "type": "cloudflare_origin",
+          "require_headers": true,
+          "deny_status": 403
+        },
+        "api-rate": {
+          "type": "rate_limit",
+          "zone_name": "hdc_api",
+          "key": "$binary_remote_addr",
+          "rate": "10r/s",
+          "burst": 20,
+          "nodelay": true
+        }
+      }
+    },
+    "install": { "enabled": true },
+    "backup": {
+      "profile": "daily"
+    },
+    "wazuh": {
+      "log_collection": [
+        { "location": "/var/log/nginx/access.log", "log_format": "syslog" },
+        { "location": "/var/log/nginx/error.log", "log_format": "syslog" },
+        { "location": "/var/log/nginx/modsec_audit.log", "log_format": "json" }
+      ]
+    }
+  },
+  "deployment_groups": [
+    {
+      "id": "edge",
+      "default_site": { "enabled": true },
+      "acme": {
+        "provider": "lets_encrypt",
+        "email_vault_key": "HDC_NGINX_WAF_LETS_ENCRYPT_EMAIL",
+        "staging": false,
+        "cert_primary_system_id": "vm-nginx-waf-a",
+        "challenge": "http-01",
+        "webroot": "/var/www/letsencrypt",
+        "dns": {
+          "zone": "hdc.example.invalid",
+          "nameservers": ["192.0.2.2"],
+          "tsig_vault_key": "HDC_BIND_TSIG_KEY",
+          "key_name": "hdc-bind-xfer"
+        }
+      },
+      "sites": [
+        {
+          "id": "example-app",
+          "host_names": ["app.hdc.example.invalid"],
+          "listen": [80, 443],
+          "upstream": "http://192.0.2.50:8080",
+          "tls": { "enabled": true, "cert_name": "app.hdc.example.invalid" },
+          "policies": ["modsecurity-default", "hide-version", "block-exploits"],
+          "locations": [
+            {
+              "path": "/api/",
+              "proxy_headers": true,
+              "policies": ["internal-lan"]
+            },
+            {
+              "path": "~ ^/admin",
+              "proxy_headers": true,
+              "policies": ["internal-lan", { "type": "modsecurity", "enabled": false }]
+            },
+            { "path": "/", "proxy_headers": true, "websocket": true }
+          ]
+        },
+        {
+          "id": "example-proxied",
+          "host_names": ["proxied.hdc.example.invalid"],
+          "listen": [80, 443],
+          "upstream": "http://192.0.2.51:8080",
+          "client_ip": "cloudflare",
+          "tls": { "enabled": true, "cert_name": "proxied.hdc.example.invalid" },
+          "policies": ["modsecurity-default", "cloudflare-only", "hide-version", "block-exploits"],
+          "locations": [{ "path": "/", "proxy_headers": true }]
+        },
+        {
+          "id": "example-pve",
+          "host_names": ["pve.hdc.example.invalid"],
+          "listen": [80, 443],
+          "upstream": {
+            "method": "least_conn",
+            "servers": [
+              { "url": "https://pve-a.hdc.example.invalid:8006", "weight": 1 },
+              { "url": "https://pve-b.hdc.example.invalid:8006", "weight": 1 },
+              { "url": "https://pve-c.hdc.example.invalid:8006", "weight": 1, "backup": true },
+              { "url": "https://pve-d.hdc.example.invalid:8006", "weight": 1, "backup": true }
+            ]
+          },
+          "tls": { "enabled": true, "cert_name": "pve.hdc.example.invalid" },
+          "policies": ["modsecurity-default", "hide-version", "block-exploits"],
+          "locations": [{ "path": "/", "proxy_headers": true, "websocket": true }]
+        }
+      ],
+      "deployments": [
+        {
+          "system_id": "vm-nginx-waf-a",
+          "role": "cert-primary",
+          "hostname": "nginx-waf-a",
+          "proxmox": {
+            "host_id": "hypervisor-a",
+            "qemu": { "vmid": 300, "ip": "192.0.2.20/24" }
+          },
+          "configure": {
+            "ssh": { "host": "192.0.2.20" }
+          }
+        },
+        {
+          "system_id": "vm-nginx-waf-b",
+          "role": "peer",
+          "hostname": "nginx-waf-b",
+          "proxmox": {
+            "host_id": "hypervisor-b",
+            "qemu": { "vmid": 301, "ip": "192.0.2.21/24" }
+          },
+          "configure": {
+            "ssh": { "host": "192.0.2.21" }
+          }
+        }
+      ]
+    },
+    {
+      "id": "internal",
+      "default_site": { "enabled": true },
+      "acme": {
+        "provider": "custom",
+        "server": "https://ca.hdc.example.invalid/acme/acme/directory",
+        "root_ca_path": "/etc/ssl/certs/hdc-step-ca-root.crt",
+        "email": "ops@hdc.example.invalid",
+        "challenge": "http-01",
+        "webroot": "/var/www/letsencrypt",
+        "cert_primary_system_id": "vm-nginx-waf-c"
+      },
+      "sites": [
+        {
+          "id": "internal-app",
+          "host_names": ["app.internal.hdc.example.invalid"],
+          "upstream": "http://192.0.2.60:8080",
+          "tls": {
+            "enabled": true,
+            "cert_name": "app.internal.hdc.example.invalid",
+            "certificate": {
+              "provider": "custom",
+              "server": "https://ca.hdc.example.invalid/acme/acme/directory"
+            }
+          },
+          "policies": ["modsecurity-default", "hide-version"],
+          "locations": [{ "path": "/", "proxy_headers": true }]
+        }
+      ],
+      "deployments": [
+        {
+          "system_id": "vm-nginx-waf-c",
+          "role": "cert-primary",
+          "configure": { "ssh": { "host": "192.0.2.30" } }
+        },
+        {
+          "system_id": "vm-nginx-waf-d",
+          "role": "peer",
+          "configure": { "ssh": { "host": "192.0.2.31" } }
+        }
+      ]
+    }
+  ]
+}

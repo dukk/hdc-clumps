@@ -1,0 +1,99 @@
+{
+  "schema_version": 2,
+  "defaults": {
+    "mode": "proxmox-lxc",
+    "proxmox": {
+      "network": {
+        "gateway": "192.0.2.1"
+      },
+      "lxc": {
+        "ostemplate": "local:vztmpl/ubuntu-22.04-standard_22.04-1_amd64.tar.zst",
+        "storage": "local-lvm",
+        "rootfs_gb": 8,
+        "memory_mb": 512,
+        "cores": 1,
+        "bridge": "vmbr0",
+        "ip_config": "dhcp",
+        "unprivileged": 0,
+        "features": "nesting=1,keyctl=1",
+        "onboot": 1
+      }
+    },
+    "homepage": {
+      "image_tag": "latest",
+      "host_port": 3000,
+      "public_url": "https://hdc.example.invalid",
+      "allowed_hosts": ["hdc.example.invalid", "homepage-a.home.example.invalid", "192.0.2.49:3000"],
+      "config_files": {
+        "services": "homepage/services.example.yaml",
+        "settings": "homepage/settings.example.yaml",
+        "bookmarks": "homepage/bookmarks.example.yaml",
+        "widgets": "homepage/widgets.example.yaml"
+      },
+      "proxmox_widget": {
+        "enabled": true,
+        "service_account_id": "homepage",
+        "hosts": ["pve-a", "pve-b", "pve-c", "pve-d", "pve-h"]
+      },
+      "pihole_widget": {
+        "enabled": true,
+        "version": 6,
+        "instances": ["a", "b"]
+      },
+      "immich_widget": { "enabled": true },
+      "glances_widget": { "enabled": true },
+      "homeassistant_widget": {
+        "enabled": true,
+        "token_vault_key": "HDC_HOMEPAGE_HA_TOKEN"
+      },
+      "plex_widget": {
+        "enabled": true,
+        "url": "http://192.0.2.9:32400",
+        "token_vault_key": "HDC_HOMEPAGE_PLEX_TOKEN"
+      },
+      "audiobookshelf_widget": {
+        "enabled": true,
+        "token_vault_key": "HDC_HOMEPAGE_AUDIOBOOKSHELF_TOKEN"
+      },
+      "uptime_kuma_widget": {
+        "enabled": true,
+        "slug": "hdc",
+        "instances": ["a", "ext-a"],
+        "slugs": {
+          "ext-a": "public-edge"
+        }
+      },
+      "crowdsec_widget": {
+        "enabled": true,
+        "token_vault_key": "HDC_HOMEPAGE_CROWDSEC_LAPI_PASSWORD",
+        "machine_id": "localhost"
+      },
+      "unifi_widget": {
+        "enabled": true,
+        "api_key_vault_key": "HDC_UNIFI_NETWORK_API_KEY"
+      },
+      "diskstation_widget": {
+        "enabled": true,
+        "instances": ["a", "b"]
+      },
+      "mailcow_widget": { "enabled": true },
+      "bind_widget": { "enabled": true }
+    },
+    "install": {
+      "enabled": true,
+      "compose_dir": "/opt/homepage"
+    }
+  },
+  "deployments": [
+    {
+      "system_id": "homepage-a",
+      "proxmox": {
+        "host_id": "REPLACE_PVE_NODE",
+        "lxc": {
+          "vmid": 0,
+          "hostname": "homepage-a"
+        }
+      }
+    }
+  ]
+}

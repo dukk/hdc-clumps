@@ -1,0 +1,43 @@
+{
+  "id": "listmonk",
+  "title": "Listmonk newsletter manager",
+  "env_required": [
+    "HDC_LISTMONK_ADMIN_PASSWORD",
+    "HDC_LISTMONK_DB_PASSWORD"
+  ],
+  "inventory_docs": [
+    "operations/inventory/systems/listmonk-a.json",
+    "operations/inventory/services/listmonk.json"
+  ],
+  "operation_report": {
+    "next_steps": [
+      "Set access.nodes[0].ip on operations/inventory/systems/listmonk-a.json from query --live upstream_url.",
+      "Add a BIND forward A record when using a public hostname.",
+      "Configure nginx-waf sites[] with proxy_pass to the CT upstream (http://<ct-ip>:9000).",
+      "Log in to Listmonk with listmonk.admin_user and the vault admin password.",
+      "Configure SMTP in Admin -> Settings -> SMTP when mail.enabled is false in config.",
+      "Keep HDC_LISTMONK_DB_PASSWORD backed up — losing it makes the Postgres volume unrecoverable."
+    ]
+  },
+  "verbs": {
+    "deploy": {
+      "script": "run.mjs"
+    },
+    "maintain": {
+      "script": "run.mjs"
+    },
+    "query": {
+      "script": "run.mjs"
+    },
+    "health": {
+      "script": "run.mjs"
+    },
+    "teardown": {
+      "script": "run.mjs"
+    }
+  },
+  "health": {
+    "path": "/api/health",
+    "port": 9000
+  }
+}

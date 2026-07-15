@@ -1,0 +1,43 @@
+{
+  "id": "shlink",
+  "title": "Shlink URL shortener",
+  "env_required": [
+    "HDC_SHLINK_DB_PASSWORD",
+    "HDC_SHLINK_INITIAL_API_KEY"
+  ],
+  "inventory_docs": [
+    "operations/inventory/systems/shlink-a.json",
+    "operations/inventory/services/shlink.json"
+  ],
+  "operation_report": {
+    "next_steps": [
+      "Set access.nodes[0].ip on operations/inventory/systems/shlink-a.json from query --live upstream_url.",
+      "Add BIND (or Cloudflare) A records for shlink.default_domain and shlink.web_client.public_url when used.",
+      "Configure nginx-waf sites[]: short/API upstream http://<ct-ip>:8080; web client upstream http://<ct-ip>:8081.",
+      "Back up HDC_SHLINK_INITIAL_API_KEY — required for the web UI and REST API.",
+      "Optional: set HDC_SHLINK_GEOLITE_LICENSE_KEY in vault and re-run maintain for visit geolocation.",
+      "Keep HDC_SHLINK_DB_PASSWORD backed up — losing it makes the Postgres volume unrecoverable."
+    ]
+  },
+  "verbs": {
+    "deploy": {
+      "script": "run.mjs"
+    },
+    "maintain": {
+      "script": "run.mjs"
+    },
+    "query": {
+      "script": "run.mjs"
+    },
+    "health": {
+      "script": "run.mjs"
+    },
+    "teardown": {
+      "script": "run.mjs"
+    }
+  },
+  "health": {
+    "path": "/rest/health",
+    "port": 8080
+  }
+}

@@ -1,0 +1,53 @@
+{
+  "schema_version": 1,
+  "wol": {
+    "enabled": true,
+    "broadcast": "192.0.2.255",
+    "port": 9,
+    "packets": 3,
+    "wait_seconds": 180,
+    "poll_interval_seconds": 10
+  },
+  "bootstrap_hosts": [],
+  "winrm_bootstrap": {
+    "enabled": true,
+    "psexec_path": "",
+    "wait_seconds": 90,
+    "poll_interval_seconds": 5
+  },
+  "hosts": [
+    {
+      "id": "pc-example",
+      "system_id": "pc-example",
+      "os": "windows",
+      "enabled": true,
+      "updates": { "enabled": true },
+      // Opt-in: standalone zip + NSSM Windows service (not OllamaSetup.exe tray app).
+      // "ollama": {
+      //   "enabled": true,
+      //   "listen": "0.0.0.0",
+      //   "models": ["llama3.2:latest"],
+      //   "install_dir": "C:\\Program Files\\Ollama",
+      //   "models_dir": "C:\\ProgramData\\Ollama\\models",
+      //   "service_name": "Ollama",
+      //   "schedule": { "enabled": true, "start_local": "23:00", "stop_local": "08:00" }
+      // },
+      "wol": { "mac": "aa:bb:cc:dd:ee:ff" },
+      "auth": {
+        // Default: HDC_WINRM_USER in .env; password vault HDC_WINRM_USER_PASSWORD (one secret for all hosts).
+        // Mixed hosts: winrm_user / winrm_user_env; per-host password via winrm_password_vault_suffix.
+        "winrm_user_env": "HDC_WINRM_USER"
+      },
+      "access": {
+        "nodes": [
+          {
+            "name": "primary",
+            "ip": "192.0.2.0",
+            "mac": "aa:bb:cc:dd:ee:ff",
+            "winrm": { "port": 5986, "use_ssl": true, "skip_ca_check": true }
+          }
+        ]
+      }
+    }
+  ]
+}

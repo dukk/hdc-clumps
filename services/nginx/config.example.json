@@ -1,0 +1,61 @@
+{
+  "schema_version": 2,
+  "letsencrypt": {
+    "email_vault_key": "HDC_NGINX_LE_EMAIL",
+    "staging": false,
+    "challenge": "http-01",
+    "webroot": "/var/www/letsencrypt",
+    "dns": {
+      "zone": "hdc.example.invalid",
+      "nameservers": ["192.0.2.2"],
+      "tsig_vault_key": "HDC_BIND_TSIG_KEY",
+      "key_name": "hdc-bind-xfer"
+    }
+  },
+  "sites": [
+    {
+      "id": "example-app",
+      "server_names": ["app.hdc.example.invalid"],
+      "listen": [80, 443],
+      "upstream": "http://192.0.2.50:8080",
+      "tls": { "enabled": true, "cert_name": "app.hdc.example.invalid" },
+      "locations": [{ "path": "/", "proxy_headers": true }]
+    }
+  ],
+  "defaults": {
+    "mode": "configure-only",
+    "proxmox": {
+      "qemu": {
+        "template_vmid": 9024,
+        "storage": "local-lvm",
+        "full": 1,
+        "cores": 2,
+        "memory_mb": 2048,
+        "rootfs_gb": 32
+      },
+      "network": {
+        "bridge": "vmbr0",
+        "gateway": "192.0.2.1"
+      }
+    },
+    "nginx": {
+      "client_max_body_size": "64m",
+      "proxy_read_timeout": "300s",
+      "proxy_connect_timeout": "60s"
+    },
+    "install": { "enabled": true }
+  },
+  "deployments": [
+    {
+      "system_id": "vm-nginx-a",
+      "hostname": "nginx-a",
+      "proxmox": {
+        "host_id": "hypervisor-a",
+        "qemu": { "vmid": 310, "ip": "192.0.2.30/24" }
+      },
+      "configure": {
+        "ssh": { "host": "192.0.2.30" }
+      }
+    }
+  ]
+}

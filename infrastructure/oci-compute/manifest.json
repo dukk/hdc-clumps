@@ -1,0 +1,41 @@
+{
+  "id": "oci-compute",
+  "title": "Oracle Cloud compute",
+  "env_required": [
+    "HDC_OCI_TENANCY_OCID",
+    "HDC_OCI_USER_OCID",
+    "HDC_OCI_FINGERPRINT",
+    "HDC_OCI_REGION"
+  ],
+  "inventory_docs": [
+    "operations/inventory/targets/oci-compute.json",
+    "clumps/infrastructure/oci-compute/config.json"
+  ],
+  "verbs": {
+    "deploy": {
+      "script": "run.mjs"
+    },
+    "maintain": {
+      "script": "run.mjs"
+    },
+    "query": {
+      "script": "run.mjs"
+    },
+    "health": {
+      "script": "run.mjs"
+    },
+    "teardown": {
+      "script": "run.mjs"
+    }
+  },
+  "operation_report": {
+    "next_steps": [
+      "Run `hdc run infrastructure oci-compute query -- --live` after deploy.",
+      "Review the Cost estimate section before the next deploy.",
+      "Set inventory access IP for cloud VMs when assigned."
+    ]
+  },
+  "health": {
+    "family": "infra-api"
+  }
+}

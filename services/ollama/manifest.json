@@ -1,0 +1,27 @@
+{
+  "id": "ollama",
+  "title": "Ollama LLM runtime",
+  "env_required": [],
+  "inventory_docs": [
+    "operations/inventory/systems/ollama-{a,b,c}.json (optional per instance)",
+    "clumps/services/ollama/config.json (schema_version 2 deployments[]; deploy all if no --instance)",
+    "hdc run ollama deploy — all instances; prompts for LXC root password on create (or proxmox.lxc.password / --password)"
+  ],
+  "verbs": {
+    "deploy": {
+      "script": "run.mjs"
+    },
+    "maintain": {
+      "script": "run.mjs"
+    },
+    "query": {
+      "script": "run.mjs"
+    },
+    "health": {
+      "script": "run.mjs"
+    },
+    "teardown": {
+      "script": "run.mjs"
+    }
+  }
+}

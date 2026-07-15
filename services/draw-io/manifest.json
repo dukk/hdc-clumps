@@ -1,0 +1,35 @@
+{
+  "id": "draw-io",
+  "title": "draw.io (diagrams.net)",
+  "env_required": [],
+  "inventory_docs": [
+    "operations/inventory/systems/draw-io-a.json",
+    "operations/inventory/services/draw-io.json"
+  ],
+  "operation_report": {
+    "next_steps": [
+      "Set access.nodes[0].ip on operations/inventory/systems/draw-io-a.json from query --live upstream_url.",
+      "Add BIND A record draw-io-a and CNAME draw → nginx-waf-a.home.example.invalid in hdc.example.invalid zone.",
+      "Add Cloudflare CNAME draw → waf.example.invalid (proxied) in example.invalid zone.",
+      "Configure nginx-waf sites[] with upstream http://<ct-ip>:8080 and client_ip cloudflare.",
+      "Browse https://draw.example.invalid after nginx-waf maintain issues the LE certificate."
+    ]
+  },
+  "verbs": {
+    "deploy": {
+      "script": "run.mjs"
+    },
+    "maintain": {
+      "script": "run.mjs"
+    },
+    "query": {
+      "script": "run.mjs"
+    },
+    "health": {
+      "script": "run.mjs"
+    },
+    "teardown": {
+      "script": "run.mjs"
+    }
+  }
+}

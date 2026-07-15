@@ -1,0 +1,25 @@
+{
+  "schema_version": 2,
+  "defaults": {
+    "mode": "synology-package",
+    "plex": {
+      "port": 32400,
+      "package_name": "PlexMediaServer",
+      "public_url": null,
+      "timezone": "UTC"
+    },
+    "install": {
+      "enabled": false
+    }
+  },
+  "deployments": [
+    {
+      "system_id": "plex-a",
+      "hostname": "plex-a",
+      "mode": "synology-package",
+      "synology": {
+        "instance": "a"
+      }
+    }
+  ]
+}

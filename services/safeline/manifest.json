@@ -1,0 +1,39 @@
+{
+  "id": "safeline",
+  "title": "SafeLine WAF",
+  "env_required": [
+    "HDC_SAFELINE_POSTGRES_PASSWORD",
+    "HDC_SAFELINE_ADMIN_PASSWORD",
+    "HDC_SAFELINE_API_TOKEN"
+  ],
+  "inventory_docs": [
+    "operations/inventory/systems/safeline-a.json",
+    "operations/inventory/services/safeline.json"
+  ],
+  "operation_report": {
+    "next_steps": [
+      "Open https://<ct-ip>:9443 for the SafeLine admin UI (accept the self-signed cert).",
+      "Retrieve the SafeLine admin password: node apps/hdc-cli/cli.mjs secrets get HDC_SAFELINE_ADMIN_PASSWORD (username admin).",
+      "Create an API token in System Management, then: node apps/hdc-cli/cli.mjs secrets set HDC_SAFELINE_API_TOKEN",
+      "Run maintain to sync sites[] from config, or query --live to check drift.",
+      "For parallel edge: point public DNS/WAN to the SafeLine guest IP (not nginx-waf) for migrated hostnames."
+    ]
+  },
+  "verbs": {
+    "deploy": {
+      "script": "run.mjs"
+    },
+    "maintain": {
+      "script": "run.mjs"
+    },
+    "query": {
+      "script": "run.mjs"
+    },
+    "health": {
+      "script": "run.mjs"
+    },
+    "teardown": {
+      "script": "run.mjs"
+    }
+  }
+}

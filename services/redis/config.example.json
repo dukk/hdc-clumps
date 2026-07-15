@@ -1,0 +1,81 @@
+{
+  "schema_version": 2,
+  "redis": {
+    "port": 6379,
+    "password_vault_key": "HDC_REDIS_PASSWORD",
+    "cluster_replicas": 0,
+    "min_masters": 3,
+    "maxmemory": "512mb",
+    "maxmemory_policy": "allkeys-lru"
+  },
+  "defaults": {
+    "mode": "proxmox-qemu",
+    "proxmox": {
+      "qemu": {
+        "template_vmid": 9024,
+        "storage": "local-lvm",
+        "full": 1,
+        "cores": 2,
+        "memory_mb": 2048,
+        "rootfs_gb": 16
+      },
+      "network": {
+        "bridge": "vmbr0",
+        "gateway": "192.0.2.1"
+      }
+    },
+    "install": {
+      "enabled": true
+    }
+  },
+  "deployments": [
+    {
+      "system_id": "vm-redis-a",
+      "hostname": "redis-a",
+      "proxmox": {
+        "host_id": "hypervisor-a",
+        "qemu": {
+          "vmid": 130,
+          "ip": "192.0.2.30/24"
+        }
+      },
+      "configure": {
+        "ssh": {
+          "host": "192.0.2.30"
+        }
+      }
+    },
+    {
+      "system_id": "vm-redis-b",
+      "hostname": "redis-b",
+      "proxmox": {
+        "host_id": "hypervisor-b",
+        "qemu": {
+          "vmid": 131,
+          "ip": "192.0.2.31/24"
+        }
+      },
+      "configure": {
+        "ssh": {
+          "host": "192.0.2.31"
+        }
+      }
+    },
+    {
+      "system_id": "vm-redis-c",
+      "hostname": "redis-c",
+      "proxmox": {
+        "host_id": "hypervisor-c",
+        "qemu": {
+          "vmid": 132,
+          "ip": "192.0.2.32/24"
+        }
+      },
+      "configure": {
+        "ssh": {
+          "host": "192.0.2.32"
+        }
+      }
+    }
+  ]
+}

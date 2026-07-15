@@ -1,0 +1,54 @@
+{
+  "schema_version": 2,
+  "defaults": {
+    "mode": "proxmox-lxc",
+    "proxmox": {
+      "lxc": {
+        "ostemplate": "local:vztmpl/ubuntu-22.04-standard_22.04-1_amd64.tar.zst",
+        "storage": "local-lvm",
+        "rootfs_gb": 20,
+        "memory_mb": 2048,
+        "cores": 2,
+        "bridge": "vmbr0",
+        "ip_config": "dhcp",
+        "unprivileged": 0,
+        "features": "nesting=1,keyctl=1",
+        "onboot": 1
+      }
+    },
+    "shlink": {
+      "image_tag": "stable",
+      "postgres_image_tag": "16-alpine",
+      "redis_image_tag": "7-alpine",
+      "host_port": 8080,
+      "default_domain": "s.example.invalid",
+      "public_url": "https://s.example.invalid",
+      "timezone": "America/New_York",
+      "db_password_vault_key": "HDC_SHLINK_DB_PASSWORD",
+      "initial_api_key_vault_key": "HDC_SHLINK_INITIAL_API_KEY",
+      "geolite_license_key_vault_key": "HDC_SHLINK_GEOLITE_LICENSE_KEY",
+      "web_client": {
+        "enabled": true,
+        "image_tag": "stable",
+        "host_port": 8081,
+        "public_url": "https://shlink.example.invalid"
+      }
+    },
+    "install": {
+      "enabled": true,
+      "compose_dir": "/opt/shlink"
+    }
+  },
+  "deployments": [
+    {
+      "system_id": "shlink-a",
+      "proxmox": {
+        "host_id": "REPLACE_PVE_NODE",
+        "lxc": {
+          "vmid": 0,
+          "hostname": "shlink-a"
+        }
+      }
+    }
+  ]
+}

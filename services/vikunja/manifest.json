@@ -1,0 +1,42 @@
+{
+  "id": "vikunja",
+  "title": "Vikunja task manager",
+  "env_required": [
+    "HDC_VIKUNJA_JWT_SECRET",
+    "HDC_VIKUNJA_DB_PASSWORD"
+  ],
+  "inventory_docs": [
+    "operations/inventory/systems/vikunja-a.json",
+    "operations/inventory/services/vikunja.json"
+  ],
+  "operation_report": {
+    "next_steps": [
+      "Set access.nodes[0].ip on operations/inventory/systems/vikunja-a.json from query --live upstream_url.",
+      "Add a BIND forward A record for the hostname in vikunja.public_url.",
+      "Configure nginx-waf sites[] with proxy_pass to the CT upstream (http://<ct-ip>:3456); enable WebSockets.",
+      "Register the first Vikunja account in the web UI (no pre-seeded admin).",
+      "Keep HDC_VIKUNJA_DB_PASSWORD backed up — losing it makes the Postgres volume unrecoverable."
+    ]
+  },
+  "verbs": {
+    "deploy": {
+      "script": "run.mjs"
+    },
+    "maintain": {
+      "script": "run.mjs"
+    },
+    "query": {
+      "script": "run.mjs"
+    },
+    "health": {
+      "script": "run.mjs"
+    },
+    "teardown": {
+      "script": "run.mjs"
+    }
+  },
+  "health": {
+    "path": "/api/v1/info",
+    "port": 3456
+  }
+}

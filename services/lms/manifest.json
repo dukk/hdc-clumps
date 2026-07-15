@@ -1,0 +1,27 @@
+{
+  "id": "lms",
+  "title": "LM Studio (llmster) headless",
+  "env_required": [],
+  "inventory_docs": [
+    "operations/inventory/systems/vm-lms-{a,b,c}.json (optional per instance)",
+    "clumps/services/lms/config.json (schema_version 2 deployments[]; proxmox-qemu only in v1)",
+    "hdc run service lms deploy — QEMU Ubuntu + llmster via https://lmstudio.ai/install.sh"
+  ],
+  "verbs": {
+    "deploy": {
+      "script": "run.mjs"
+    },
+    "maintain": {
+      "script": "run.mjs"
+    },
+    "query": {
+      "script": "run.mjs"
+    },
+    "health": {
+      "script": "run.mjs"
+    },
+    "teardown": {
+      "script": "run.mjs"
+    }
+  }
+}

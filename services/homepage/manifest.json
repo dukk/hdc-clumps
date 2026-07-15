@@ -1,0 +1,43 @@
+{
+  "id": "homepage",
+  "title": "Homepage (gethomepage.dev)",
+  "env_required": [
+    "HDC_HOMEPAGE_PROXMOX_API_TOKEN"
+  ],
+  "inventory_docs": [
+    "operations/inventory/systems/homepage-a.json",
+    "operations/inventory/services/homepage.json"
+  ],
+  "operation_report": {
+    "next_steps": [
+      "Set access.nodes[0].ip on operations/inventory/systems/homepage-a.json from query --live upstream_url.",
+      "Add BIND A record homepage-a and apex @ → nginx-waf-a in hdc.example.invalid zone.",
+      "Add nginx-waf sites[] hdc-homepage with upstream http://<ct-ip>:3000 and internal_only access.",
+      "Browse https://hdc.example.invalid from LAN after nginx-waf maintain issues the LE certificate.",
+      "Edit homepage/*.yaml in hdc-private and run maintain to refresh the dashboard.",
+      "For Proxmox widgets: add provision.service_accounts[] in proxmox config, widget blocks in services.yaml, then maintain."
+    ]
+  },
+  "verbs": {
+    "deploy": {
+      "script": "run.mjs"
+    },
+    "maintain": {
+      "script": "run.mjs"
+    },
+    "query": {
+      "script": "run.mjs"
+    },
+    "health": {
+      "script": "run.mjs"
+    },
+    "teardown": {
+      "script": "run.mjs"
+    }
+  },
+  "health": {
+    "family": "docker-lxc",
+    "path": "/",
+    "port": 3000
+  }
+}

@@ -1,0 +1,74 @@
+{
+  "schema_version": 2,
+  "defaults": {
+    "mode": "proxmox-lxc",
+    "proxmox": {
+      "lxc": {
+        "ostemplate": "local:vztmpl/ubuntu-22.04-standard_22.04-1_amd64.tar.zst",
+        "storage": "local-lvm",
+        "rootfs_gb": 128,
+        "memory_mb": 16384,
+        "cores": 8,
+        "bridge": "vmbr0",
+        "ip_config": "dhcp"
+      },
+      "qemu": {
+        "template_vmid": 9024,
+        "storage": "local-lvm",
+        "full": 1,
+        "bridge": "vmbr0"
+      }
+    },
+    "install": {
+      "enabled": true,
+      "backend": "cpu",
+      "release": "latest"
+    },
+    "server": {
+      "port": 8080,
+      "host": "0.0.0.0",
+      "models_dir": "/var/lib/llama-cpp/models",
+      "model": null,
+      "hf_model": null,
+      "extra_args": []
+    }
+  },
+  "deployments": [
+    {
+      "system_id": "llama-cpp-a",
+      "install": { "backend": "cpu" },
+      "proxmox": {
+        "host_id": "hypervisor-d",
+        "lxc": { "vmid": 480 }
+      }
+    },
+    {
+      "system_id": "llama-cpp-b",
+      "install": { "backend": "vulkan" },
+      "proxmox": {
+        "host_id": "hypervisor-c",
+        "lxc": { "vmid": 481 }
+      }
+    }
+  ],
+  "_comment_qemu_gpu_example": {
+    "system_id": "vm-llama-cpp-a",
+    "mode": "proxmox-qemu",
+    "hostname": "llama-cpp-a",
+    "install": { "backend": "cuda", "cuda_version": "12.4" },
+    "proxmox": {
+      "host_id": "pve-d",
+      "network": { "gateway": "192.0.2.1" },
+      "qemu": {
+        "vmid": 480,
+        "template_vmid": 9024,
+        "cores": 8,
+        "memory_mb": 24576,
+        "rootfs_gb": 128,
+        "ip": "192.0.2.28/24",
+        "hostpci": [{ "id": "0000:01:00.0", "pcie": true, "rombar": false }]
+      }
+    },
+    "configure": { "ssh": { "host": "192.0.2.28" } }
+  }
+}

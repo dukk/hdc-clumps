@@ -1,0 +1,26 @@
+{
+  "id": "step-ca",
+  "title": "Smallstep step-ca internal certificate authority",
+  "env_required": [
+    "HDC_STEP_CA_PASSWORD"
+  ],
+  "inventory_docs": [
+    "operations/inventory/systems/vm-step-ca-a.json",
+    "operations/inventory/services/step-ca.json",
+    "clumps/services/step-ca/config.json (copy config.example.json)"
+  ],
+  "verbs": {
+    "deploy": {
+      "script": "run.mjs"
+    },
+    "maintain": {
+      "script": "run.mjs"
+    },
+    "query": {
+      "script": "run.mjs"
+    },
+    "health": {
+      "script": "run.mjs"
+    }
+  }
+}

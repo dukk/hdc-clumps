@@ -1,0 +1,36 @@
+{
+  "id": "kali-desktop",
+  "title": "Kali Linux desktop (Proxmox QEMU)",
+  "env_required": [
+    "HDC_KALI_DESKTOP_PASSWORD"
+  ],
+  "inventory_docs": [
+    "operations/inventory/systems/vm-kali-a.json",
+    "operations/inventory/services/kali-desktop.json"
+  ],
+  "operation_report": {
+    "next_steps": [
+      "SSH to the static IP as user kali (password from HDC_KALI_DESKTOP_PASSWORD).",
+      "Open the desktop via Proxmox noVNC/serial console if needed.",
+      "Run maintain to apply guest Linux baseline (hdc user, agents, ClamAV).",
+      "Run query --live to verify guest agent and SSH."
+    ]
+  },
+  "verbs": {
+    "deploy": {
+      "script": "run.mjs"
+    },
+    "maintain": {
+      "script": "run.mjs"
+    },
+    "query": {
+      "script": "run.mjs"
+    },
+    "health": {
+      "script": "run.mjs"
+    },
+    "teardown": {
+      "script": "run.mjs"
+    }
+  }
+}

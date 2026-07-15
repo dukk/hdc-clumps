@@ -1,0 +1,67 @@
+{
+  "schema_version": 2,
+  "defaults": {
+    "mode": "proxmox-lxc",
+    "proxmox": {
+      "lxc": {
+        "ostemplate": "local:vztmpl/ubuntu-22.04-standard_22.04-1_amd64.tar.zst",
+        "storage": "local-lvm",
+        "rootfs_gb": 8,
+        "memory_mb": 2048,
+        "cores": 2,
+        "bridge": "vmbr0",
+        "ip_config": "dhcp",
+        "unprivileged": 1,
+        "onboot": 1
+      }
+    },
+    "crowdsec": {
+      "lapi_port": 8080,
+      "enroll_key_vault_key": "HDC_CROWDSEC_ENROLL_KEY",
+      "hub_update": true,
+      "collections": [
+        "crowdsecurity/linux",
+        "crowdsecurity/unifi",
+        "crowdsecurity/whitelist-good-actors"
+      ],
+      "unifi": {
+        "syslog": {
+          "enabled": true,
+          "listen_port": 4242,
+          "allowed_senders": ["192.0.2.1/32"],
+          "cef_split": true
+        }
+      },
+      "bouncers": [
+        { "type": "firewall", "system_id": "vm-nginx-waf-a" },
+        { "type": "firewall", "system_id": "vm-nginx-waf-b" },
+        {
+          "type": "unifi",
+          "group_name": "crowdsec-block",
+          "max_decisions": 15000
+        }
+      ]
+    },
+    "wazuh": {
+      "log_collection": [
+        { "location": "/var/log/crowdsec.log", "log_format": "syslog" },
+        { "location": "/var/log/crowdsec-api.log", "log_format": "syslog" }
+      ]
+    },
+    "install": {
+      "enabled": true
+    }
+  },
+  "deployments": [
+    {
+      "system_id": "crowdsec-a",
+      "proxmox": {
+        "host_id": "hypervisor-a",
+        "lxc": {
+          "vmid": 560,
+          "hostname": "crowdsec-a"
+        }
+      }
+    }
+  ]
+}

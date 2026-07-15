@@ -1,0 +1,39 @@
+{
+  "id": "dawarich",
+  "title": "Dawarich (location history)",
+  "env_required": [
+    "HDC_DAWARICH_SECRET_KEY_BASE",
+    "HDC_DAWARICH_DB_PASSWORD"
+  ],
+  "inventory_docs": [
+    "operations/inventory/systems/dawarich-a.json",
+    "operations/inventory/services/dawarich.json"
+  ],
+  "operation_report": {
+    "next_steps": [
+      "Open the web_ui_url from deploy output (https://dawarich.example.invalid when public_url is set).",
+      "Sign in with the default account and change the password immediately (upstream default: [email protected] / safepassword).",
+      "Configure mobile trackers (Dawarich iOS/Android or OwnTracks) to POST to your public URL.",
+      "Set access.nodes[0].ip on operations/inventory/systems/dawarich-a.json from query --live upstream_url.",
+      "After deploy: run bind maintain and nginx-waf maintain --site dawarich when plan dependencies are approved.",
+      "Keep HDC_DAWARICH_SECRET_KEY_BASE and HDC_DAWARICH_DB_PASSWORD backed up — losing them makes the Postgres volume and sessions unrecoverable."
+    ]
+  },
+  "verbs": {
+    "deploy": {
+      "script": "run.mjs"
+    },
+    "maintain": {
+      "script": "run.mjs"
+    },
+    "query": {
+      "script": "run.mjs"
+    },
+    "health": {
+      "script": "run.mjs"
+    },
+    "teardown": {
+      "script": "run.mjs"
+    }
+  }
+}

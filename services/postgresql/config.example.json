@@ -1,0 +1,89 @@
+{
+  "schema_version": 2,
+  "postgresql": {
+    "version_major": 16,
+    "listen_addresses": "*",
+    "listen_cidrs": ["192.0.2.0/24", "198.51.100.0/24", "127.0.0.0/8"],
+    "superuser_vault_key": "HDC_POSTGRESQL_SUPERUSER_PASSWORD",
+    "replication_vault_key": "HDC_POSTGRESQL_REPLICATION_PASSWORD",
+    "replication_user": "replicator",
+    "databases": [],
+    "roles": []
+  },
+  "defaults": {
+    "mode": "proxmox-qemu",
+    "proxmox": {
+      "qemu": {
+        "template_vmid": 9024,
+        "storage": "local-lvm",
+        "full": 1,
+        "cores": 2,
+        "memory_mb": 4096,
+        "rootfs_gb": 32
+      },
+      "network": {
+        "bridge": "vmbr0",
+        "gateway": "192.0.2.1"
+      }
+    },
+    "install": {
+      "enabled": true
+    }
+  },
+  "deployments": [
+    {
+      "system_id": "vm-postgres-a",
+      "role": "primary",
+      "hostname": "postgres-a",
+      "proxmox": {
+        "host_id": "hypervisor-a",
+        "qemu": {
+          "vmid": 120,
+          "ip": "192.0.2.20/24"
+        }
+      },
+      "configure": {
+        "ssh": {
+          "host": "192.0.2.20"
+        }
+      }
+    },
+    {
+      "system_id": "vm-postgres-b",
+      "role": "standby",
+      "primary_system_id": "vm-postgres-a",
+      "hostname": "postgres-b",
+      "proxmox": {
+        "host_id": "hypervisor-c",
+        "qemu": {
+          "vmid": 121,
+          "ip": "192.0.2.21/24"
+        }
+      },
+      "configure": {
+        "ssh": {
+          "host": "192.0.2.21"
+        }
+      }
+    },
+    {
+      "system_id": "vm-postgres-c",
+      "role": "standalone",
+      "hostname": "postgres-app",
+      "proxmox": {
+        "host_id": "hypervisor-b",
+        "qemu": {
+          "vmid": 122,
+          "ip": "192.0.2.22/24"
+        }
+      },
+      "configure": {
+        "ssh": {
+          "host": "192.0.2.22"
+        }
+      },
+      "databases": [{ "name": "appdb", "owner": "appuser" }],
+      "roles": [{ "name": "appuser", "password_vault_key": "HDC_POSTGRESQL_APPUSER_PASSWORD" }]
+    }
+  ]
+}

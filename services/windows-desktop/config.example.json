@@ -1,0 +1,64 @@
+{
+  "schema_version": 2,
+  "windows_desktop": {
+    "admin_vault_key": "HDC_WINDOWS_DESKTOP_ADMIN_PASSWORD",
+    "admin_username": "Administrator",
+    "locale": "en-US"
+  },
+  "defaults": {
+    "mode": "proxmox-qemu-clone",
+    "proxmox": {
+      "host_id": "pve-b",
+      "qemu": {
+        "storage": "local-lvm",
+        "iso_storage": "local",
+        "disk_format": "raw",
+        "cores": 4,
+        "memory_mb": 8192,
+        "disk_gb": 128,
+        "cpu": "host",
+        "machine": "q35",
+        "bios": "ovmf",
+        "tpm_version": "v2.0",
+        "agent": 1
+      },
+      "network": {
+        "bridge": "vmbr0",
+        "gateway": "192.0.2.1"
+      },
+      "iso": {
+        "windows_volid": "local:iso/Win11_25H2_English_x64.iso",
+        "virtio_volid": "local:iso/virtio-win.iso",
+        "download_url": "",
+        "sha256": ""
+      },
+      "template": {
+        "vmid": 9001,
+        "name": "win11-template",
+        "builder_hostname": "WIN11-BUILD"
+      },
+      "oem": {
+        "enabled": true,
+        "require_firmware": true
+      }
+    }
+  },
+  "deployments": [
+    {
+      "system_id": "vm-win11-a",
+      "hostname": "win11-a",
+      "proxmox": {
+        "host_id": "pve-b",
+        "qemu": {
+          "vmid": 200,
+          "ip": "192.0.2.50/24"
+        }
+      },
+      "configure": {
+        "winrm": {
+          "enabled": false
+        }
+      }
+    }
+  ]
+}

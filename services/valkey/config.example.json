@@ -1,0 +1,81 @@
+{
+  "schema_version": 2,
+  "valkey": {
+    "port": 6379,
+    "password_vault_key": "HDC_VALKEY_PASSWORD",
+    "cluster_replicas": 0,
+    "min_masters": 3,
+    "maxmemory": "512mb",
+    "maxmemory_policy": "allkeys-lru"
+  },
+  "defaults": {
+    "mode": "proxmox-qemu",
+    "proxmox": {
+      "qemu": {
+        "template_vmid": 9024,
+        "storage": "local-lvm",
+        "full": 1,
+        "cores": 2,
+        "memory_mb": 2048,
+        "rootfs_gb": 16
+      },
+      "network": {
+        "bridge": "vmbr0",
+        "gateway": "192.0.2.1"
+      }
+    },
+    "install": {
+      "enabled": true
+    }
+  },
+  "deployments": [
+    {
+      "system_id": "vm-valkey-a",
+      "hostname": "valkey-a",
+      "proxmox": {
+        "host_id": "hypervisor-a",
+        "qemu": {
+          "vmid": 133,
+          "ip": "192.0.2.33/24"
+        }
+      },
+      "configure": {
+        "ssh": {
+          "host": "192.0.2.33"
+        }
+      }
+    },
+    {
+      "system_id": "vm-valkey-b",
+      "hostname": "valkey-b",
+      "proxmox": {
+        "host_id": "hypervisor-b",
+        "qemu": {
+          "vmid": 134,
+          "ip": "192.0.2.34/24"
+        }
+      },
+      "configure": {
+        "ssh": {
+          "host": "192.0.2.34"
+        }
+      }
+    },
+    {
+      "system_id": "vm-valkey-c",
+      "hostname": "valkey-c",
+      "proxmox": {
+        "host_id": "hypervisor-c",
+        "qemu": {
+          "vmid": 135,
+          "ip": "192.0.2.35/24"
+        }
+      },
+      "configure": {
+        "ssh": {
+          "host": "192.0.2.35"
+        }
+      }
+    }
+  ]
+}

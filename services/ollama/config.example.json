@@ -1,0 +1,64 @@
+{
+  "schema_version": 2,
+  "defaults": {
+    "mode": "proxmox-lxc",
+    "proxmox": {
+      "lxc": {
+        "ostemplate": "local:vztmpl/ubuntu-22.04-standard_22.04-1_amd64.tar.zst",
+        "storage": "local-lvm",
+        "rootfs_gb": 48,
+        "memory_mb": 8192,
+        "cores": 4,
+        "bridge": "vmbr0",
+        "ip_config": "dhcp"
+      },
+      "qemu": {
+        "vmid": 471,
+        "template_vmid": 9022,
+        "storage": "local-lvm"
+      }
+    },
+    "install": {
+      "enabled": true,
+      "method": "github-release",
+      "gpu": false
+    },
+    "ollama": {
+      "models": ["llama3.2:latest", "nomic-embed-text"]
+    },
+    "ubuntu": {
+      "bootstrap_host_id": "example-ubuntu-host",
+      "docker": {
+        "container_name": "ollama",
+        "host_port": 11434,
+        "docker_image": "ollama/ollama:latest"
+      }
+    }
+  },
+  "deployments": [
+    {
+      "system_id": "ollama-a",
+      "ollama": {
+        "models": ["llama3.2:latest"]
+      },
+      "proxmox": {
+        "host_id": "hypervisor-d",
+        "lxc": { "vmid": 470 }
+      }
+    },
+    {
+      "system_id": "ollama-b",
+      "proxmox": {
+        "host_id": "hypervisor-c",
+        "lxc": { "vmid": 471 }
+      }
+    },
+    {
+      "system_id": "ollama-c",
+      "proxmox": {
+        "host_id": "hypervisor-b",
+        "lxc": { "vmid": 472 }
+      }
+    }
+  ]
+}

@@ -1,0 +1,57 @@
+{
+  "schema_version": 2,
+  "defaults": {
+    "mode": "proxmox-lxc",
+    "proxmox": {
+      "lxc": {
+        "ostemplate": "local:vztmpl/ubuntu-22.04-standard_22.04-1_amd64.tar.zst",
+        "storage": "local-lvm",
+        "rootfs_gb": 40,
+        "memory_mb": 6144,
+        "cores": 4,
+        "bridge": "vmbr0",
+        "ip_config": "dhcp",
+        "unprivileged": 0,
+        "features": "nesting=1,keyctl=1",
+        "onboot": 1
+      }
+    },
+    "mailcow": {
+      "git_ref": "master",
+      "hostname": "mail.example.invalid",
+      "timezone": "America/Chicago",
+      "admin_url": "https://mail.example.invalid",
+      "api_url": "https://mail.example.invalid",
+      "api_key_vault_key": "HDC_MAILCOW_API_KEY",
+      "dns_publish": {
+        "cloudflare_dkim": true
+      },
+      "dbpass_vault_key": "HDC_MAILCOW_DBPASS",
+      "dbroot_vault_key": "HDC_MAILCOW_DBROOT",
+      "redispass_vault_key": "HDC_MAILCOW_REDISPASS",
+      "skip_clamd": false,
+      "skip_solr": true,
+      "domains": [
+        { "$hdc.include": "domains/example.invalid.json" },
+        { "$hdc.include": "domains/relay-only.example.invalid.json" }
+      ]
+    },
+    "install": {
+      "enabled": true,
+      "install_dir": "/opt/mailcow-dockerized"
+    }
+  },
+  "deployments": [
+    {
+      "system_id": "mailcow-a",
+      "proxmox": {
+        "host_id": "REPLACE_PVE_NODE",
+        "lxc": {
+          "vmid": 0,
+          "hostname": "mailcow-a",
+          "ip_config": "dhcp"
+        }
+      }
+    }
+  ]
+}

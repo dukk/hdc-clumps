@@ -1,0 +1,65 @@
+{
+  "schema_version": 2,
+  "defaults": {
+    "mode": "proxmox-qemu",
+    "proxmox": {
+      "qemu": {
+        "template_vmid": 9022,
+        "storage": "local-lvm",
+        "full": 1,
+        "bridge": "vmbr0",
+        "memory_mb": 8192,
+        "cores": 4,
+        "rootfs_gb": 48
+      },
+      "network": {
+        "gateway": "192.0.2.1"
+      }
+    },
+    "install": {
+      "enabled": true,
+      "linux_user": "openclaw",
+      "node_version": "24",
+      "docker": true
+    },
+    "openclaw": {
+      "version": "latest",
+      "channel": "stable",
+      "gateway_token_vault_key": "HDC_OPENCLAW_GATEWAY_TOKEN",
+      "gateway": {
+        "bind": "loopback",
+        "port": 18789
+      },
+      "agents": {
+        "defaults": {
+          "model": { "primary": "anthropic/claude-sonnet-4-6" },
+          "sandbox": { "mode": "non-main", "scope": "agent" }
+        }
+      },
+      "channels": {},
+      "config_extra": {},
+      "env_secrets": [
+        {
+          "vault_key": "HDC_OPENCLAW_ANTHROPIC_API_KEY",
+          "guest_env": "ANTHROPIC_API_KEY"
+        }
+      ]
+    }
+  },
+  "deployments": [
+    {
+      "system_id": "vm-openclaw-a",
+      "proxmox": {
+        "host_id": "hypervisor-a",
+        "qemu": {
+          "vmid": 580,
+          "ip": "192.0.2.0/24",
+          "hostname": "vm-openclaw-a"
+        }
+      },
+      "configure": {
+        "ssh": { "host": "" }
+      }
+    }
+  ]
+}

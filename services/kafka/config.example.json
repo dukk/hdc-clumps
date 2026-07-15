@@ -1,0 +1,80 @@
+{
+  "schema_version": 2,
+  "kafka": {
+    "cluster_id": "REPLACE_WITH_kafka-storage_random-uuid",
+    "version": "3.9.0",
+    "scala_version": "2.13",
+    "listener_port": 9092,
+    "controller_port": 9093,
+    "log_dirs": ["/var/lib/kafka/data"]
+  },
+  "defaults": {
+    "mode": "proxmox-qemu",
+    "proxmox": {
+      "qemu": {
+        "template_vmid": 9024,
+        "storage": "local-lvm",
+        "full": 1,
+        "cores": 4,
+        "memory_mb": 8192
+      },
+      "network": {
+        "bridge": "vmbr0",
+        "gateway": "192.0.2.1"
+      }
+    }
+  },
+  "deployments": [
+    {
+      "system_id": "vm-kafka-a",
+      "node_id": 1,
+      "hostname": "kafka-a",
+      "proxmox": {
+        "host_id": "hypervisor-a",
+        "qemu": {
+          "vmid": 201,
+          "ip": "192.0.2.21/24"
+        }
+      },
+      "configure": {
+        "ssh": {
+          "host": "192.0.2.21"
+        }
+      }
+    },
+    {
+      "system_id": "vm-kafka-b",
+      "node_id": 2,
+      "hostname": "kafka-b",
+      "proxmox": {
+        "host_id": "hypervisor-b",
+        "qemu": {
+          "vmid": 202,
+          "ip": "192.0.2.22/24"
+        }
+      },
+      "configure": {
+        "ssh": {
+          "host": "192.0.2.22"
+        }
+      }
+    },
+    {
+      "system_id": "vm-kafka-c",
+      "node_id": 3,
+      "hostname": "kafka-c",
+      "proxmox": {
+        "host_id": "hypervisor-c",
+        "qemu": {
+          "vmid": 203,
+          "ip": "192.0.2.23/24"
+        }
+      },
+      "configure": {
+        "ssh": {
+          "host": "192.0.2.23"
+        }
+      }
+    }
+  ]
+}

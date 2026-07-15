@@ -1,0 +1,81 @@
+{
+  "schema_version": 2,
+  "cassandra": {
+    "cluster_name": "hdc-cassandra",
+    "version": "5.0",
+    "datacenter": "hdc",
+    "rack": "rack1",
+    "replication_factor": 3,
+    "authenticator": "PasswordAuthenticator",
+    "superuser_vault_key": "HDC_CASSANDRA_SUPERUSER_PASSWORD"
+  },
+  "defaults": {
+    "mode": "proxmox-qemu",
+    "proxmox": {
+      "qemu": {
+        "template_vmid": 9024,
+        "storage": "local-lvm",
+        "full": 1,
+        "cores": 4,
+        "memory_mb": 8192
+      },
+      "network": {
+        "bridge": "vmbr0",
+        "gateway": "192.0.2.1"
+      }
+    }
+  },
+  "deployments": [
+    {
+      "system_id": "vm-cassandra-a",
+      "seed": true,
+      "hostname": "cassandra-a",
+      "proxmox": {
+        "host_id": "hypervisor-a",
+        "qemu": {
+          "vmid": 120,
+          "ip": "192.0.2.20/24"
+        }
+      },
+      "configure": {
+        "ssh": {
+          "host": "192.0.2.20"
+        }
+      }
+    },
+    {
+      "system_id": "vm-cassandra-b",
+      "seed": true,
+      "hostname": "cassandra-b",
+      "proxmox": {
+        "host_id": "hypervisor-b",
+        "qemu": {
+          "vmid": 121,
+          "ip": "192.0.2.21/24"
+        }
+      },
+      "configure": {
+        "ssh": {
+          "host": "192.0.2.21"
+        }
+      }
+    },
+    {
+      "system_id": "vm-cassandra-c",
+      "seed": false,
+      "hostname": "cassandra-c",
+      "proxmox": {
+        "host_id": "hypervisor-c",
+        "qemu": {
+          "vmid": 122,
+          "ip": "192.0.2.22/24"
+        }
+      },
+      "configure": {
+        "ssh": {
+          "host": "192.0.2.22"
+        }
+      }
+    }
+  ]
+}

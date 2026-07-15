@@ -1,0 +1,116 @@
+{
+  "schema_version": 5,
+  "uptime_kuma_auth": {
+    "api_url": "http://192.0.2.105:3001",
+    "username_env": "HDC_UPTIME_KUMA_USERNAME",
+    "password_vault_key": "HDC_UPTIME_KUMA_PASSWORD"
+  },
+  "monitors": [
+    {
+      "id": "pi-hole-a",
+      "name": "Pi-hole A",
+      "type": "http",
+      "url": "http://pi-hole-a.home.example.invalid/admin",
+      "group": "DNS",
+      "managed": true
+    },
+    {
+      "id": "bind-a",
+      "name": "BIND A",
+      "type": "ping",
+      "hostname": "bind-a.home.example.invalid",
+      "group": "DNS",
+      "managed": true
+    }
+  ],
+  "tags": [
+    {
+      "name": "critical",
+      "color": "#dc2626"
+    }
+  ],
+  "status_pages": [
+    { "$hdc.include": "status_pages/public.json" }
+  ],
+  "defaults": {
+    "mode": "proxmox-lxc",
+    "proxmox": {
+      "network": {
+        "gateway": "192.0.2.1"
+      },
+      "lxc": {
+        "ostemplate": "local:vztmpl/ubuntu-22.04-standard_22.04-1_amd64.tar.zst",
+        "storage": "local-lvm",
+        "rootfs_gb": 4,
+        "memory_mb": 1024,
+        "cores": 1,
+        "bridge": "vmbr0",
+        "ip_config": "dhcp",
+        "unprivileged": 1,
+        "onboot": 1
+      }
+    },
+    "uptime_kuma": {
+      "port": 3001,
+      "node_version": "22",
+      "release": "latest"
+    },
+    "install": {
+      "enabled": true
+    }
+  },
+  "deployments": [
+    {
+      "system_id": "uptime-kuma-a",
+      "proxmox": {
+        "host_id": "pve-c",
+        "lxc": {
+          "vmid": 153,
+          "hostname": "uptime-kuma-a",
+          "ip_config": "192.0.2.105/24,gw=192.0.2.1"
+        }
+      }
+    },
+    {
+      "system_id": "uptime-kuma-ext-a",
+      "mode": "oci-vm",
+      "oci": {
+        "instance_id": "uptime-kuma-ext-a",
+        "admin_ingress": {
+          "port": 3001,
+          "allowed_cidrs": ["203.0.113.0/29"]
+        }
+      },
+      "configure": {
+        "ssh": {
+          "host": "203.0.113.10",
+          "user": "ubuntu"
+        }
+      },
+      "uptime_kuma_auth": {
+        "api_url": "http://127.0.0.1:3001",
+        "api_via_ssh": true,
+        "username_env": "HDC_UPTIME_KUMA_USERNAME_EXT_A",
+        "password_vault_key": "HDC_UPTIME_KUMA_PASSWORD_EXT_A"
+      },
+      "notifications": [
+        {
+          "id": "hdc-ops-discord",
+          "name": "HDC Ops Discord",
+          "type": "discord",
+          "managed": true,
+          "discord_webhook_vault_key": "HDC_OPS_DISCORD_WEBHOOK_URL",
+          "discord_username": "Uptime Kuma",
+          "apply_to_monitors": true
+        }
+      ],
+      "monitors": [
+        { "$hdc.include": "monitors-public/immich.json" },
+        { "$hdc.include": "monitors-public/vaultwarden.json" }
+      ],
+      "status_pages": [
+        { "$hdc.include": "status_pages/public-edge.json" }
+      ]
+    }
+  ]
+}

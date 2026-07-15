@@ -1,0 +1,82 @@
+{
+  "schema_version": 2,
+  "defaults": {
+    "mode": "proxmox-qemu",
+    "proxmox": {
+      "network": {
+        "gateway": "192.0.2.1"
+      },
+      "qemu": {
+        "template_vmid": 9024,
+        "storage": "local-lvm",
+        "full": 1,
+        "bridge": "vmbr0",
+        "memory_mb": 6144,
+        "cores": 4,
+        "rootfs_gb": 64
+      },
+      "lxc": {
+        "ostemplate": "local:vztmpl/ubuntu-22.04-standard_22.04-1_amd64.tar.zst",
+        "storage": "local-lvm",
+        "rootfs_gb": 64,
+        "memory_mb": 6144,
+        "cores": 4,
+        "bridge": "vmbr0",
+        "ip_config": "dhcp",
+        "unprivileged": 0,
+        "features": "nesting=1,keyctl=1",
+        "onboot": 1
+      }
+    },
+    "paperless_ngx": {
+      "image_tag": "latest",
+      "postgres_image_tag": "18",
+      "redis_image_tag": "8",
+      "gotenberg_image_tag": "8.25",
+      "tika_image_tag": "latest",
+      "host_port": 8000,
+      "tika_enabled": true,
+      "public_url": null,
+      "timezone": "America/New_York",
+      "ocr_language": "eng",
+      "webserver_workers": 2,
+      "usermap_uid": 1000,
+      "usermap_gid": 1000,
+      "secret_key_vault_key": "HDC_PAPERLESS_SECRET_KEY",
+      "db_password_vault_key": "HDC_PAPERLESS_DB_PASSWORD",
+      "admin": {
+        "enabled": false,
+        "user": "admin",
+        "mail": "admin@hdc.example.invalid",
+        "password_vault_key": "HDC_PAPERLESS_ADMIN_PASSWORD"
+      }
+    },
+    "install": {
+      "enabled": true,
+      "compose_dir": "/opt/paperless-ngx"
+    }
+  },
+  "deployments": [
+    {
+      "system_id": "paperless-ngx-a",
+      "proxmox": {
+        "host_id": "REPLACE_PVE_NODE",
+        "qemu": {
+          "vmid": 0,
+          "template_vmid": 9024,
+          "ip": "192.0.2.0/24",
+          "hostname": "paperless-ngx-a"
+        },
+        "lxc": {
+          "vmid": 0,
+          "hostname": "paperless-ngx-a"
+        }
+      },
+      "configure": {
+        "ssh": {
+          "host": "192.0.2.0"
+        }
+      }
+    }
+  ]
+}

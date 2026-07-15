@@ -1,0 +1,26 @@
+{
+  "id": "kafka",
+  "title": "Apache Kafka KRaft cluster",
+  "env_required": [],
+  "inventory_docs": [
+    "operations/inventory/systems/vm-kafka-a.json",
+    "operations/inventory/systems/vm-kafka-b.json",
+    "operations/inventory/systems/vm-kafka-c.json",
+    "operations/inventory/services/kafka.json",
+    "clumps/services/kafka/config.json (copy config.example.json)"
+  ],
+  "verbs": {
+    "deploy": {
+      "script": "run.mjs"
+    },
+    "maintain": {
+      "script": "run.mjs"
+    },
+    "query": {
+      "script": "run.mjs"
+    },
+    "health": {
+      "script": "run.mjs"
+    }
+  }
+}

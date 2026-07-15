@@ -1,0 +1,43 @@
+{
+  "id": "uptimerobot",
+  "title": "UptimeRobot",
+  "env_required": [],
+  "inventory_docs": [
+    "clumps/infrastructure/uptimerobot/config.json"
+  ],
+  "services": [
+    {
+      "id": "uptimerobot-query",
+      "title": "UptimeRobot query",
+      "verb": "query",
+      "summary": "Diff monitors, status pages, and alert contacts vs config; optional --import from live API (JSON on stdout)."
+    },
+    {
+      "id": "uptimerobot-maintain",
+      "title": "UptimeRobot maintain",
+      "verb": "maintain",
+      "summary": "Reconcile managed monitors, status pages, and alert contacts to UptimeRobot API v2."
+    }
+  ],
+  "verbs": {
+    "maintain": {
+      "script": "run.mjs"
+    },
+    "query": {
+      "script": "run.mjs"
+    },
+    "health": {
+      "script": "run.mjs"
+    }
+  },
+  "operation_report": {
+    "next_steps": [
+      "Run `hdc run infrastructure uptimerobot query --` to verify live vs config drift.",
+      "Set `managed: true` on entries hdc should own before running maintain.",
+      "Public status pages remain on stats.uptimerobot.com unless you configure custom domains in UptimeRobot."
+    ]
+  },
+  "health": {
+    "family": "infra-api"
+  }
+}

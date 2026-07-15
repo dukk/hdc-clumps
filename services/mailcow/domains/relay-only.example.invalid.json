@@ -1,0 +1,15 @@
+{
+  "name": "relay-only.example.invalid",
+  "description": "Outbound via internal postfix-relay (SMTP2GO upstream)",
+  "dkim_selector": "dkim",
+  "dkim_key_size": 2048,
+  "outbound": {
+    "mode": "postfix-relay"
+  },
+  "dns": {
+    "mx_priority": 10,
+    "spf": "v=spf1 include:spf.smtp2go.com ~all",
+    "dmarc": "v=DMARC1; p=none; rua=mailto:dmarc-reports@example.invalid",
+    "notes": "Inbound MX still points at mailcow. Outbound uses hdc postfix-relay; add provider DKIM CNAMEs per SMTP2GO docs when using SMTP2GO."
+  }
+}

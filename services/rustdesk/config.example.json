@@ -1,0 +1,41 @@
+{
+  "schema_version": 2,
+  "defaults": {
+    "mode": "proxmox-lxc",
+    "proxmox": {
+      "lxc": {
+        "ostemplate": "local:vztmpl/ubuntu-22.04-standard_22.04-1_amd64.tar.zst",
+        "storage": "local-lvm",
+        "rootfs_gb": 8,
+        "memory_mb": 512,
+        "cores": 1,
+        "bridge": "vmbr0",
+        "ip_config": "ip=REPLACE_STATIC_IP/24,gw=REPLACE_GATEWAY",
+        "unprivileged": 0,
+        "features": "nesting=1,keyctl=1",
+        "onboot": 1
+      }
+    },
+    "rustdesk": {
+      "image_tag": "latest",
+      "always_use_relay": false,
+      "id_server_host": null
+    },
+    "install": {
+      "enabled": true,
+      "compose_dir": "/opt/rustdesk"
+    }
+  },
+  "deployments": [
+    {
+      "system_id": "rustdesk-a",
+      "proxmox": {
+        "host_id": "REPLACE_PVE_NODE",
+        "lxc": {
+          "vmid": 0,
+          "hostname": "rustdesk-a"
+        }
+      }
+    }
+  ]
+}

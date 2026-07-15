@@ -1,0 +1,42 @@
+{
+  "id": "cloudflare",
+  "title": "Cloudflare",
+  "env_required": [],
+  "inventory_docs": [
+    "clumps/infrastructure/cloudflare/config.json"
+  ],
+  "services": [
+    {
+      "id": "dns-query",
+      "title": "Cloudflare query",
+      "verb": "query",
+      "summary": "List zones; diff DNS, page rules, and email routing vs config; optional import flags (JSON on stdout)."
+    },
+    {
+      "id": "dns-sync",
+      "title": "Cloudflare sync",
+      "verb": "maintain",
+      "summary": "Apply zones[].records, page_rules, and email routing from config; optional --prune."
+    }
+  ],
+  "verbs": {
+    "maintain": {
+      "script": "run.mjs"
+    },
+    "query": {
+      "script": "run.mjs"
+    },
+    "health": {
+      "script": "run.mjs"
+    }
+  },
+  "operation_report": {
+    "next_steps": [
+      "Run `hdc run infrastructure cloudflare query --` to verify diffs after maintain.",
+      "Bootstrap: `query -- --import-zones --yes`, `--import-page-rules --yes`, or `--import-email-routing --yes`."
+    ]
+  },
+  "health": {
+    "family": "infra-api"
+  }
+}

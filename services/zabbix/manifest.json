@@ -1,0 +1,35 @@
+{
+  "id": "zabbix",
+  "title": "Zabbix monitoring stack",
+  "env_required": [
+    "HDC_ZABBIX_DB_PASSWORD"
+  ],
+  "inventory_docs": [
+    "operations/inventory/systems/zabbix-a.json",
+    "operations/inventory/systems/vm-zabbix-a.json",
+    "operations/inventory/services/zabbix.json"
+  ],
+  "operation_report": {
+    "next_steps": [
+      "Open http://<guest-ip>/ after deploy and complete first-login setup (default Admin / zabbix until changed).",
+      "Set access.nodes[0].ip on operations/inventory/systems/zabbix-a.json or vm-zabbix-a.json from query output."
+    ]
+  },
+  "verbs": {
+    "deploy": {
+      "script": "run.mjs"
+    },
+    "maintain": {
+      "script": "run.mjs"
+    },
+    "query": {
+      "script": "run.mjs"
+    },
+    "health": {
+      "script": "run.mjs"
+    },
+    "teardown": {
+      "script": "run.mjs"
+    }
+  }
+}

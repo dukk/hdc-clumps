@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "uptimerobot": {
+    "api_base_url": "https://api.uptimerobot.com/v2",
+    "auth": {
+      "api_key_vault_key": "HDC_UPTIMEROBOT_API_KEY"
+    },
+    "primary_status_page_url": "https://stats.uptimerobot.com/RepjIrpxEZ",
+    "account": {
+      "email": null,
+      "monitor_limit": null,
+      "monitor_interval": null,
+      "up_monitors": null,
+      "down_monitors": null,
+      "pause_monitors": null
+    }
+  },
+  "monitors": [],
+  "status_pages": [],
+  "alert_contacts": []
+}

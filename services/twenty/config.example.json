@@ -1,0 +1,76 @@
+{
+  "schema_version": 2,
+  "defaults": {
+    "mode": "proxmox-qemu",
+    "proxmox": {
+      "network": { "gateway": "192.0.2.1" },
+      "qemu": {
+        "template_vmid": 9022,
+        "storage": "local-lvm",
+        "full": 1,
+        "bridge": "vmbr0",
+        "memory_mb": 4096,
+        "cores": 2,
+        "rootfs_gb": 32
+      },
+      "lxc": {
+        "ostemplate": "local:vztmpl/ubuntu-22.04-standard_22.04-1_amd64.tar.zst",
+        "storage": "local-lvm",
+        "rootfs_gb": 32,
+        "memory_mb": 4096,
+        "cores": 2,
+        "bridge": "vmbr0",
+        "ip_config": "dhcp",
+        "unprivileged": 0,
+        "features": "nesting=1,keyctl=1",
+        "onboot": 1
+      }
+    },
+    "twenty": {
+      "image_tag": "v2.11.0",
+      "postgres_image_tag": "16",
+      "redis_image_tag": "7-alpine",
+      "host_port": 3000,
+      "public_url": "https://crm.example.invalid",
+      "storage_type": "local",
+      "multi_workspace_enabled": false,
+      "encryption_key_vault_key": "HDC_TWENTY_ENCRYPTION_KEY",
+      "fallback_encryption_key_vault_key": "HDC_TWENTY_ENCRYPTION_KEY_FALLBACK",
+      "db_password_vault_key": "HDC_TWENTY_DB_PASSWORD",
+      "db_name": "default",
+      "db_user": "postgres",
+      "mail": {
+        "enabled": false,
+        "to": "ops@example.invalid",
+        "from": "noreply@example.invalid"
+      },
+      "storage_s3": {
+        "enabled": false,
+        "region": "",
+        "bucket": "",
+        "endpoint": ""
+      }
+    },
+    "install": {
+      "enabled": true,
+      "compose_dir": "/opt/twenty"
+    }
+  },
+  "deployments": [
+    {
+      "system_id": "vm-twenty-a",
+      "proxmox": {
+        "host_id": "REPLACE_PVE_NODE",
+        "qemu": {
+          "vmid": 0,
+          "template_vmid": 9022,
+          "ip": "192.0.2.162/24",
+          "hostname": "vm-twenty-a"
+        }
+      },
+      "configure": {
+        "ssh": { "host": "192.0.2.162" }
+      }
+    }
+  ]
+}

@@ -1,0 +1,40 @@
+{
+  "id": "meshcentral",
+  "title": "MeshCentral remote management server",
+  "env_required": [],
+  "inventory_docs": [
+    "operations/inventory/systems/meshcentral-a.json",
+    "operations/inventory/services/meshcentral.json"
+  ],
+  "operation_report": {
+    "next_steps": [
+      "Browse https://meshcentral.hdc.dukk.org (or meshcentral.public_url) and create the first admin account.",
+      "Set vault secrets HDC_MESHCENTRAL_USERNAME and HDC_MESHCENTRAL_PASSWORD for the MeshCentral API account.",
+      "Set access.nodes[0].ip on operations/inventory/systems/meshcentral-a.json from query --live ct_ip.",
+      "Install agents using the public URL; TLS is terminated at nginx-waf.",
+      "Run query --import --yes to sync meshcentral.devices[] from live agents.",
+      "Run bind maintain and nginx-waf maintain if DNS or proxy config changed."
+    ]
+  },
+  "verbs": {
+    "deploy": {
+      "script": "run.mjs"
+    },
+    "maintain": {
+      "script": "run.mjs"
+    },
+    "query": {
+      "script": "run.mjs"
+    },
+    "health": {
+      "script": "run.mjs"
+    },
+    "teardown": {
+      "script": "run.mjs"
+    }
+  },
+  "health": {
+    "path": "/",
+    "port": 4430
+  }
+}

@@ -1,0 +1,62 @@
+{
+  "schema_version": 2,
+  "defaults": {
+    "mode": "proxmox-lxc",
+    "proxmox": {
+      "lxc": {
+        "ostemplate": "local:vztmpl/ubuntu-22.04-standard_22.04-1_amd64.tar.zst",
+        "storage": "local-lvm",
+        "rootfs_gb": 24,
+        "memory_mb": 4096,
+        "cores": 2,
+        "bridge": "vmbr0",
+        "ip_config": "dhcp",
+        "unprivileged": 0,
+        "features": "nesting=1,keyctl=1",
+        "onboot": 1
+      }
+    },
+    "keycloak": {
+      "image_tag": "26.0",
+      "host_port": 8080,
+      "public_url": "https://keycloak.example.invalid",
+      "external_url": "https://keycloak.example.invalid",
+      "admin_user": "hdc",
+      "admin_password_vault_key": "HDC_KEYCLOAK_ADMIN_PASSWORD",
+      "database": {
+        "mode": "bundled",
+        "bundled": {
+          "postgres_db": "keycloak",
+          "postgres_user": "keycloak",
+          "postgres_password_vault_key": "HDC_KEYCLOAK_DB_PASSWORD"
+        },
+        "external": {
+          "host": "vm-postgres-a",
+          "port": 5432,
+          "database": "keycloak",
+          "username": "keycloak",
+          "password_vault_key": "HDC_KEYCLOAK_DB_PASSWORD"
+        }
+      },
+      "realms": [
+        { "$hdc.include": "realms/example.json" }
+      ]
+    },
+    "install": {
+      "enabled": true,
+      "compose_dir": "/opt/keycloak"
+    }
+  },
+  "deployments": [
+    {
+      "system_id": "keycloak-a",
+      "proxmox": {
+        "host_id": "REPLACE_PVE_NODE",
+        "lxc": {
+          "vmid": 0,
+          "hostname": "keycloak-a"
+        }
+      }
+    }
+  ]
+}

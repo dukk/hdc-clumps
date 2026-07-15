@@ -1,0 +1,48 @@
+{
+  "schema_version": 2,
+  "defaults": {
+    "mode": "proxmox-lxc",
+    "proxmox": {
+      "network": {
+        "gateway": "192.0.2.1"
+      },
+      "lxc": {
+        "ostemplate": "local:vztmpl/ubuntu-22.04-standard_22.04-1_amd64.tar.zst",
+        "storage": "local-lvm",
+        "rootfs_gb": 16,
+        "memory_mb": 2048,
+        "cores": 2,
+        "bridge": "vmbr0",
+        "ip_config": "192.0.2.112/24,gw=192.0.2.1",
+        "unprivileged": 0,
+        "features": "nesting=1,keyctl=1",
+        "onboot": 1
+      }
+    },
+    "searxng": {
+      "image_tag": "latest",
+      "host_port": 8080,
+      "instance_name": "HDC SearXNG",
+      "public_url": null,
+      "limiter": false,
+      "secret_key_vault_key": "HDC_SEARXNG_SECRET"
+    },
+    "install": {
+      "enabled": true,
+      "compose_dir": "/opt/searxng"
+    }
+  },
+  "deployments": [
+    {
+      "system_id": "searxng-a",
+      "proxmox": {
+        "host_id": "pve-c",
+        "lxc": {
+          "vmid": 488,
+          "hostname": "searxng-a",
+          "ip_config": "192.0.2.112/24,gw=192.0.2.1"
+        }
+      }
+    }
+  ]
+}

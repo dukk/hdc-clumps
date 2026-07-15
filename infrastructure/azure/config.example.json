@@ -1,0 +1,32 @@
+{
+  "schema_version": 2,
+  "entra": {
+    "graph_base_url": "https://graph.microsoft.com/v1.0",
+    "automation": {
+      "app_id": "hdc"
+    },
+    "application_filter": {
+      "mode": "all",
+      "display_name_prefixes": []
+    },
+    "applications": [
+      { "$hdc.include": "entra/applications/my-home-app.json" }
+    ]
+  },
+  "compute": {
+    "defaults": {
+      "azure": {
+        "subscription_id": "<HDC_AZURE_COMPUTE_SUBSCRIPTION_ID>",
+        "resource_group": "hdc-compute",
+        "location": "eastus",
+        "tags": {
+          "managed-by": "hdc"
+        }
+      }
+    },
+    "deployments": [
+      { "$hdc.include": "compute/deployments/a.json" },
+      { "$hdc.include": "compute/deployments/b.json" }
+    ]
+  }
+}

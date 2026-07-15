@@ -1,0 +1,51 @@
+{
+  "schema_version": 2,
+  "defaults": {
+    "mode": "proxmox-lxc",
+    "proxmox": {
+      "lxc": {
+        "ostemplate": "local:vztmpl/ubuntu-22.04-standard_22.04-1_amd64.tar.zst",
+        "storage": "local-lvm",
+        "rootfs_gb": 24,
+        "memory_mb": 2048,
+        "cores": 2,
+        "bridge": "vmbr0",
+        "ip_config": "dhcp",
+        "unprivileged": 0,
+        "features": "nesting=1,keyctl=1",
+        "onboot": 1
+      }
+    },
+    "wallabag": {
+      "image_tag": "latest",
+      "mariadb_image_tag": "11",
+      "redis_image_tag": "7-alpine",
+      "host_port": 80,
+      "public_url": "https://wallabag.example.invalid",
+      "server_name": "Wallabag",
+      "timezone": "America/New_York",
+      "db_password_vault_key": "HDC_WALLABAG_DB_PASSWORD",
+      "secret_vault_key": "HDC_WALLABAG_SECRET",
+      "mail": {
+        "enabled": false,
+        "from": "wallabag@hdc.example.invalid"
+      }
+    },
+    "install": {
+      "enabled": true,
+      "compose_dir": "/opt/wallabag"
+    }
+  },
+  "deployments": [
+    {
+      "system_id": "wallabag-a",
+      "proxmox": {
+        "host_id": "REPLACE_PVE_NODE",
+        "lxc": {
+          "vmid": 0,
+          "hostname": "wallabag-a"
+        }
+      }
+    }
+  ]
+}

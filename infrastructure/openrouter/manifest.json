@@ -1,0 +1,43 @@
+{
+  "id": "openrouter",
+  "title": "OpenRouter",
+  "env_required": [],
+  "inventory_docs": [
+    "clumps/infrastructure/openrouter/config.json"
+  ],
+  "services": [
+    {
+      "id": "openrouter-query",
+      "title": "OpenRouter query",
+      "verb": "query",
+      "summary": "Diff credits and API keys vs config; optional --import from live API (JSON on stdout)."
+    },
+    {
+      "id": "openrouter-maintain",
+      "title": "OpenRouter maintain",
+      "verb": "maintain",
+      "summary": "Create or update managed inference API keys; optional --prune for hdc-tracked removals."
+    }
+  ],
+  "verbs": {
+    "maintain": {
+      "script": "run.mjs"
+    },
+    "query": {
+      "script": "run.mjs"
+    },
+    "health": {
+      "script": "run.mjs"
+    }
+  },
+  "operation_report": {
+    "next_steps": [
+      "Run `hdc run infrastructure openrouter query --` to verify credits and API key drift.",
+      "After maintain creates a key, ensure consumer services (e.g. hermes) have the inference vault key set.",
+      "Management key (`HDC_OPENROUTER_MANAGEMENT_API_KEY`) cannot be used for chat completions — use per-consumer inference keys."
+    ]
+  },
+  "health": {
+    "family": "infra-api"
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "id": "a",
+  "system_id": "virt-azure-compute-a",
+  "mode": "azure-vm",
+  "azure": {
+    "vm_size": "Standard_B2s",
+    "image": {
+      "publisher": "Canonical",
+      "offer": "0001-com-ubuntu-server-jammy",
+      "sku": "22_04-lts-gen2",
+      "version": "latest"
+    },
+    "os_disk_gb": 64,
+    "admin_username": "hdc",
+    "public_ip": true
+  }
+}

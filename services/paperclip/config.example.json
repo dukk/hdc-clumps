@@ -1,0 +1,100 @@
+{
+  "schema_version": 2,
+  "defaults": {
+    "mode": "proxmox-lxc",
+    "proxmox": {
+      "lxc": {
+        "ostemplate": "local:vztmpl/ubuntu-22.04-standard_22.04-1_amd64.tar.zst",
+        "storage": "local-lvm",
+        "rootfs_gb": 32,
+        "memory_mb": 8192,
+        "cores": 4,
+        "bridge": "vmbr0",
+        "ip_config": "dhcp",
+        "unprivileged": 0,
+        "features": "nesting=1,keyctl=1",
+        "onboot": 1
+      }
+    },
+    "paperclip": {
+      "image_tag": "latest",
+      "postgres_image_tag": "17-alpine",
+      "host_port": 3100,
+      "deployment_mode": "authenticated",
+      "deployment_exposure": "private",
+      "telemetry_disabled": true,
+      "better_auth_secret_vault_key": "HDC_PAPERCLIP_BETTER_AUTH_SECRET",
+      "db_password_vault_key": "HDC_PAPERCLIP_DB_PASSWORD",
+      "cursor_api_key_vault_key": "HDC_PAPERCLIP_CURSOR_API_KEY",
+      "anthropic_api_key_vault_key": "HDC_PAPERCLIP_ANTHROPIC_API_KEY",
+      "openai_api_key_vault_key": "HDC_PAPERCLIP_OPENAI_API_KEY",
+      "google_gemini_api_key_vault_key": "HDC_PAPERCLIP_GOOGLE_GEMINI_API_KEY",
+      "ollama_backends": [
+        {
+          "id": "ollama-a",
+          "url": "http://192.0.2.111:11434",
+          "primary": true,
+          "notes": "vm-ollama-a — matches clumps/services/ollama config"
+        },
+        {
+          "id": "ollama-b",
+          "url": "http://192.0.2.112:11434",
+          "notes": "vm-ollama-b"
+        }
+      ],
+      "company": {
+        "name": "Home Data Center",
+        "api_url": "https://paperclip.home.example.invalid",
+        "api_key_vault_key": "HDC_PAPERCLIP_API_KEY",
+        "hdc_web_url": "http://192.0.2.117:9120",
+        "skills_github_base": "https://github.com/dukk/hdc/tree/main/clumps/services/paperclip/skills",
+        "agents": [
+          {
+            "id": "hdc-manager",
+            "name": "HDC Manager",
+            "role": "manager",
+            "adapter_type": "cursor",
+            "desired_skills": ["paperclip", "hdc-agent-team"]
+          },
+          {
+            "id": "hdc-monitor",
+            "name": "HDC Monitor",
+            "role": "operator",
+            "adapter_type": "cursor",
+            "desired_skills": ["paperclip", "hdc-monitor"]
+          },
+          {
+            "id": "hdc-sre",
+            "name": "HDC SRE",
+            "role": "engineer",
+            "adapter_type": "cursor",
+            "desired_skills": ["paperclip", "hdc-sre", "hdc-agent-team"]
+          },
+          {
+            "id": "hdc-security",
+            "name": "HDC Security",
+            "role": "operator",
+            "adapter_type": "cursor",
+            "desired_skills": ["paperclip", "hdc-security"]
+          }
+        ]
+      }
+    },
+    "install": {
+      "enabled": true,
+      "compose_dir": "/opt/paperclip"
+    }
+  },
+  "deployments": [
+    {
+      "system_id": "paperclip-a",
+      "proxmox": {
+        "host_id": "hypervisor-a",
+        "lxc": {
+          "vmid": 0,
+          "hostname": "paperclip-a"
+        }
+      }
+    }
+  ]
+}

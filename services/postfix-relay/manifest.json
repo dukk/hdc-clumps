@@ -1,0 +1,31 @@
+{
+  "id": "postfix-relay",
+  "title": "Postfix SMTP relay (SMTP2GO smarthost)",
+  "env_required": [
+    "HDC_POSTFIX_RELAY_SMTP_USER",
+    "HDC_POSTFIX_RELAY_SMTP_PASSWORD"
+  ],
+  "inventory_docs": [
+    "operations/inventory/systems/postfix-relay-a.json"
+  ],
+  "operation_report": {
+    "next_steps": [
+      "Note the CT IP from deploy output; point LAN apps at smtp://<ct-ip>:25 or :587.",
+      "Optional: set access.nodes[0].ip on operations/inventory/systems/postfix-relay-a.json."
+    ]
+  },
+  "verbs": {
+    "deploy": {
+      "script": "run.mjs"
+    },
+    "maintain": {
+      "script": "run.mjs"
+    },
+    "query": {
+      "script": "run.mjs"
+    },
+    "health": {
+      "script": "run.mjs"
+    }
+  }
+}

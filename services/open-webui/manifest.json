@@ -1,0 +1,40 @@
+{
+  "id": "open-webui",
+  "title": "Open WebUI (Ollama chat UI)",
+  "env_required": [
+    "HDC_OPEN_WEBUI_SECRET_KEY"
+  ],
+  "inventory_docs": [
+    "operations/inventory/systems/open-webui-a.json",
+    "operations/inventory/services/open-webui.json"
+  ],
+  "operation_report": {
+    "next_steps": [
+      "Open the web_ui_url from deploy output (default host port 3000).",
+      "Register the first admin account if WEBUI_AUTH is enabled.",
+      "In Admin → Connections, verify each Ollama backend responds.",
+      "Set access.nodes[0].ip on operations/inventory/systems/open-webui-a.json from query --live."
+    ]
+  },
+  "verbs": {
+    "deploy": {
+      "script": "run.mjs"
+    },
+    "maintain": {
+      "script": "run.mjs"
+    },
+    "query": {
+      "script": "run.mjs"
+    },
+    "health": {
+      "script": "run.mjs"
+    },
+    "teardown": {
+      "script": "run.mjs"
+    }
+  },
+  "health": {
+    "path": "/",
+    "port": 3000
+  }
+}

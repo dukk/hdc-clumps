@@ -1,0 +1,51 @@
+{
+  "schema_version": 2,
+  "defaults": {
+    "mode": "proxmox-lxc",
+    "proxmox": {
+      "network": {
+        "gateway": "192.0.2.1"
+      },
+      "lxc": {
+        "ostemplate": "local:vztmpl/ubuntu-22.04-standard_22.04-1_amd64.tar.zst",
+        "storage": "local-lvm",
+        "rootfs_gb": 48,
+        "memory_mb": 8192,
+        "cores": 4,
+        "bridge": "vmbr0",
+        "ip_config": "dhcp",
+        "unprivileged": 0,
+        "features": "nesting=1,keyctl=1",
+        "onboot": 1
+      }
+    },
+    "dawarich": {
+      "image_tag": "latest",
+      "postgis_image_tag": "17-3.5-alpine",
+      "redis_image_tag": "7.4-alpine",
+      "host_port": 3000,
+      "rails_env": "production",
+      "public_url": null,
+      "time_zone": "America/Chicago",
+      "store_geodata": true,
+      "secret_key_base_vault_key": "HDC_DAWARICH_SECRET_KEY_BASE",
+      "db_password_vault_key": "HDC_DAWARICH_DB_PASSWORD"
+    },
+    "install": {
+      "enabled": true,
+      "compose_dir": "/opt/dawarich"
+    }
+  },
+  "deployments": [
+    {
+      "system_id": "dawarich-a",
+      "proxmox": {
+        "host_id": "REPLACE_PVE_NODE",
+        "lxc": {
+          "vmid": 0,
+          "hostname": "dawarich-a"
+        }
+      }
+    }
+  ]
+}

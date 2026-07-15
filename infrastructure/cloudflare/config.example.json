@@ -1,0 +1,49 @@
+{
+  "schema_version": 1,
+  "cloudflare": {
+    "api_base_url": "https://api.cloudflare.com/client/v4",
+    "account_id": null,
+    "zone_filter": {
+      "mode": "all",
+      "names": []
+    }
+  },
+  "defaults": {
+    "ttl": 300,
+    "proxied": false
+  },
+  // Package configs support JSONC comments and file includes when loaded by hdc.
+  // Optional: split zones into files under zones/ and reference them:
+  // { "$hdc.include": "zones/example.com.zone.json" },
+  "zones": [
+    {
+      "name": "example.com",
+      "records": [
+        { "type": "A", "name": "@", "data": "203.0.113.10", "ttl": 300, "proxied": false },
+        { "type": "CNAME", "name": "www", "data": "example.com", "proxied": false }
+      ],
+      "page_rules": [
+        {
+          "id": "force-https",
+          "priority": 1,
+          "status": "active",
+          "target": { "operator": "matches", "value": "*example.com/*" },
+          "actions": [{ "id": "always_use_https", "value": "on" }]
+        }
+      ],
+      "email_routing": {
+        "catch_all": { "enabled": false, "actions": [{ "type": "drop" }] }
+      },
+      "email_routing_rules": [
+        {
+          "id": "info-forward",
+          "name": "info@example.com",
+          "enabled": true,
+          "priority": 0,
+          "matchers": [{ "type": "literal", "field": "to", "value": "info@example.com" }],
+          "actions": [{ "type": "forward", "value": ["user@gmail.com"] }]
+        }
+      ]
+    }
+  ]
+}

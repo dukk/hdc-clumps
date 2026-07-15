@@ -1,0 +1,41 @@
+{
+  "id": "vllm",
+  "title": "vLLM OpenAI-compatible inference",
+  "env_required": [],
+  "inventory_docs": [
+    "operations/inventory/systems/vm-vllm-a.json (optional per instance)",
+    "operations/inventory/services/vllm.json",
+    "clumps/services/vllm/config.json (schema_version 2 deployments[]; QEMU only)",
+    "hdc run service vllm deploy — Proxmox QEMU + Docker vLLM (install.device cuda|cpu)",
+    "hdc run service vllm teardown — destroy QEMU guest; --dry-run, --yes, --instance <letter>"
+  ],
+  "operation_report": {
+    "next_steps": [
+      "OpenAI-compatible API: http://<guest-ip>:8000/v1 (or vllm.public_url when set).",
+      "Ensure HDC_HF_TOKEN is set in the vault before deploy (Hugging Face gated models).",
+      "For CUDA: complete VFIO/IOMMU on the Proxmox host and set proxmox.qemu.hostpci[] before deploy.",
+      "Optional: BIND A/CNAME + nginx-waf upstream http://<guest-ip>:8000 when exposing publicly."
+    ]
+  },
+  "verbs": {
+    "deploy": {
+      "script": "run.mjs"
+    },
+    "maintain": {
+      "script": "run.mjs"
+    },
+    "query": {
+      "script": "run.mjs"
+    },
+    "health": {
+      "script": "run.mjs"
+    },
+    "teardown": {
+      "script": "run.mjs"
+    }
+  },
+  "health": {
+    "path": "/health",
+    "port": 8000
+  }
+}

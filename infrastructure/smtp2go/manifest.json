@@ -1,0 +1,43 @@
+{
+  "id": "smtp2go",
+  "title": "SMTP2GO",
+  "env_required": [],
+  "inventory_docs": [
+    "clumps/infrastructure/smtp2go/config.json"
+  ],
+  "services": [
+    {
+      "id": "smtp2go-query",
+      "title": "SMTP2GO query",
+      "verb": "query",
+      "summary": "Diff sender domains vs config; optional --import from live API (JSON on stdout)."
+    },
+    {
+      "id": "smtp2go-maintain",
+      "title": "SMTP2GO maintain",
+      "verb": "maintain",
+      "summary": "Add missing sender domains and trigger verification for managed entries."
+    }
+  ],
+  "verbs": {
+    "maintain": {
+      "script": "run.mjs"
+    },
+    "query": {
+      "script": "run.mjs"
+    },
+    "health": {
+      "script": "run.mjs"
+    }
+  },
+  "operation_report": {
+    "next_steps": [
+      "Run `hdc run infrastructure smtp2go query --` to verify sender domains and DNS checklists.",
+      "Apply dns_checklist rows via Cloudflare or BIND, then re-run query until DKIM and return-path verify.",
+      "SMTP relay credentials remain in postfix-relay (`HDC_POSTFIX_RELAY_SMTP_*`), not this package."
+    ]
+  },
+  "health": {
+    "family": "infra-api"
+  }
+}

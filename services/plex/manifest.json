@@ -1,0 +1,39 @@
+{
+  "id": "plex",
+  "title": "Plex Media Server (Synology native package)",
+  "env_required": [],
+  "inventory_docs": [
+    "operations/inventory/systems/plex-a.json",
+    "operations/inventory/systems/nas-a.json",
+    "operations/inventory/services/plex.json"
+  ],
+  "operation_report": {
+    "next_steps": [
+      "Open the web UI at http://<nas-ip>:32400/web (or ui_url from query --live).",
+      "First install: use DSM Package Center or manual .spk from Plex.tv; set install.enabled false to adopt an existing server.",
+      "Run synology-nas maintain first if SSH keys or Container Manager are not yet configured.",
+      "Libraries and Plex account linking remain in the Plex web UI; hdc does not store Plex credentials."
+    ]
+  },
+  "verbs": {
+    "deploy": {
+      "script": "run.mjs"
+    },
+    "maintain": {
+      "script": "run.mjs"
+    },
+    "query": {
+      "script": "run.mjs"
+    },
+    "health": {
+      "script": "run.mjs"
+    },
+    "teardown": {
+      "script": "run.mjs"
+    }
+  },
+  "health": {
+    "family": "synology",
+    "path": "/identity"
+  }
+}

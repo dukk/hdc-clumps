@@ -1,0 +1,134 @@
+#!/usr/bin/env node
+/**
+ * Query A2A Registry deployments (config summary + optional live CT status).
+ *
+ * Usage: hdc run service a2a-registry query -- [--instance a]
+ *        hdc run service a2a-registry query -- --live
+ */
+import { basename, dirname, join, relative } from "node:path";
+import { fileURLToPath } from "node:url";
+import { stderr as errout } from "node:process";
+
+import { repoRoot } from "hdc/cli/paths.mjs";
+import { parseArgvFlags, flagGet } from "hdc/package/parse-argv-flags.mjs";
+import {
+  listA2aRegistryDeploymentSummaries,
+  normalizeA2aRegistryConfig,
+  resolveA2aRegistryDeployments,
+} from "hdc/package/deployments.mjs";
+import { resolvePveSshForHost } from "hdc/package/a2a-registry-install.mjs";
+import { queryA2aRegistryInCt } from "hdc/package/query-status.mjs";
+import { tryLoadClumpConfigFromClumpRoot } from "hdc/package/clump-run-config.mjs";
+
+const here = dirname(fileURLToPath(import.meta.url));
+const clumpRoot = join(here, "..");
+const CLUMP_CONFIG_EXAMPLE = "clumps/services/a2a-registry/config.example.json";
+
+const target = basename(dirname(here));
+const verb = basename(here);
+const root = repoRoot();
+const proxmoxRoot = join(root, "clumps", "infrastructure", "proxmox");
+
+/** @param {unknown} v */
+function isObject(v) {
+  return v !== null && typeof v === "object" && !Array.isArray(v);
+}
+
+async function main() {
+  const loaded = tryLoadClumpConfigFromClumpRoot(clumpRoot, { exampleRel: CLUMP_CONFIG_EXAMPLE });
+  const rel =
+    (typeof loaded.rel === "string" && loaded.rel) ||
+    relative(root, loaded.path || join(clumpRoot, "config.json")).replace(/\\/g, "/");
+  const cfg = loaded.ok && isObject(loaded.data) ? loaded.data : null;
+  const flags = parseArgvFlags(process.argv.slice(2));
+  const live = flagGet(flags, "live") !== undefined;
+
+  errout.write(`[hdc] ${target} ${verb}: config ${rel} ${loaded.ok ? "loaded" : "not loaded"}.\n`);
+
+  /** @type {unknown[]} */
+  let deployments = [];
+  /** @type {string | null} */
+  let configError = null;
+  let schemaVersion = null;
+
+  if (cfg) {
+    try {
+      const norm = normalizeA2aRegistryConfig(cfg);
+      schemaVersion = norm.schemaVersion;
+      deployments = listA2aRegistryDeploymentSummaries(cfg);
+    } catch (e) {
+      configError = String(/** @type {Error} */ (e).message || e);
+    }
+  }
+
+  /** @type {Record<string, unknown>[]} */
+  const liveResults = [];
+
+  if (live && cfg && !configError) {
+    let selected;
+    try {
+      selected = resolveA2aRegistryDeployments(cfg, flags);
+    } catch (e) {
+      configError = String(/** @type {Error} */ (e).message || e);
+    }
+    if (selected) {
+      for (const d of selected) {
+        const px = isObject(d.proxmox) ? d.proxmox : {};
+        const hostId = typeof px.host_id === "string" ? px.host_id.trim() : "";
+        const lxc = isObject(px.lxc) ? px.lxc : {};
+        const vmid = typeof lxc.vmid === "number" ? lxc.vmid : Number(lxc.vmid);
+        if (!hostId || !Number.isFinite(vmid)) {
+          liveResults.push({
+            system_id: d.systemId,
+            ok: false,
+            message: "missing host_id or vmid",
+          });
+          continue;
+        }
+        errout.write(`[hdc] ${target} ${verb}: live query ${d.systemId} vmid ${vmid} …\n`);
+        try {
+          const pveSsh = resolvePveSshForHost(proxmoxRoot, hostId);
+          const status = await queryA2aRegistryInCt(
+            pveSsh.user,
+            pveSsh.host,
+            vmid,
+            d.a2a_registry,
+            d.install,
+          );
+          liveResults.push({ system_id: d.systemId, ok: true, ...status });
+        } catch (e) {
+          liveResults.push({
+            system_id: d.systemId,
+            ok: false,
+            message: String(/** @type {Error} */ (e).message || e),
+          });
+        }
+      }
+    }
+  }
+
+  const payload = {
+    ok: !configError && (loaded.ok || loaded.missing),
+    target,
+    verb,
+    config_path: rel,
+    config_loaded: loaded.ok,
+    config_missing: loaded.missing === true,
+    schema_version: schemaVersion,
+    config_error: configError,
+    deployments,
+    live,
+    live_results: live ? liveResults : undefined,
+  };
+
+  process.stdout.write(`${JSON.stringify(payload, null, 2)}\n`);
+  process.exitCode = configError ? 1 : 0;
+}
+
+main().catch((e) => {
+  errout.write(`[hdc] ${target} ${verb}: fatal: ${/** @type {Error} */ (e).stack || e}\n`);
+  process.stdout.write(
+    `${JSON.stringify({ ok: false, target, verb, message: String(/** @type {Error} */ (e).message || e) }, null, 2)}\n`,
+  );
+  process.exitCode = 1;
+});

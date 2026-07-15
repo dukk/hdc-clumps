@@ -1,0 +1,62 @@
+{
+  "schema_version": 1,
+  "deploy": {
+    "mode": "proxmox-lxc",
+    "system_id": "postfix-relay-a",
+    "skip_provision": false
+  },
+  "proxmox": {
+    "host_id": "hypervisor-a",
+    "lxc": {
+      "vmid": 489,
+      "hostname": "postfix-relay",
+      "ostemplate": "local:vztmpl/ubuntu-22.04-standard_22.04-1_amd64.tar.zst",
+      "storage": "local-lvm",
+      "rootfs_gb": 8,
+      "memory_mb": 512,
+      "cores": 1,
+      "bridge": "vmbr0",
+      "ip_config": "192.0.2.60/24,gw=192.0.2.1",
+      "unprivileged": 1,
+      "onboot": 1,
+      "startup": { "order": 3 }
+    }
+  },
+  "configure": {
+    "via": "pct",
+    "ssh": {
+      "host": "192.0.2.48"
+    }
+  },
+  "wazuh": {
+    "log_collection": [{ "location": "/var/log/mail.log", "log_format": "syslog" }]
+  },
+  "postfix": {
+    "myhostname": "postfix-relay.lan.example",
+    "myorigin": "example.com",
+    "mynetworks": "127.0.0.0/8 [::ffff:127.0.0.0]/104 [::1]/128 192.0.2.0/24",
+    "inet_interfaces": "all",
+    "transport": [
+      {
+        "domain": "hdc.example.invalid",
+        "nexthop": "relay:[192.0.2.62]:25"
+      }
+    ]
+  },
+  "smtp": {
+    "provider": "smtp2go",
+    "relayhost": "[mail.smtp2go.com]:587",
+    "auth_user_vault_key": "HDC_POSTFIX_RELAY_SMTP_USER",
+    "auth_pass_vault_key": "HDC_POSTFIX_RELAY_SMTP_PASSWORD",
+    "auth_user_env": "HDC_POSTFIX_RELAY_SMTP_USER",
+    "tls_security_level": "encrypt"
+  },
+  "client_defaults": {
+    "relayhost": "[192.0.2.60]",
+    "relay_hostname": "postfix-relay.home.example.invalid",
+    "relay_port": 25,
+    "myorigin": "hdc.example.invalid",
+    "default_from": "noreply@hdc.example.invalid",
+    "inet_interfaces": "loopback-only"
+  }
+}

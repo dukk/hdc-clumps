@@ -1,0 +1,44 @@
+{
+  "id": "rustfs",
+  "title": "RustFS S3 object storage cluster",
+  "env_required": [
+    "HDC_RUSTFS_ACCESS_KEY",
+    "HDC_RUSTFS_SECRET_KEY"
+  ],
+  "inventory_docs": [
+    "operations/inventory/systems/rustfs-a.json",
+    "operations/inventory/systems/rustfs-b.json",
+    "operations/inventory/systems/rustfs-c.json",
+    "operations/inventory/systems/rustfs-d.json",
+    "operations/inventory/services/rustfs.json"
+  ],
+  "operation_report": {
+    "next_steps": [
+      "Set access.nodes[].ip on operations/inventory/systems/rustfs-{a,b,c,d}.json from query --live ct_ip per node.",
+      "Ensure internal DNS (BIND) resolves each node hostname used in RUSTFS_VOLUMES (rustfs-a … rustfs-d or FQDNs from cluster_dns_suffix).",
+      "Set vault HDC_RUSTFS_ACCESS_KEY and HDC_RUSTFS_SECRET_KEY before production use (auto-generated on first deploy if missing).",
+      "Add BIND A records for rustfs.s3_public_url and rustfs.console_public_url hostnames → nginx-waf WAN IP.",
+      "Add nginx-waf sites: S3 API upstream pool to all four CT IPs on port 9000 with client_max_body_size \"0\"; console site to port 9001 on a healthy node.",
+      "Run: node apps/hdc-cli/cli.mjs run service bind maintain --",
+      "Run: node apps/hdc-cli/cli.mjs run service nginx-waf maintain -- --site rustfs-s3 --site rustfs-console",
+      "LAN S3 endpoint: http://<ct-ip>:9000; console: http://<ct-ip>:9001 (default credentials must be rotated after first login)."
+    ]
+  },
+  "verbs": {
+    "deploy": {
+      "script": "run.mjs"
+    },
+    "maintain": {
+      "script": "run.mjs"
+    },
+    "query": {
+      "script": "run.mjs"
+    },
+    "health": {
+      "script": "run.mjs"
+    },
+    "teardown": {
+      "script": "run.mjs"
+    }
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "id": "2.0.192.in-addr.arpa",
+  "zone_type": "reverse",
+  "subnet": "192.0.2.0/24",
+  "records": []
+}

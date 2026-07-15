@@ -1,0 +1,19 @@
+{
+  "id": "public",
+  "slug": "public",
+  "title": "HDC Public Status",
+  "theme": "auto",
+  "published": true,
+  "show_tags": true,
+  "managed": true,
+  "groups": [
+    {
+      "name": "Infrastructure",
+      "weight": 1,
+      "monitors": [
+        { "id": "pi-hole-a" },
+        { "id": "bind-a" }
+      ]
+    }
+  ]
+}

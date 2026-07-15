@@ -1,0 +1,36 @@
+{
+  "id": "cloudbeaver",
+  "title": "CloudBeaver Community database manager",
+  "env_required": [
+    "HDC_CLOUDBEAVER_ADMIN_PASSWORD"
+  ],
+  "inventory_docs": [
+    "operations/inventory/systems/cloudbeaver-a.json",
+    "operations/inventory/services/cloudbeaver.json"
+  ],
+  "operation_report": {
+    "next_steps": [
+      "Open http://<ct-ip>:8978 from the LAN and sign in with cloudbeaver.admin.username (vault HDC_CLOUDBEAVER_ADMIN_PASSWORD).",
+      "Set access.nodes[0].ip on operations/inventory/systems/cloudbeaver-a.json from query --live upstream_url.",
+      "Add database connections in the UI (e.g. PostgreSQL on vm-postgres-a via host.docker.internal or LAN IP).",
+      "Optional later: set cloudbeaver.public_url, add BIND A record and nginx-waf upstream with internal_only access."
+    ]
+  },
+  "verbs": {
+    "deploy": {
+      "script": "run.mjs"
+    },
+    "maintain": {
+      "script": "run.mjs"
+    },
+    "query": {
+      "script": "run.mjs"
+    },
+    "health": {
+      "script": "run.mjs"
+    },
+    "teardown": {
+      "script": "run.mjs"
+    }
+  }
+}

@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "wol": {
+    "enabled": true,
+    "broadcast": "192.0.2.255",
+    "port": 9,
+    "packets": 3,
+    "wait_seconds": 180,
+    "poll_interval_seconds": 10
+  },
+  "bootstrap_hosts": [],
+  "mail_relay": {
+    "enabled": true
+  },
+  "hosts": [
+    {
+      "id": "ws-example",
+      "os": "ubuntu",
+      "enabled": true,
+      "updates": { "enabled": true },
+      "auth": { "ssh_user_env": "HDC_CLIENT_SSH_USER" },
+      "access": {
+        "nodes": [
+          {
+            "name": "primary",
+            "ip": "192.0.2.0",
+            "mac": "11:22:33:44:55:66",
+            "ssh": "ssh://user@192.0.2.0"
+          }
+        ]
+      }
+    }
+  ]
+}

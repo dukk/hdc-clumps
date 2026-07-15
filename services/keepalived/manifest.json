@@ -1,0 +1,38 @@
+{
+  "id": "keepalived",
+  "title": "Keepalived VRRP and LVS load balancing",
+  "env_required": [
+    "HDC_KEEPALIVED_AUTH_PASS"
+  ],
+  "inventory_docs": [
+    "operations/inventory/systems/vm-keepalived-a.json",
+    "operations/inventory/systems/vm-keepalived-b.json",
+    "operations/inventory/services/keepalived.json",
+    "clumps/services/keepalived/config.json (copy config.example.json)"
+  ],
+  "operation_report": {
+    "next_steps": [
+      "Run query --live and confirm the MASTER director holds the configured VIP.",
+      "Add a BIND A record pointing at the VIP when exposing a service hostname.",
+      "Point nginx-waf or other upstream consumers at the VIP instead of individual node IPs.",
+      "Set access.nodes[].ip on director inventory sidecars from deploy/query output."
+    ]
+  },
+  "verbs": {
+    "deploy": {
+      "script": "run.mjs"
+    },
+    "maintain": {
+      "script": "run.mjs"
+    },
+    "query": {
+      "script": "run.mjs"
+    },
+    "health": {
+      "script": "run.mjs"
+    },
+    "teardown": {
+      "script": "run.mjs"
+    }
+  }
+}

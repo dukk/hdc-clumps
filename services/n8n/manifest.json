@@ -1,0 +1,42 @@
+{
+  "id": "n8n",
+  "title": "n8n workflow automation",
+  "env_required": [
+    "HDC_N8N_ENCRYPTION_KEY"
+  ],
+  "inventory_docs": [
+    "operations/inventory/systems/n8n-a.json",
+    "operations/inventory/services/n8n.json"
+  ],
+  "operation_report": {
+    "next_steps": [
+      "Set access.nodes[0].ip on operations/inventory/systems/n8n-a.json from query --live upstream_url.",
+      "Add a BIND forward A record when using a public hostname.",
+      "Configure nginx-waf sites[] with proxy_pass to the CT upstream (http://<ct-ip>:5678).",
+      "Open the n8n web UI (public_url or CT IP:5678) and complete first-run owner setup.",
+      "Keep HDC_N8N_ENCRYPTION_KEY backed up — losing it makes stored credentials unrecoverable."
+    ]
+  },
+  "verbs": {
+    "deploy": {
+      "script": "run.mjs"
+    },
+    "maintain": {
+      "script": "run.mjs"
+    },
+    "query": {
+      "script": "run.mjs"
+    },
+    "health": {
+      "script": "run.mjs"
+    },
+    "teardown": {
+      "script": "run.mjs"
+    }
+  },
+  "health": {
+    "family": "docker-lxc",
+    "path": "/healthz",
+    "port": 5678
+  }
+}

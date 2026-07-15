@@ -1,0 +1,37 @@
+{
+  "id": "openspeedtest",
+  "title": "OpenSpeedTest LAN speed test",
+  "env_required": [],
+  "inventory_docs": [
+    "operations/inventory/systems/openspeedtest-a.json",
+    "operations/inventory/services/openspeedtest.json"
+  ],
+  "operation_report": {
+    "next_steps": [
+      "Open http://<ct-ip>:3000 from the LAN and run a speed test.",
+      "Set access.nodes[0].ip on operations/inventory/systems/openspeedtest-a.json from query --live upstream_url.",
+      "Optional later: set openspeedtest.public_url, add BIND A record and nginx-waf upstream when exposing via HTTPS."
+    ]
+  },
+  "verbs": {
+    "deploy": {
+      "script": "run.mjs"
+    },
+    "maintain": {
+      "script": "run.mjs"
+    },
+    "query": {
+      "script": "run.mjs"
+    },
+    "health": {
+      "script": "run.mjs"
+    },
+    "teardown": {
+      "script": "run.mjs"
+    }
+  },
+  "health": {
+    "path": "/",
+    "port": 3000
+  }
+}

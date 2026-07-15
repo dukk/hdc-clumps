@@ -1,0 +1,97 @@
+{
+  "schema_version": 2,
+  "defaults": {
+    "mode": "proxmox-qemu",
+    "proxmox": {
+      "network": {
+        "gateway": "192.0.2.1"
+      },
+      "qemu": {
+        "template_vmid": 9024,
+        "storage": "local-lvm",
+        "full": 1,
+        "bridge": "vmbr0",
+        "memory_mb": 8192,
+        "cores": 4,
+        "rootfs_gb": 48
+      }
+    },
+    "hermes": {
+      "image_tag": "v2026.6.5",
+      "api_port": 8642,
+      "dashboard_port": 9119,
+      "dashboard_enabled": true,
+      "dashboard_username": "admin",
+      "openrouter_api_key_vault_key": "HDC_HERMES_OPENROUTER_API_KEY",
+      "dashboard_password_vault_key": "HDC_HERMES_DASHBOARD_PASSWORD",
+      "dashboard_auth_secret_vault_key": "HDC_HERMES_DASHBOARD_AUTH_SECRET",
+      "searxng_url": "http://192.0.2.135:8080",
+      "ollama_backends": [
+        {
+          "id": "ollama-a",
+          "url": "http://192.0.2.111:11434",
+          "primary": true,
+          "notes": "vm-ollama-a — matches clumps/services/ollama config"
+        },
+        {
+          "id": "ollama-b",
+          "url": "http://192.0.2.112:11434",
+          "notes": "vm-ollama-b"
+        }
+      ],
+      "model": {
+        "default": "qwen3.5:cloud",
+        "context_length": 64000
+      },
+      "fallback_providers": [
+        {
+          "provider": "openrouter",
+          "model": "anthropic/claude-sonnet-4"
+        }
+      ],
+      "agent": {
+        "api_timeout": 1800
+      },
+      "discord": {
+        "enabled": true,
+        "bot_token_vault_key": "HDC_HERMES_DISCORD_BOT_TOKEN",
+        "require_mention": true
+      },
+      "env_extra": {}
+    },
+    "install": {
+      "enabled": true,
+      "compose_dir": "/opt/hermes",
+      "data_subdir": "data"
+    }
+  },
+  "deployments": [
+    {
+      "system_id": "hermes-a",
+      "proxmox": {
+        "host_id": "pve-a",
+        "qemu": {
+          "vmid": 501,
+          "template_vmid": 9024,
+          "ip": "192.0.2.113/24",
+          "hostname": "hermes-a"
+        }
+      },
+      "configure": {
+        "ssh": { "host": "192.0.2.113" }
+      }
+    }
+  ],
+  "_comment_lxc_example": {
+    "system_id": "hermes-a",
+    "mode": "proxmox-lxc",
+    "proxmox": {
+      "host_id": "pve-a",
+      "lxc": {
+        "vmid": 501,
+        "hostname": "hermes-a",
+        "ip_config": "192.0.2.113/24,gw=192.0.2.1"
+      }
+    }
+  }
+}

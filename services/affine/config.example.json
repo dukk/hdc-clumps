@@ -1,0 +1,60 @@
+{
+  "schema_version": 2,
+  "defaults": {
+    "mode": "proxmox-lxc",
+    "proxmox": {
+      "network": {
+        "gateway": "192.0.2.1"
+      },
+      "lxc": {
+        "ostemplate": "local:vztmpl/ubuntu-22.04-standard_22.04-1_amd64.tar.zst",
+        "storage": "local-lvm",
+        "rootfs_gb": 32,
+        "memory_mb": 4096,
+        "cores": 4,
+        "bridge": "vmbr0",
+        "ip_config": "dhcp",
+        "unprivileged": 0,
+        "features": "nesting=1,keyctl=1",
+        "onboot": 1
+      }
+    },
+    "affine": {
+      "revision": "stable",
+      "host_port": 3010,
+      "postgres_image": "pgvector/pgvector:pg16",
+      "redis_image": "redis:7.4-alpine",
+      "indexer_enabled": false,
+      "db_username": "affine",
+      "db_database": "affine",
+      "db_password_vault_key": "HDC_AFFINE_DB_PASSWORD",
+      "mail": {
+        "enabled": false,
+        "from": "noreply@hdc.example.invalid"
+      },
+      "copilot": {
+        "enabled": false,
+        "base_url": "http://192.0.2.116:4000/v1",
+        "api_key_vault_key": "HDC_LITELLM_MASTER_KEY",
+        "model": "qwen35-cloud",
+        "old_api_style": true
+      }
+    },
+    "install": {
+      "enabled": true,
+      "compose_dir": "/opt/affine"
+    }
+  },
+  "deployments": [
+    {
+      "system_id": "affine-a",
+      "proxmox": {
+        "host_id": "REPLACE_PVE_NODE",
+        "lxc": {
+          "vmid": 0,
+          "hostname": "affine-a"
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,39 @@
+{
+  "id": "unleash",
+  "title": "Unleash feature flags",
+  "env_required": [
+    "HDC_UNLEASH_ADMIN_PASSWORD",
+    "HDC_UNLEASH_DB_PASSWORD"
+  ],
+  "inventory_docs": [
+    "operations/inventory/systems/unleash-a.json",
+    "operations/inventory/services/unleash.json"
+  ],
+  "operation_report": {
+    "next_steps": [
+      "Set access.nodes[0].ip on operations/inventory/systems/unleash-a.json from query --live upstream_url.",
+      "Add a BIND forward A record when using a public hostname.",
+      "Configure nginx-waf sites[] with proxy_pass to the CT upstream (http://<ct-ip>:4242).",
+      "Log in to Unleash with unleash.admin_user and the vault admin password.",
+      "Create backend and frontend API tokens in the Unleash UI (do not use upstream dev tokens).",
+      "Keep HDC_UNLEASH_DB_PASSWORD backed up — losing it makes the Postgres volume unrecoverable."
+    ]
+  },
+  "verbs": {
+    "deploy": {
+      "script": "run.mjs"
+    },
+    "maintain": {
+      "script": "run.mjs"
+    },
+    "query": {
+      "script": "run.mjs"
+    },
+    "health": {
+      "script": "run.mjs"
+    },
+    "teardown": {
+      "script": "run.mjs"
+    }
+  }
+}

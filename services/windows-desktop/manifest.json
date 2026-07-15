@@ -1,0 +1,36 @@
+{
+  "id": "windows-desktop",
+  "title": "Windows 11 desktop (Proxmox QEMU)",
+  "env_required": [
+    "HDC_WINDOWS_DESKTOP_ADMIN_PASSWORD"
+  ],
+  "inventory_docs": [
+    "operations/inventory/systems/vm-win11-a.json",
+    "operations/inventory/services/windows-desktop.json"
+  ],
+  "operation_report": {
+    "next_steps": [
+      "Confirm Windows activation in Settings (OEM MSDM/SLIC requires one VM per hypervisor).",
+      "Connect via RDP to the static IP from config (or DHCP if unset).",
+      "Run query --live after install completes to verify VM power state and OEM assignment.",
+      "Install remaining drivers from the virtio-win ISO if setup did not finish unattended."
+    ]
+  },
+  "verbs": {
+    "deploy": {
+      "script": "run.mjs"
+    },
+    "maintain": {
+      "script": "run.mjs"
+    },
+    "query": {
+      "script": "run.mjs"
+    },
+    "health": {
+      "script": "run.mjs"
+    },
+    "teardown": {
+      "script": "run.mjs"
+    }
+  }
+}

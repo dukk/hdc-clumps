@@ -1,0 +1,90 @@
+{
+  "schema_version": 2,
+  "defaults": {
+    "mode": "proxmox-lxc",
+    "proxmox": {
+      "lxc": {
+        "ostemplate": "local:vztmpl/ubuntu-22.04-standard_22.04-1_amd64.tar.zst",
+        "storage": "local-lvm",
+        "rootfs_gb": 4,
+        "memory_mb": 512,
+        "cores": 1,
+        "bridge": "vmbr0",
+        "ip_config": "dhcp",
+        "unprivileged": 1,
+        "onboot": 1
+      }
+    },
+    "gatus": {
+      "version": "v5.36.0",
+      "listen_port": 8080,
+      "config_path": "/opt/gatus/config/config.yaml",
+      "endpoints": [
+        {
+          "name": "proxmox-hypervisor-a",
+          "group": "infrastructure",
+          "url": "https://192.0.2.11:8006",
+          "interval": "5m",
+          "conditions": ["[STATUS] == 200"]
+        },
+        {
+          "name": "pi-hole-dns",
+          "group": "dns",
+          "url": "tcp://192.0.2.53:53",
+          "interval": "1m",
+          "conditions": ["[CONNECTED] == true"]
+        },
+        {
+          "name": "bind-a-dns",
+          "group": "dns",
+          "url": "tcp://192.0.2.2:53",
+          "interval": "1m",
+          "conditions": ["[CONNECTED] == true"]
+        },
+        {
+          "name": "bind-b-dns",
+          "group": "dns",
+          "url": "tcp://192.0.2.3:53",
+          "interval": "1m",
+          "conditions": ["[CONNECTED] == true"]
+        },
+        {
+          "name": "step-ca",
+          "group": "infrastructure",
+          "url": "https://192.0.2.190/health",
+          "interval": "5m",
+          "conditions": ["[STATUS] == 200"],
+          "client": { "insecure": true }
+        },
+        {
+          "name": "greenbone",
+          "group": "security",
+          "url": "tcp://192.0.2.204:9392",
+          "interval": "5m",
+          "conditions": ["[CONNECTED] == true"]
+        }
+      ],
+      "config_yaml_extra": null,
+      "mail": {
+        "enabled": false,
+        "to": "ops@example.invalid",
+        "from": "noreply@example.invalid"
+      }
+    },
+    "install": {
+      "enabled": true
+    }
+  },
+  "deployments": [
+    {
+      "system_id": "gatus-a",
+      "proxmox": {
+        "host_id": "hypervisor-a",
+        "lxc": {
+          "vmid": 140,
+          "hostname": "gatus-a"
+        }
+      }
+    }
+  ]
+}

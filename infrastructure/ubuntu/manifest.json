@@ -1,0 +1,46 @@
+{
+  "id": "ubuntu",
+  "title": "Ubuntu server",
+  "env_required": [],
+  "inventory_docs": [
+    "clumps/infrastructure/ubuntu/config.json — bootstrap_hosts for SSH"
+  ],
+  "services": [
+    {
+      "id": "docker-create",
+      "title": "Create Docker container",
+      "verb": "deploy",
+      "invoke": "create-container",
+      "summary": "Run a container on an Ubuntu host over SSH (bootstrap_hosts in config.json)."
+    },
+    {
+      "id": "bootstrap-hdc-user",
+      "title": "Bootstrap hdc user",
+      "verb": "maintain",
+      "summary": "Create/update the hdc Linux user on bootstrap_hosts; passwords stored in vault."
+    },
+    {
+      "id": "host-query",
+      "title": "Host query stub",
+      "verb": "query",
+      "summary": "Placeholder query verb for future health checks."
+    }
+  ],
+  "verbs": {
+    "deploy": {
+      "script": "run.mjs"
+    },
+    "maintain": {
+      "script": "run.mjs"
+    },
+    "query": {
+      "script": "run.mjs"
+    },
+    "health": {
+      "script": "run.mjs"
+    }
+  },
+  "health": {
+    "family": "client"
+  }
+}

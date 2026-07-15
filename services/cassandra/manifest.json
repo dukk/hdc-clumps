@@ -1,0 +1,26 @@
+{
+  "id": "cassandra",
+  "title": "Apache Cassandra cluster",
+  "env_required": [
+    "HDC_CASSANDRA_SUPERUSER_PASSWORD"
+  ],
+  "inventory_docs": [
+    "operations/inventory/systems/vm-cassandra-a.json",
+    "operations/inventory/systems/vm-cassandra-b.json",
+    "operations/inventory/systems/vm-cassandra-c.json"
+  ],
+  "verbs": {
+    "deploy": {
+      "script": "run.mjs"
+    },
+    "maintain": {
+      "script": "run.mjs"
+    },
+    "query": {
+      "script": "run.mjs"
+    },
+    "health": {
+      "script": "run.mjs"
+    }
+  }
+}

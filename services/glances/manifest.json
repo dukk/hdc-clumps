@@ -1,0 +1,33 @@
+{
+  "id": "glances",
+  "title": "Glances system monitoring",
+  "env_required": [],
+  "inventory_docs": [
+    "operations/inventory/systems/glances-a.json",
+    "operations/inventory/services/glances.json"
+  ],
+  "operation_report": {
+    "next_steps": [
+      "Open https://glances.example.invalid from the LAN (internal_only on nginx-waf) or http://<ct-ip>:61208.",
+      "Set access.nodes[0].ip on operations/inventory/systems/glances-a.json from query --live upstream_url.",
+      "Optional: set glances.browser_mode true to enable LAN server discovery in the Web UI."
+    ]
+  },
+  "verbs": {
+    "deploy": {
+      "script": "run.mjs"
+    },
+    "maintain": {
+      "script": "run.mjs"
+    },
+    "query": {
+      "script": "run.mjs"
+    },
+    "health": {
+      "script": "run.mjs"
+    },
+    "teardown": {
+      "script": "run.mjs"
+    }
+  }
+}

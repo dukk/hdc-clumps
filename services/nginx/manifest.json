@@ -1,0 +1,29 @@
+{
+  "id": "nginx",
+  "title": "Nginx web reverse proxy",
+  "env_required": [
+    "HDC_NGINX_LE_EMAIL"
+  ],
+  "inventory_docs": [
+    "operations/inventory/systems/vm-nginx-a.json"
+  ],
+  "verbs": {
+    "deploy": {
+      "script": "run.mjs"
+    },
+    "maintain": {
+      "script": "run.mjs"
+    },
+    "query": {
+      "script": "run.mjs"
+    },
+    "health": {
+      "script": "run.mjs"
+    }
+  },
+  "health": {
+    "family": "self-edge",
+    "path": "/",
+    "port": 80
+  }
+}

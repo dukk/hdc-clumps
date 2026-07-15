@@ -1,0 +1,43 @@
+{
+  "id": "litellm",
+  "title": "LiteLLM (OpenAI-compatible AI gateway)",
+  "env_required": [
+    "HDC_LITELLM_MASTER_KEY",
+    "HDC_LITELLM_SALT_KEY",
+    "HDC_LITELLM_DB_PASSWORD"
+  ],
+  "inventory_docs": [
+    "operations/inventory/systems/litellm-a.json",
+    "operations/inventory/services/litellm.json"
+  ],
+  "operation_report": {
+    "next_steps": [
+      "Open the ui_url from deploy output (default http://<ip>:4000/ui).",
+      "Verify GET /health/liveliness returns 200.",
+      "Create virtual API keys in the admin UI for downstream apps.",
+      "Point consumers (Hermes, Open WebUI, n8n) at http://<ip>:4000/v1 with a virtual key or master key.",
+      "Set access.nodes[0].ip on operations/inventory/systems/litellm-a.json from query --live."
+    ]
+  },
+  "verbs": {
+    "deploy": {
+      "script": "run.mjs"
+    },
+    "maintain": {
+      "script": "run.mjs"
+    },
+    "query": {
+      "script": "run.mjs"
+    },
+    "health": {
+      "script": "run.mjs"
+    },
+    "teardown": {
+      "script": "run.mjs"
+    }
+  },
+  "health": {
+    "path": "/health/liveliness",
+    "port": 4000
+  }
+}

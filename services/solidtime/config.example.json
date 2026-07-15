@@ -1,0 +1,45 @@
+{
+  "schema_version": 2,
+  "defaults": {
+    "mode": "proxmox-lxc",
+    "proxmox": {
+      "lxc": {
+        "ostemplate": "local:vztmpl/ubuntu-22.04-standard_22.04-1_amd64.tar.zst",
+        "storage": "local-lvm",
+        "rootfs_gb": 12,
+        "memory_mb": 4096,
+        "cores": 4,
+        "bridge": "vmbr0",
+        "ip_config": "dhcp",
+        "unprivileged": 1,
+        "onboot": 1
+      }
+    },
+    "solidtime": {
+      "version": "v0.12.2",
+      "app_url": null,
+      "enable_registration": true,
+      "mail_mailer": "log",
+      "db_password_vault_key": "HDC_SOLIDTIME_DB_PASSWORD",
+      "mail": {
+        "enabled": false,
+        "from": "noreply@example.invalid"
+      }
+    },
+    "install": {
+      "enabled": true
+    }
+  },
+  "deployments": [
+    {
+      "system_id": "solidtime-a",
+      "proxmox": {
+        "host_id": "hypervisor-b",
+        "lxc": {
+          "vmid": 0,
+          "hostname": "solidtime-a"
+        }
+      }
+    }
+  ]
+}

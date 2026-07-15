@@ -1,0 +1,38 @@
+{
+  "id": "greenbone",
+  "title": "Greenbone Community Edition",
+  "env_required": [
+    "HDC_GREENBONE_ADMIN_PASSWORD"
+  ],
+  "inventory_docs": [
+    "operations/inventory/systems/greenbone-a.json",
+    "operations/inventory/services/greenbone.json"
+  ],
+  "operation_report": {
+    "next_steps": [
+      "Set access.nodes[0].ip on operations/inventory/systems/greenbone-a.json from query output.",
+      "Wait for initial feed/bootstrap completion before first scans (can take a long time).",
+      "Open the Greenbone UI and rotate default/admin credentials if required by your image tag."
+    ]
+  },
+  "verbs": {
+    "deploy": {
+      "script": "run.mjs"
+    },
+    "maintain": {
+      "script": "run.mjs"
+    },
+    "query": {
+      "script": "run.mjs"
+    },
+    "health": {
+      "script": "run.mjs"
+    },
+    "teardown": {
+      "script": "run.mjs"
+    }
+  },
+  "health": {
+    "path": "/"
+  }
+}

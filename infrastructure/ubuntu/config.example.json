@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "bootstrap_hosts": [
+    {
+      "id": "example-ubuntu-host",
+      "kind": "system",
+      "tags": ["ubuntu"],
+      "auth": {
+        "ssh_user_env": "HDC_EXAMPLE_SSH_USER"
+      },
+      "access": {
+        "nodes": [
+          {
+            "name": "primary",
+            "ip": "192.0.2.50",
+            "ssh": "ssh://ubuntu@192.0.2.50"
+          }
+        ]
+      }
+    }
+  ]
+}

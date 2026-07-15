@@ -1,0 +1,39 @@
+{
+  "schema_version": 1,
+  "defaults": {
+    "gcp": {
+      "project_id": "<HDC_GCP_COMPUTE_PROJECT_ID>",
+      "region": "us-central1",
+      "zone": "us-central1-a",
+      "labels": {
+        "managed-by": "hdc"
+      }
+    }
+  },
+  "deployments": [
+    {
+      "id": "a",
+      "system_id": "virt-gcp-compute-a",
+      "mode": "gcp-vm",
+      "gcp": {
+        "machine_type": "e2-small",
+        "boot_disk_gb": 30,
+        "image_family": "ubuntu-2204-lts",
+        "image_project": "ubuntu-os-cloud"
+      }
+    },
+    {
+      "id": "b",
+      "system_id": "virt-gcp-cloud-run-a",
+      "mode": "gcp-cloud-run",
+      "gcp": {
+        "image": "gcr.io/cloudrun/hello",
+        "cpu": 1,
+        "memory_mb": 512,
+        "min_instances": 0,
+        "max_instances": 2,
+        "allow_unauthenticated": true
+      }
+    }
+  ]
+}

@@ -1,0 +1,34 @@
+{
+  "id": "mosquitto",
+  "title": "Mosquitto MQTT broker",
+  "env_required": [],
+  "inventory_docs": [
+    "operations/inventory/systems/mosquitto-a.json",
+    "operations/inventory/services/mosquitto.json"
+  ],
+  "operation_report": {
+    "next_steps": [
+      "Set access.nodes[0].ip on operations/inventory/systems/mosquitto-a.json from deploy/query output.",
+      "Add BIND A record for mosquitto.tls.cert_name pointing at the CT IP (required for step-ca ACME).",
+      "Configure Home Assistant MQTT: MQTTS on tls.listener_port, username/password from vault, trust step-ca root.",
+      "Distribute step-ca root CA to MQTT clients that validate TLS."
+    ]
+  },
+  "verbs": {
+    "deploy": {
+      "script": "run.mjs"
+    },
+    "maintain": {
+      "script": "run.mjs"
+    },
+    "query": {
+      "script": "run.mjs"
+    },
+    "health": {
+      "script": "run.mjs"
+    },
+    "teardown": {
+      "script": "run.mjs"
+    }
+  }
+}

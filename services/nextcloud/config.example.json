@@ -1,0 +1,51 @@
+{
+  "schema_version": 2,
+  "defaults": {
+    "mode": "proxmox-lxc",
+    "proxmox": {
+      "lxc": {
+        "ostemplate": "local:vztmpl/ubuntu-22.04-standard_22.04-1_amd64.tar.zst",
+        "storage": "local-lvm",
+        "rootfs_gb": 64,
+        "memory_mb": 8192,
+        "cores": 4,
+        "bridge": "vmbr0",
+        "ip_config": "dhcp",
+        "unprivileged": 0,
+        "features": "nesting=1,keyctl=1",
+        "onboot": 1
+      }
+    },
+    "nextcloud": {
+      "aio": {
+        "image_channel": "latest",
+        "interface_host_port": 8080,
+        "reverse_proxy": {
+          "enabled": false,
+          "domain": null,
+          "apache_port": 11000
+        }
+      },
+      "mail": {
+        "enabled": false,
+        "from": "noreply@example.invalid"
+      }
+    },
+    "install": {
+      "enabled": true,
+      "compose_dir": "/opt/nextcloud-aio"
+    }
+  },
+  "deployments": [
+    {
+      "system_id": "nextcloud-a",
+      "proxmox": {
+        "host_id": "hypervisor-a",
+        "lxc": {
+          "vmid": 487,
+          "hostname": "nextcloud-a"
+        }
+      }
+    }
+  ]
+}

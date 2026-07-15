@@ -1,0 +1,258 @@
+{
+  "schema_version": 1,
+  "clusters": [
+    {
+      "id": "example-proxmox-cluster",
+      "hosts": [
+        {
+          "id": "hypervisor-a",
+          "pve_node": "hypervisor-a",
+          "ip": "192.0.2.11",
+          "web_ui": "https://192.0.2.11:8006",
+          "ssh": "ssh://root@192.0.2.11"
+        },
+        {
+          "id": "hypervisor-b",
+          "pve_node": "hypervisor-b",
+          "ip": "192.0.2.12",
+          "web_ui": "https://192.0.2.12:8006",
+          "ssh": "ssh://root@192.0.2.12"
+        }
+      ]
+    },
+    {
+      "id": "example-proxmox-v9-cluster",
+      "pve_release": "9",
+      "hosts": [
+        {
+          "id": "hypervisor-d",
+          "pve_node": "hypervisor-d",
+          "ip": "198.51.100.218",
+          "web_ui": "https://198.51.100.218:8006",
+          "ssh": "ssh://root@198.51.100.218",
+          "local_lvm": {
+            "extend": false,
+            "pools": [
+              {
+                "storage_id": "local-lvm-data",
+                "vg": "pve-data",
+                "thin_pool": "data",
+                "md_name": "pve-data",
+                "raid": {
+                  "level": 0,
+                  "devices": [
+                    "/dev/disk/by-id/disk-a",
+                    "/dev/disk/by-id/disk-b"
+                  ]
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "example-proxmox-standalone",
+      "hosts": [
+        {
+          "id": "hypervisor-h",
+          "pve_node": "hypervisor-h",
+          "ip": "192.0.2.14",
+          "web_ui": "https://192.0.2.14:8006",
+          "ssh": "ssh://root@192.0.2.14"
+        }
+      ]
+    }
+  ],
+  "provision": {
+    "templates": {
+      "policy": "ubuntu-lts"
+    },
+    "host_os": {
+      "enabled": true,
+      "reboot_wait_seconds": 300,
+      "mail_relay": true
+    },
+    "storage": {
+      "enabled": true,
+      "ids": ["nas-a", "nas-b"],
+      "discover_from_host": "hypervisor-a",
+      "targets": []
+    },
+    "backups": {
+      "enabled": true,
+      "default_storage": "nas-a",
+      "default_profile": "weekly",
+      "manage_from_deployments": true,
+      "include_cluster_orphans": true,
+      "job_id_prefix": "hdc-backup",
+      "profiles": {
+        "weekly": {
+          "schedule": "sun 03:00",
+          "prune_backups": "keep-last=3",
+          "mode": "snapshot",
+          "compress": "zstd"
+        },
+        "daily": {
+          "schedule": "03:00",
+          "prune_backups": "keep-last=3",
+          "mode": "snapshot",
+          "compress": "zstd"
+        },
+        "hourly": {
+          "schedule": "hourly",
+          "prune_backups": "keep-last=3,keep-daily=7",
+          "mode": "snapshot",
+          "compress": "zstd"
+        },
+        "twice-weekly": {
+          "schedule": "mon,thu 03:00",
+          "prune_backups": "keep-last=3",
+          "mode": "snapshot",
+          "compress": "zstd"
+        }
+      }
+    },
+    "notifications": {
+      "enabled": true,
+      "mailto": "ops@example.invalid",
+      "sendmail_target": "hdc-mail",
+      "backup_failure_matcher": "hdc-backup-failures",
+      "disable_legacy_backup_success_matchers": true
+    },
+    "replication": {
+      "enabled": true,
+      "manage_from_deployments": true,
+      "default_profile": "frequent",
+      "profiles": {
+        "frequent": { "schedule": "*/15" },
+        "hourly": { "schedule": "*/00" },
+        "daily": { "schedule": "daily" }
+      }
+    },
+    "ha": {
+      "enabled": true,
+      "manage_from_deployments": true,
+      "groups": {
+        "hdc-dns": {
+          "nodes": ["hypervisor-b", "hypervisor-c"],
+          "comment": "DNS guests (BIND, Pi-hole) on hypervisor-b/c"
+        }
+      },
+      "defaults": {
+        "group": "hdc-dns",
+        "max_restart": 3,
+        "max_relocate": 2,
+        "state": "started"
+      }
+    },
+    "local_lvm": {
+      "extend": {
+        "enabled": true,
+        "storage_id": "local-lvm",
+        "vg": "pve",
+        "thin_pool": "data"
+      },
+      "extra_pools": {
+        "enabled": true,
+        "content": "images,rootdir"
+      }
+    },
+    "api_token": {
+      "enabled": true,
+      "userid": "root@pam",
+      "role": "HDCMaintain"
+    },
+    "service_accounts": [
+      {
+        "id": "homepage",
+        "enabled": true,
+        "userid": "homepage@pam",
+        "tokenid": "homepage",
+        "role": "PVEAuditor",
+        "password_vault_key": "HDC_PROXMOX_USER_HOMEPAGE_PASSWORD",
+        "token_vault_key": "HDC_HOMEPAGE_PROXMOX_API_TOKEN",
+        "comment": "gethomepage Proxmox widget (read-only; maintain ensures user + token PVEAuditor ACL at /)"
+      }
+    ],
+    "ssh_keys": {
+      "enabled": true
+    },
+    "host_firewall": {
+      "enabled": true,
+      "allowed_source_cidrs": ["192.0.2.0/24", "198.51.100.0/24", "198.51.101.0/24"],
+      "ssh_port": 22,
+      "web_port": 8006
+    },
+    "guest_firewall": {
+      "enabled": true,
+      "allowed_source_cidrs": ["192.0.2.0/24", "192.168.0.0/16", "172.16.0.0/12"],
+      "manage_from_deployments": true
+    },
+    "guest_rootdisk": {
+      "max_used_percent": 50,
+      "increment_gb": 8,
+      "skip_name_patterns": ["win", "windows", "homeassistant", "haos"]
+    },
+    "startup": {
+      "enabled": true,
+      "default_up": 30,
+      "manage_from_deployments": true,
+      "priorities": {
+        "bind": 1,
+        "nginx-waf": 2,
+        "postfix-relay": 3
+      }
+    },
+    "guest_tags": {
+      "enabled": true,
+      "manage_from_deployments": true
+    },
+    "guest_agents": {
+      "crowdsec": {
+        "enabled": true,
+        "lapi_url": "http://192.0.2.50:8080",
+        "enroll_key_vault_key": "HDC_CROWDSEC_ENROLL_KEY",
+        "collections": ["crowdsecurity/linux", "crowdsecurity/sshd"],
+        "collections_by_service": {
+          "nginx-waf": ["crowdsecurity/nginx"]
+        }
+      },
+      "wazuh": {
+        "enabled": true,
+        "manager_host": "192.0.2.51",
+        "registration_password_vault_key": "HDC_WAZUH_AGENT_PASSWORD"
+      }
+    },
+    "lxc": {
+      "ostemplate_storage": "local",
+      "default_release": "22.04",
+      "ostemplate": "local:vztmpl/ubuntu-22.04-standard_22.04-1_amd64.tar.zst",
+      "storage": "local-lvm",
+      "rootfs_gb": 32,
+      "memory_mb": 4096,
+      "cores": 2,
+      "bridge": "vmbr0",
+      "ip_config": "dhcp",
+      "unprivileged": 1,
+      "onboot": 1
+    },
+    "qemu": {
+      "storage": "local-lvm",
+      "image_storage": "local",
+      "default_release": "22.04",
+      "template_vmid": 9022,
+      "build_template": true,
+      "memory_mb": 2048,
+      "cores": 2,
+      "bridge": "vmbr0",
+      "first_boot": {
+        "settle_seconds": 45,
+        "ssh_probe_seconds": 90,
+        "ssh_timeout_seconds": 300,
+        "reboot_on_probe_fail": true
+      }
+    }
+  },
+  "bootstrap_hosts": []
+}

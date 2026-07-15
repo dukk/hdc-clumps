@@ -1,0 +1,39 @@
+{
+  "id": "uptime-kuma",
+  "title": "Uptime Kuma monitoring",
+  "env_required": [],
+  "env_includes": [
+    "oci-compute"
+  ],
+  "inventory_docs": [
+    "operations/inventory/systems/uptime-kuma-a.json"
+  ],
+  "operation_report": {
+    "next_steps": [
+      "Open http://<ct-ip>:3001 and complete the first-run admin setup in the web UI.",
+      "Set HDC_UPTIME_KUMA_USERNAME and vault HDC_UPTIME_KUMA_PASSWORD to match the admin account.",
+      "Run `hdc run service uptime-kuma query -- --import-from-homepage --yes` then `maintain --` to sync monitors."
+    ]
+  },
+  "verbs": {
+    "deploy": {
+      "script": "run.mjs"
+    },
+    "maintain": {
+      "script": "run.mjs"
+    },
+    "query": {
+      "script": "run.mjs"
+    },
+    "health": {
+      "script": "run.mjs"
+    },
+    "teardown": {
+      "script": "run.mjs"
+    }
+  },
+  "health": {
+    "path": "/",
+    "port": 3001
+  }
+}

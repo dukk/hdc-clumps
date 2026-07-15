@@ -1,0 +1,85 @@
+- Public apps:
+    - Immich:
+        icon: immich.png
+        href: https://immich.example.invalid
+        description: Photos & videos
+        siteMonitor: https://immich.example.invalid
+        showStats: true
+        widget:
+          type: immich
+          url: "{{HOMEPAGE_VAR_IMMICH_URL}}"
+          key: "{{HOMEPAGE_VAR_IMMICH_KEY}}"
+          version: 2
+          fields: ["photos", "videos", "storage"]
+    - Vaultwarden:
+        icon: vaultwarden.png
+        href: https://vault.example.invalid
+        description: Passwords
+        siteMonitor: https://vault.example.invalid
+    - Home Assistant:
+        icon: home-assistant.png
+        href: https://ha.example.invalid
+        description: Smart home
+        siteMonitor: https://ha.example.invalid
+- Productivity:
+    - n8n:
+        icon: n8n.png
+        href: http://n8n.home.example.invalid:5678
+        description: Workflow automation
+        siteMonitor: http://192.0.2.120:5678
+- Monitoring:
+    - Uptime Kuma:
+        icon: uptime-kuma.png
+        href: http://uptime-kuma.home.example.invalid:3001
+        description: Status pages
+        siteMonitor: http://192.0.2.105:3001
+- Virtualization:
+    - Proxmox Cluster:
+        icon: proxmox.png
+        href: https://pve-a.home.example.invalid:8006
+        description: Primary cluster · 5 nodes · PVE 9
+        siteMonitor: https://192.0.2.11:8006
+        showStats: true
+        widget:
+          type: proxmox
+          url: "{{HOMEPAGE_VAR_PROXMOX_PVE_A_URL}}"
+          username: "{{HOMEPAGE_VAR_PROXMOX_USER}}"
+          password: "{{HOMEPAGE_VAR_PROXMOX_SECRET}}"
+          fields: ["vms", "lxc", "resources.cpu", "resources.mem"]
+    - Proxmox A:
+        icon: proxmox.png
+        href: https://pve-a.home.example.invalid:8006
+        description: 192.0.2.11 · Hypervisor node
+        siteMonitor: https://192.0.2.11:8006
+        showStats: true
+        widget:
+          type: proxmox
+          url: "{{HOMEPAGE_VAR_PROXMOX_PVE_A_URL}}"
+          username: "{{HOMEPAGE_VAR_PROXMOX_USER}}"
+          password: "{{HOMEPAGE_VAR_PROXMOX_SECRET}}"
+          node: pve-a
+          fields: ["vms", "lxc", "resources.cpu", "resources.mem"]
+- Infrastructure:
+    - Pi-hole A:
+        icon: pi-hole.png
+        href: http://pi-hole-a.home.example.invalid/admin
+        description: DNS ad-block
+        siteMonitor: http://192.0.2.4/admin
+        showStats: true
+        widget:
+          type: pihole
+          url: "{{HOMEPAGE_VAR_PIHOLE_A_URL}}"
+          version: 6
+          key: "{{HOMEPAGE_VAR_PIHOLE_A_KEY}}"
+          fields: ["queries", "blocked", "blocked_percent", "gravity"]
+    - UniFi:
+        icon: unifi.png
+        href: https://unifi.home.example.invalid
+        description: Gateway · UDM
+        ping: 192.0.2.1
+        showStats: true
+        widget:
+          type: unifi
+          url: "{{HOMEPAGE_VAR_UNIFI_URL}}"
+          key: "{{HOMEPAGE_VAR_UNIFI_KEY}}"
+          fields: ["uptime", "wan", "wlan_users", "wlan_devices"]

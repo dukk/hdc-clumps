@@ -1,0 +1,13 @@
+{
+  "id": "example.invalid",
+  "zone_type": "forward",
+  "cloudflare_fallback": {
+    "zone": "example.invalid",
+    "config_path": "clumps/infrastructure/cloudflare/config.json",
+    "exclude_types": ["NS"]
+  },
+  "records": [
+    { "type": "A", "name": "bind-a.hdc", "data": "192.0.2.2", "ttl": 3600 },
+    { "type": "A", "name": "bind-b.hdc", "data": "192.0.2.3", "ttl": 3600 }
+  ]
+}

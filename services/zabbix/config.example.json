@@ -1,0 +1,53 @@
+{
+  "schema_version": 2,
+  "defaults": {
+    "mode": "proxmox-lxc",
+    "proxmox": {
+      "lxc": {
+        "ostemplate": "local:vztmpl/ubuntu-22.04-standard_22.04-1_amd64.tar.zst",
+        "storage": "local-lvm",
+        "rootfs_gb": 64,
+        "memory_mb": 8192,
+        "cores": 4,
+        "bridge": "vmbr0",
+        "ip_config": "dhcp",
+        "unprivileged": 0,
+        "features": "nesting=1,keyctl=1",
+        "onboot": 1
+      },
+      "qemu": {
+        "template_vmid": 9022,
+        "storage": "local-lvm",
+        "full": 1,
+        "cores": 4,
+        "memory_mb": 8192,
+        "rootfs_gb": 64,
+        "cpu": "host"
+      }
+    },
+    "zabbix": {
+      "release": "7.0",
+      "database": "pgsql",
+      "web_http_port": 80,
+      "server_port": 10051,
+      "db_password_vault_key": "HDC_ZABBIX_DB_PASSWORD",
+      "db_root_password_vault_key": "HDC_ZABBIX_DB_ROOT_PASSWORD"
+    },
+    "install": {
+      "enabled": true,
+      "compose_dir": "/opt/zabbix"
+    }
+  },
+  "deployments": [
+    {
+      "system_id": "zabbix-a",
+      "proxmox": {
+        "host_id": "REPLACE_PVE_NODE",
+        "lxc": {
+          "vmid": 0,
+          "hostname": "zabbix-a"
+        }
+      }
+    }
+  ]
+}

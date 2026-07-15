@@ -1,0 +1,11 @@
+{
+  "id": "hdc.example.invalid",
+  "zone_type": "forward",
+  "records": [
+    { "type": "A", "name": "dns-a", "data": "192.0.2.2", "ttl": 3600 },
+    { "type": "A", "name": "dns-b", "data": "192.0.2.3", "ttl": 3600 },
+    { "type": "A", "name": "hypervisor-a", "data": "192.0.2.11", "ttl": 3600 },
+    { "type": "A", "name": "hypervisor-b", "data": "192.0.2.12", "ttl": 3600 },
+    { "type": "A", "name": "hypervisor-c", "data": "192.0.2.13", "ttl": 3600 }
+  ]
+}

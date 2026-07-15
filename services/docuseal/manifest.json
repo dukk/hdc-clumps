@@ -1,0 +1,38 @@
+{
+  "id": "docuseal",
+  "title": "DocuSeal document signing",
+  "env_required": [
+    "HDC_DOCUSEAL_SECRET_KEY_BASE",
+    "HDC_DOCUSEAL_DB_PASSWORD"
+  ],
+  "inventory_docs": [
+    "operations/inventory/systems/docuseal-a.json",
+    "operations/inventory/services/docuseal.json"
+  ],
+  "operation_report": {
+    "next_steps": [
+      "Complete first-run admin setup at https://sign.example.invalid (or the configured docuseal.public_url).",
+      "Set access.nodes[0].ip and web_ui on operations/inventory/systems/docuseal-a.json from query --live upstream_url.",
+      "Add a BIND forward A record for sign (or your hostname) pointing at the CT IP.",
+      "Configure nginx-waf sites[] with proxy_pass to http://<ct-ip>:3000; enable WebSockets on /.",
+      "Backup Postgres volume and ./data document storage together — restore both in the same window."
+    ]
+  },
+  "verbs": {
+    "deploy": {
+      "script": "run.mjs"
+    },
+    "maintain": {
+      "script": "run.mjs"
+    },
+    "query": {
+      "script": "run.mjs"
+    },
+    "health": {
+      "script": "run.mjs"
+    },
+    "teardown": {
+      "script": "run.mjs"
+    }
+  }
+}

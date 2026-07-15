@@ -1,0 +1,33 @@
+{
+  "id": "wireguard",
+  "title": "WireGuard VPN hub",
+  "env_required": [],
+  "inventory_docs": [
+    "operations/inventory/systems/wireguard-a.json",
+    "operations/inventory/services/wireguard.json"
+  ],
+  "operation_report": {
+    "next_steps": [
+      "Set access.nodes[0].ip on operations/inventory/systems/wireguard-a.json from deploy/query output.",
+      "Distribute peer private keys to clients and keep them out of repo.",
+      "Add upstream firewall/NAT rules to permit UDP 51820 to the WireGuard guest."
+    ]
+  },
+  "verbs": {
+    "deploy": {
+      "script": "run.mjs"
+    },
+    "maintain": {
+      "script": "run.mjs"
+    },
+    "query": {
+      "script": "run.mjs"
+    },
+    "health": {
+      "script": "run.mjs"
+    },
+    "teardown": {
+      "script": "run.mjs"
+    }
+  }
+}

@@ -1,0 +1,32 @@
+{
+  "id": "trivy",
+  "title": "Trivy scanner node",
+  "env_required": [],
+  "inventory_docs": [
+    "operations/inventory/systems/trivy-a.json",
+    "operations/inventory/services/trivy.json"
+  ],
+  "operation_report": {
+    "next_steps": [
+      "Run maintain to execute scans from scan_targets[].",
+      "Review maintain JSON output for per-target scan failures."
+    ]
+  },
+  "verbs": {
+    "deploy": {
+      "script": "run.mjs"
+    },
+    "maintain": {
+      "script": "run.mjs"
+    },
+    "query": {
+      "script": "run.mjs"
+    },
+    "health": {
+      "script": "run.mjs"
+    },
+    "teardown": {
+      "script": "run.mjs"
+    }
+  }
+}

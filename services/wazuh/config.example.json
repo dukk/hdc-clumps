@@ -1,0 +1,59 @@
+{
+  "schema_version": 2,
+  "defaults": {
+    "mode": "proxmox-lxc",
+    "proxmox": {
+      "lxc": {
+        "ostemplate": "local:vztmpl/ubuntu-22.04-standard_22.04-1_amd64.tar.zst",
+        "storage": "local-lvm",
+        "rootfs_gb": 64,
+        "memory_mb": 8192,
+        "cores": 4,
+        "bridge": "vmbr0",
+        "ip_config": "dhcp",
+        "unprivileged": 0,
+        "features": "nesting=1,keyctl=1",
+        "onboot": 1
+      }
+    },
+    "wazuh": {
+      "release": "4.10.3",
+      "dashboard_port": 443,
+      "api_password_vault_key": "HDC_WAZUH_API_PASSWORD",
+      "agent_password_vault_key": "HDC_WAZUH_AGENT_PASSWORD",
+      "alert_ignore": {
+        "srcips": ["192.0.2.105"],
+        "groups": ["web", "web_scan", "attack", "ids", "modsecurity", "nginx"]
+      }
+    },
+    "mail": {
+      "enabled": true,
+      "to": ["operator@example.invalid"],
+      "from": "",
+      "alert_level": 10,
+      "max_per_hour": 12,
+      "notifications": {
+        "enabled": true,
+        "smtp_sender_id": "hdc-postfix-relay",
+        "email_channel_id": "hdc-wazuh-alerts",
+        "channel_name": "HDC Wazuh alerts"
+      }
+    },
+    "install": {
+      "enabled": true,
+      "compose_dir": "/opt/wazuh"
+    }
+  },
+  "deployments": [
+    {
+      "system_id": "wazuh-a",
+      "proxmox": {
+        "host_id": "hypervisor-a",
+        "lxc": {
+          "vmid": 570,
+          "hostname": "wazuh-a"
+        }
+      }
+    }
+  ]
+}

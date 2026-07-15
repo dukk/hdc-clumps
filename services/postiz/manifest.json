@@ -1,0 +1,41 @@
+{
+  "id": "postiz",
+  "title": "Postiz (social media scheduling)",
+  "env_required": [
+    "HDC_POSTIZ_DB_PASSWORD",
+    "HDC_POSTIZ_JWT_SECRET"
+  ],
+  "inventory_docs": [
+    "operations/inventory/systems/postiz-a.json",
+    "operations/inventory/services/postiz.json"
+  ],
+  "operation_report": {
+    "next_steps": [
+      "Set access.nodes[0].ip on operations/inventory/systems/postiz-a.json from query --live ct_ip.",
+      "Open access_url from deploy/query output and complete first-run registration in the web UI.",
+      "Optional: add BIND A record and nginx-waf sites[] when using a public HTTPS URL; set postiz.public_url in config.json then run maintain --rebuild.",
+      "Social provider keys in postiz.env_extra require maintain --rebuild (NEXT_PUBLIC_* baked at build time).",
+      "Community helper script marks Postiz as in active development — pin postiz.version after validating upgrades."
+    ]
+  },
+  "verbs": {
+    "deploy": {
+      "script": "run.mjs"
+    },
+    "maintain": {
+      "script": "run.mjs"
+    },
+    "query": {
+      "script": "run.mjs"
+    },
+    "health": {
+      "script": "run.mjs"
+    },
+    "teardown": {
+      "script": "run.mjs"
+    }
+  },
+  "health": {
+    "path": "/"
+  }
+}
