@@ -189,6 +189,35 @@ describe("litellm-config-render", () => {
     expect(yaml).toContain("name: hdc-manager");
     expect(yaml).toContain("url: http://192.0.2.117:9200");
     expect(yaml).toContain("protocolVersion: \"0.3\"");
-    expect(yaml).toContain('description: "HDC manager agent (hdc-agents fleet)"');
+    expect(yaml).toContain('description: "HDC manager agent (hdc-agents fleet) [hdc-a2a kind=fleet]"');
+  });
+
+  it("renders augmentor metadata in a2a agent description", () => {
+    const yaml = renderLitellmConfigYaml({
+      model_list: [
+        {
+          model_name: "local-qwen",
+          provider: "ollama",
+          model: "qwen3:14b",
+          ollama_backend_id: "ollama-a",
+        },
+      ],
+      ollama_backends: [{ id: "ollama-a", url: "http://127.0.0.1:11434" }],
+      a2a_agents: [
+        {
+          name: "cursor-cli-clumps",
+          url: "http://192.0.2.10:9211",
+          kind: "augmentor",
+          runtime: "cursor-cli",
+          repos: ["hdc-clumps"],
+          delegatable_by: ["hdc-sre-engineer"],
+        },
+      ],
+    });
+    expect(yaml).toContain("agent_name: cursor-cli-clumps");
+    expect(yaml).toContain("kind=augmentor");
+    expect(yaml).toContain("runtime=cursor-cli");
+    expect(yaml).toContain("repos=hdc-clumps");
+    expect(yaml).toContain("delegatable_by=hdc-sre-engineer");
   });
 });

@@ -1,3 +1,4 @@
+import { formatA2aAgentDescription } from "hdc/cli/lib/litellm-a2a-metadata.mjs";
 import { mailBlockFromService } from "hdc/package/app-mail-render.mjs";
 import { mailEnabledFromConfig } from "hdc/package/mail-relay-settings.mjs";
 import {
@@ -204,8 +205,9 @@ export function renderA2aAgentsYaml(agents) {
     lines.push(yamlLine("url", url, 6));
     // Force quotes so YAML keeps protocolVersion as a string (0.3 must not become a float).
     lines.push(`${" ".repeat(6)}protocolVersion: ${JSON.stringify(protocol)}`);
-    if (typeof agent.description === "string" && agent.description.trim()) {
-      lines.push(yamlLine("description", agent.description.trim(), 6));
+    const description = formatA2aAgentDescription(agent);
+    if (description) {
+      lines.push(yamlLine("description", description, 6));
     }
   }
   return lines.length > 1 ? lines : [];

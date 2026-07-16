@@ -6,7 +6,7 @@ The **hdc** repo holds the CLI (`apps/hdc-cli/`), shared package runtime (`hdc/p
 
 ## What belongs where
 
-| Artifact | hdc-clumps (this repo) | hdc-private | Primary agent |
+| Artifact | hdc-clumps (this repo) | hdc-private | Owner |
 | --- | --- | --- | --- |
 | Package scripts (`{clients,infrastructure,services}/**/`) | Yes | No | `hdc-sre-engineer` |
 | `config.example.json`, structural JSON (zones, realms, split includes) | Yes | Optional copy | `hdc-sre-engineer` |
@@ -14,7 +14,7 @@ The **hdc** repo holds the CLI (`apps/hdc-cli/`), shared package runtime (`hdc/p
 | `.env` | Only `.env.example` | Yes | `hdc-sre-ops` |
 | `operations/inventory/**`, `operations/automated/**` | **Never** | Yes | `hdc-sre-ops` |
 | Deploy/maintain reports (`**/reports/`) | No (gitignored) | Yes | `hdc-sre-ops` |
-| CLI, schemas, agent fleet (`apps/hdc-cli/`, `apps/hdc-agent-server/`) | No — [**hdc**](../hdc/README.md) | No | `hdc-engineer` |
+| CLI, schemas, agent fleet (`apps/hdc-cli/`, `apps/hdc-agent-server/`) | No — [**hdc**](../hdc/README.md) | No | Human / operator |
 
 Resolution order in the CLI: hdc-clumps (or `HDC_CLUMPS_ROOT`) for package code; hdc-private merge for `config.json` and `.env` on `hdc run`.
 

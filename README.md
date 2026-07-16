@@ -6,11 +6,11 @@ Plugins under `{clients,infrastructure,services}/` automate home data center ope
 
 ## Agent ownership
 
-This repository is owned by **`hdc-sre-engineer`**: package manifests, deploy/maintain/query scripts, `config.example.json`, and per-package READMEs. The agent implements and repairs package automation but does **not** run production deploy/maintain, edit live config in [**hdc-private**](../hdc-private/README.md), or change the CLI platform in [**hdc**](../hdc/README.md). After scripts are tested, hand off to **`hdc-sre-ops`** for approved production runs. See [multi-agent operations](../hdc/docs/multi-agent-ops.md).
+This repository is owned by **`hdc-sre-engineer`**: package manifests, deploy/maintain/query scripts, `config.example.json`, and per-package READMEs. The agent implements and repairs package automation but does **not** run production deploy/maintain, edit live config in [**hdc-private**](../hdc-private/README.md), or change the CLI platform in [**hdc**](../hdc/README.md) (human/operator-owned; fleet agents must not write hdc). After scripts are tested, hand off to **`hdc-sre-ops`** for approved production runs. See [multi-agent operations](../hdc/docs/multi-agent-ops.md).
 
-| Repository | Primary agent | Owns |
+| Repository | Owner | Owns |
 | --- | --- | --- |
-| [**hdc**](../hdc/README.md) | `hdc-engineer` | CLI, schemas, shared runtime, agent fleet, tests |
+| [**hdc**](../hdc/README.md) | Human / operator | CLI, schemas, shared runtime, agent fleet, tests |
 | **hdc-clumps** (this repo) | `hdc-sre-engineer` | Package scripts, manifests, examples |
 | [**hdc-private**](../hdc-private/README.md) | `hdc-sre-ops` | Live `config.json`, inventory, `operations/` |
 
@@ -87,7 +87,7 @@ Applications and workloads on Proxmox guests, Synology, or configure-only SSH ta
 | [draw-io](services/draw-io/README.md) | `draw-io` | draw.io (diagrams.net) | [config.example.json](services/draw-io/config.example.json) | `http://<guest-ip>:8080` or HTTPS via nginx-waf |
 | [gatus](services/gatus/README.md) | `gatus` | Gatus health dashboard | [config.example.json](services/gatus/config.example.json) | `http://<guest-ip>:8080` |
 | [gitlab](services/gitlab/README.md) | `gitlab` | GitLab CE | [config.example.json](services/gitlab/config.example.json) | `http://<guest-ip>:80` or HTTPS; Git SSH `:2222` |
-| [hdc-agents](services/hdc-agents/README.md) | `hdc-agents` | HDC agent fleet + scheduler (replaces hdc-runner); Tasks UI via hdc-web-server `:9120` | [config.example.json](services/hdc-agents/config.example.json) | Agent A2A `:9200–9207`; web UI `:9120` |
+| [hdc-agents](services/hdc-agents/README.md) | `hdc-agents` | HDC agent fleet + scheduler (replaces hdc-runner); Tasks UI via hdc-web-server `:9120` | [config.example.json](services/hdc-agents/config.example.json) | Agent A2A `:9200–9206`, `:9208–9209`; web UI `:9120` |
 | [homeassistant](services/homeassistant/README.md) | `homeassistant` | Home Assistant | [config.example.json](services/homeassistant/config.example.json) | `http://<guest-ip>:8123` or HTTPS via nginx-waf |
 | [homepage](services/homepage/README.md) | `homepage` | Homepage (gethomepage.dev) | [config.example.json](services/homepage/config.example.json) | `http://<guest-ip>:3000` or HTTPS (often internal-only) |
 | [immich](services/immich/README.md) | `immich` | Immich photo library | [config.example.json](services/immich/config.example.json) | `http://<guest-ip>:2283` or HTTPS via nginx-waf |

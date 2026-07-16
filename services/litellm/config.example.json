@@ -103,7 +103,25 @@
           "url": "http://REPLACE_HDC_AGENTS:9200",
           "card_name": "hdc-manager",
           "description": "HDC manager agent (hdc-agents fleet)",
-          "protocol_version": "0.3"
+          "protocol_version": "0.3",
+          "kind": "fleet"
+        },
+        {
+          "name": "cursor-cli-clumps",
+          "url": "http://REPLACE_WORKSTATION:9211",
+          "card_name": "cursor-cli-clumps",
+          "description": "Cursor CLI augmentor for hdc-clumps package work",
+          "protocol_version": "0.3",
+          "kind": "augmentor",
+          "runtime": "cursor-cli",
+          "repos": ["hdc-clumps"],
+          "delegatable_by": [
+            "hdc-sre-engineer",
+            "hdc-qa",
+            "hdc-research",
+            "hdc-security-architect"
+          ],
+          "enabled": true
         }
       ]
     },

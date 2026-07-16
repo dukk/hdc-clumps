@@ -43,6 +43,7 @@ import { resolveLxcRootPassword } from "../../ollama/lib/lxc-password.mjs";
 import { promptExistingGuestAction } from "hdc/package/prompt-existing.mjs";
 import { runOperationReportTail } from "hdc/package/operation-report.mjs";
 import { loadClumpConfigFromClumpRoot } from "hdc/package/clump-run-config.mjs";
+import { registerFleetA2aOnLitellm } from "../lib/litellm-a2a-register.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const target = basename(dirname(here));
@@ -432,6 +433,23 @@ async function deployOne(deployment, flags, log, runOpts) {
 
   const ip = readCtPrimaryIp(pveSsh.user, pveSsh.host, guestVmid);
 
+  const skipLitellmRegister =
+    flagGet(flags, "skip-litellm-register", "skip_litellm_register") !== undefined;
+  /** @type {Record<string, unknown> | null} */
+  let litellm_register = null;
+  if (!skipLitellmRegister && installResult.ok && ip && privateRoot) {
+    litellm_register = await registerFleetA2aOnLitellm({
+      hdcRoot: root,
+      privateRoot,
+      guestIp: ip,
+      hdcAgents: hdcAgentsCfg,
+      dryRun: flagGet(flags, "dry-run", "dry_run") !== undefined,
+      skipLitellmMaintain:
+        flagGet(flags, "skip-litellm-maintain", "skip_litellm_maintain") !== undefined,
+      log: (m) => errout.write(`[hdc] ${target} ${verb}: ${m}\n`),
+    });
+  }
+
   return {
     ok: provisionResult.ok && installResult.ok,
     system_id: systemId,
@@ -444,6 +462,7 @@ async function deployOne(deployment, flags, log, runOpts) {
     host_port: hostPort(hdcAgentsCfg),
     result: provisionResult,
     install: installResult,
+    litellm_register,
   };
 }
 

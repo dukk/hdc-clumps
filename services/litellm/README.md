@@ -9,7 +9,7 @@ OpenAI-compatible AI gateway on Proxmox LXC (Docker Compose + bundled Postgres, 
 - **Vault:** `HDC_LITELLM_MASTER_KEY`, `HDC_LITELLM_SALT_KEY`, `HDC_LITELLM_DB_PASSWORD` (auto-generated on first deploy if missing)
 - **Optional:** `HDC_OPENROUTER_API_KEY` when any `model_list[]` entry uses `provider: openrouter`
 - **Ollama:** deploy [ollama](../ollama/README.md) separately; reference backend URLs in `ollama_backends[]`
-- **A2A gateway:** declare `litellm.a2a_agents[]` (`name`, `url`, optional `protocol_version` default `"0.3"`). Rendered into LiteLLM `agents:` on maintain. Per-agent virtual keys: `HDC_AGENT_LITELLM_KEY_<ROLE>` (vault). Register hdc-agents fleet containers (manager `:9200` … engineer `:9207`).
+- **A2A gateway:** declare `litellm.a2a_agents[]` (`name`, `url`, optional `protocol_version` default `"0.3"`). Rendered into LiteLLM `agents:` on maintain. Per-agent virtual keys: `HDC_AGENT_LITELLM_KEY_<ROLE>` (vault). Register hdc-agents fleet containers (manager `:9200` … research `:9206`, sre-engineer `:9208`, qa `:9209`).
 
 **Important:** `HDC_LITELLM_SALT_KEY` encrypts provider credentials stored in the database. Do not rotate it after models are added — set it once before first deploy.
 

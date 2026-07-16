@@ -38,7 +38,7 @@ Claude Code thin pointers under `.claude/skills/` target the Cursor IDE skills i
 
 ## Subagents
 
-Thin pointer: [`.claude/agents/hdc-engineer.md`](.claude/agents/hdc-engineer.md) → canonical definition in sibling [hdc `apps/hdc-agent-server/agents/`](../hdc/apps/hdc-agent-server/agents/).
+Thin pointer: [`.claude/agents/hdc-sre-engineer.md`](.claude/agents/hdc-sre-engineer.md) → canonical definition in sibling [hdc `apps/hdc-agent-server/agents/`](../hdc/apps/hdc-agent-server/agents/). The hdc platform is human/operator-owned; package work stays on hdc-clumps via **hdc-sre-engineer**.
 
 ## Quality gate
 

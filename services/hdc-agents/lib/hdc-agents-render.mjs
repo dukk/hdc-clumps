@@ -1,3 +1,8 @@
+import { formatA2aAgentDescription } from "hdc/cli/lib/litellm-a2a-metadata.mjs";
+
+/** Augmentor bridge sidecar default port on hdc-agents guest. */
+export const AUGMENT_SIDECAR_PORT = 9210;
+
 /** Agent roster: role id → host port on hdc-agents LXC. */
 export const AGENT_ROSTER = [
   { role: "hdc-manager", port: 9200 },
@@ -7,8 +12,8 @@ export const AGENT_ROSTER = [
   { role: "hdc-security-architect", port: 9204 },
   { role: "hdc-network-architect", port: 9205 },
   { role: "hdc-research", port: 9206 },
-  { role: "hdc-engineer", port: 9207 },
   { role: "hdc-sre-engineer", port: 9208 },
+  { role: "hdc-qa", port: 9209 },
 ];
 
 /** Roles that write digests/tasks under operations/ */
@@ -18,6 +23,7 @@ export const RW_OPERATIONS_ROLES = new Set([
   "hdc-security-expert",
   "hdc-research",
   "hdc-sre-ops",
+  "hdc-qa",
 ]);
 
 /**
@@ -145,9 +151,6 @@ export function renderComposeYaml(hdcAgents, install, opts = {}) {
     lines.push(`    volumes:`);
     lines.push(`      - /opt/hdc-private:/opt/hdc-private:${opsMode}`);
     lines.push(`      - /opt/hdc-agents-meta:/opt/hdc-agents-meta:ro`);
-    if (role === "hdc-engineer") {
-      lines.push(`      - /opt/hdc-src:/opt/hdc:rw`);
-    }
   }
 
   // CLI job scheduler (no LiteLLM)
@@ -205,6 +208,56 @@ export function renderComposeYaml(hdcAgents, install, opts = {}) {
   lines.push(`      - /opt/hdc-private:/opt/hdc-private:rw`);
   lines.push(`      - /opt/hdc-agents-meta:/opt/hdc-agents-meta:rw`);
 
+  const augmentation = hdcAgents.augmentation && typeof hdcAgents.augmentation === "object"
+    ? /** @type {Record<string, unknown>} */ (hdcAgents.augmentation)
+    : null;
+  const sidecars = Array.isArray(augmentation?.sidecars)
+    ? /** @type {string[]} */ (augmentation.sidecars).map((s) => String(s).trim()).filter(Boolean)
+    : [];
+  if (augmentation?.enabled !== false && sidecars.includes("cursor-cloud-bridge")) {
+    const cloudCfg =
+      augmentation.cursor_cloud && typeof augmentation.cursor_cloud === "object"
+        ? /** @type {Record<string, unknown>} */ (augmentation.cursor_cloud)
+        : {};
+    const bridgeName =
+      typeof cloudCfg.bridge_name === "string" && cloudCfg.bridge_name.trim()
+        ? cloudCfg.bridge_name.trim()
+        : "cursor-cloud-bridge";
+    const bridgePort =
+      typeof cloudCfg.port === "number" && Number.isFinite(cloudCfg.port)
+        ? Math.floor(cloudCfg.port)
+        : AUGMENT_SIDECAR_PORT;
+    lines.push(`  ${bridgeName}:`);
+    lines.push(`    container_name: ${bridgeName}`);
+    lines.push(`    image: ${image}`);
+    lines.push(`    build:`);
+    lines.push(`      context: ${dir}`);
+    lines.push(`      dockerfile: Dockerfile`);
+    lines.push(`    restart: unless-stopped`);
+    lines.push(`    env_file:`);
+    lines.push(`      - ${dir}/.env`);
+    lines.push(`    command: ["node", "apps/hdc-augment-bridge/server.mjs"]`);
+    lines.push(`    ports:`);
+    lines.push(`      - "${bridgePort}:${bridgePort}/tcp"`);
+    lines.push(`    environment:`);
+    lines.push(`      HDC_AUGMENT_BRIDGE_NAME: ${bridgeName}`);
+    lines.push(`      HDC_AUGMENT_RUNTIME: cursor-cloud`);
+    lines.push(`      HDC_AUGMENT_BRIDGE_PORT: "${bridgePort}"`);
+    lines.push(`      HDC_AUGMENT_BRIDGE_TOKEN: \${HDC_AUGMENT_BRIDGE_TOKEN:-}`);
+    lines.push(`      HDC_CURSOR_CLOUD_API_KEY: \${HDC_CURSOR_CLOUD_API_KEY:-}`);
+    lines.push(`      HDC_AUGMENT_REPOSITORY_URL: \${HDC_AUGMENT_REPOSITORY_URL:-}`);
+    lines.push(`      HDC_AUGMENT_REPOSITORY_REF: \${HDC_AUGMENT_REPOSITORY_REF:-main}`);
+    const repos = Array.isArray(cloudCfg.repos) ? cloudCfg.repos.join(",") : "hdc-clumps";
+    const deleg =
+      Array.isArray(cloudCfg.delegatable_by)
+        ? cloudCfg.delegatable_by.join(",")
+        : "hdc-sre-engineer,hdc-qa,hdc-research,hdc-security-expert,hdc-security-architect,hdc-network-architect";
+    lines.push(`      HDC_AUGMENT_REPOS: '${String(repos).replace(/'/g, "''")}'`);
+    lines.push(`      HDC_AUGMENT_DELEGATABLE_BY: '${String(deleg).replace(/'/g, "''")}'`);
+    lines.push(`    volumes:`);
+    lines.push(`      - /opt/hdc-private:/opt/hdc-private:ro`);
+  }
+
   return `${lines.join("\n")}\n`;
 }
 
@@ -216,13 +269,78 @@ export function renderComposeYaml(hdcAgents, install, opts = {}) {
 export function litellmA2aAgentEntries(guestIp, hdcAgents) {
   const ip = String(guestIp || "").trim();
   if (!ip) return [];
-  return enabledAgents(hdcAgents).map(({ role, port }) => ({
+  /** @type {Record<string, unknown>[]} */
+  const entries = enabledAgents(hdcAgents).map(({ role, port }) => ({
     name: role,
     url: `http://${ip}:${port}`,
     card_name: role,
-    description: `HDC container agent ${role}`,
+    description: formatA2aAgentDescription({
+      name: role,
+      description: `HDC container agent ${role}`,
+      kind: "fleet",
+    }),
     protocol_version: "0.3",
+    kind: "fleet",
   }));
+
+  const augmentation = hdcAgents.augmentation && typeof hdcAgents.augmentation === "object"
+    ? /** @type {Record<string, unknown>} */ (hdcAgents.augmentation)
+    : null;
+  const sidecars = Array.isArray(augmentation?.sidecars)
+    ? /** @type {string[]} */ (augmentation.sidecars).map((s) => String(s).trim()).filter(Boolean)
+    : [];
+  if (augmentation?.enabled !== false && sidecars.includes("cursor-cloud-bridge")) {
+    const cloudCfg =
+      augmentation.cursor_cloud && typeof augmentation.cursor_cloud === "object"
+        ? /** @type {Record<string, unknown>} */ (augmentation.cursor_cloud)
+        : {};
+    const bridgeName =
+      typeof cloudCfg.bridge_name === "string" && cloudCfg.bridge_name.trim()
+        ? cloudCfg.bridge_name.trim()
+        : "cursor-cloud-bridge";
+    const bridgePort =
+      typeof cloudCfg.port === "number" && Number.isFinite(cloudCfg.port)
+        ? Math.floor(cloudCfg.port)
+        : AUGMENT_SIDECAR_PORT;
+    entries.push({
+      name: bridgeName,
+      url: `http://${ip}:${bridgePort}`,
+      card_name: bridgeName,
+      description: formatA2aAgentDescription({
+        name: bridgeName,
+        description: "Cursor Cloud augmentor (hdc-agents sidecar)",
+        kind: "augmentor",
+        runtime: "cursor-cloud",
+        repos: Array.isArray(cloudCfg.repos) ? cloudCfg.repos : ["hdc-clumps"],
+        delegatable_by: Array.isArray(cloudCfg.delegatable_by)
+          ? cloudCfg.delegatable_by
+          : [
+              "hdc-sre-engineer",
+              "hdc-qa",
+              "hdc-research",
+              "hdc-security-expert",
+              "hdc-security-architect",
+              "hdc-network-architect",
+            ],
+      }),
+      protocol_version: "0.3",
+      kind: "augmentor",
+      runtime: "cursor-cloud",
+      repos: Array.isArray(cloudCfg.repos) ? cloudCfg.repos : ["hdc-clumps"],
+      delegatable_by: Array.isArray(cloudCfg.delegatable_by)
+        ? cloudCfg.delegatable_by
+        : [
+            "hdc-sre-engineer",
+            "hdc-qa",
+            "hdc-research",
+            "hdc-security-expert",
+            "hdc-security-architect",
+            "hdc-network-architect",
+          ],
+    });
+  }
+
+  return entries;
 }
 
 /**

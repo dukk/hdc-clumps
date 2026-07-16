@@ -26,6 +26,24 @@
         "admin_password_vault_key": "HDC_WEB_ADMIN_PASSWORD"
       },
       "agents": [],
+      "augmentation": {
+        "enabled": true,
+        "sidecars": ["cursor-cloud-bridge"],
+        "cursor_cloud": {
+          "bridge_name": "cursor-cloud-bridge",
+          "port": 9210,
+          "repos": ["hdc-clumps"],
+          "delegatable_by": [
+            "hdc-sre-engineer",
+            "hdc-qa",
+            "hdc-research",
+            "hdc-security-expert",
+            "hdc-security-architect",
+            "hdc-network-architect"
+          ],
+          "repository_url": "https://github.com/REPLACE_ORG/hdc-clumps"
+        }
+      },
       "mail": {
         "enabled": true,
         "to": "ops@example.invalid",

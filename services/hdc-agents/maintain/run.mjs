@@ -28,6 +28,7 @@ import { prepareAgentsGuestSecrets } from "hdc/package/hdc-agents-guest-secrets.
 import { syncHdcTreesToGuest, syncHdcTreesViaPct } from "hdc/package/hdc-agents-sync.mjs";
 import { runOperationReportTail } from "hdc/package/operation-report.mjs";
 import { loadClumpConfigFromClumpRoot } from "hdc/package/clump-run-config.mjs";
+import { registerFleetA2aOnLitellm } from "../lib/litellm-a2a-register.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const target = basename(dirname(here));
@@ -183,6 +184,24 @@ async function maintainOne(deployment, flags, vaultAccess) {
     proxmoxPackageRoot: proxmoxRoot,
   });
 
+  const skipLitellmRegister =
+    flagGet(flags, "skip-litellm-register", "skip_litellm_register") !== undefined;
+  /** @type {Record<string, unknown> | null} */
+  let litellm_register = null;
+  const regIp = result.guest_ip ?? guestIp;
+  if (!skipLitellmRegister && result.ok && regIp) {
+    litellm_register = await registerFleetA2aOnLitellm({
+      hdcRoot: root,
+      privateRoot,
+      guestIp: regIp,
+      hdcAgents: hdcAgentsCfg,
+      dryRun: flagGet(flags, "dry-run", "dry_run") !== undefined,
+      skipLitellmMaintain:
+        flagGet(flags, "skip-litellm-maintain", "skip_litellm_maintain") !== undefined,
+      log: (m) => errout.write(`[hdc] ${target} ${verb}: ${m}\n`),
+    });
+  }
+
   return {
     ok: result.ok && baseline.ok,
     system_id: systemId,
@@ -192,6 +211,7 @@ async function maintainOne(deployment, flags, vaultAccess) {
     url: result.url ?? result.web_url ?? null,
     upstream_url: result.upstream_url ?? null,
     message: result.message,
+    litellm_register,
     ...guestBaselineResultFields(baseline),
   };
 }
