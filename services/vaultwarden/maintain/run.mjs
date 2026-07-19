@@ -4,7 +4,7 @@ import { guestBaselineResultFields, guestBaselineUsersOk } from "hdc/package/gue
  * Maintain Vaultwarden: re-push .env from config, refresh Docker images, ClamAV baseline.
  *
  * Usage: hdc run vaultwarden maintain -- [--instance a | --system-id vaultwarden-a]
- *        hdc run vaultwarden maintain -- [--skip-upgrade] [--skip-clamav]
+ *        hdc run vaultwarden maintain -- [--skip-upgrade] [--skip-clamav] [--skip-app-dump]
  */
 import { basename, dirname, join } from "node:path";
 import { existsSync, readFileSync } from "node:fs";
@@ -12,6 +12,10 @@ import { fileURLToPath } from "node:url";
 import { stderr as errout } from "node:process";
 
 import { ensureGuestLinuxBaseline } from "hdc/package/guest-linux-baseline.mjs";
+import {
+  ensureAppDumpSchedule,
+  vaultwardenDumpCommands,
+} from "hdc/package/app-dump-schedule.mjs";
 import { createPackageVaultAccess } from "hdc/package/package-vault-access.mjs";
 import { provisionLogFromConsole } from "hdc/package/host-provisioner.mjs";
 import { parseArgvFlags, flagGet } from "hdc/package/parse-argv-flags.mjs";
@@ -23,7 +27,8 @@ import {
 } from "hdc/package/deployments.mjs";
 import { maintainVaultwardenInCt, resolvePveSshForHost } from "hdc/package/vaultwarden-install.mjs";
 import { createVaultwardenVaultAccess } from "hdc/package/vault-deps.mjs";
-import { runOperationReportTail } from "hdc/package/operation-report.mjs";import { loadClumpConfigFromClumpRoot, tryLoadClumpConfigFromClumpRoot } from "hdc/package/clump-run-config.mjs";
+import { runOperationReportTail } from "hdc/package/operation-report.mjs";
+import { loadClumpConfigFromClumpRoot, tryLoadClumpConfigFromClumpRoot } from "hdc/package/clump-run-config.mjs";
 
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -97,9 +102,20 @@ async function maintainOne(deployment, flags, adminToken, vaultAccess) {
     pveHost: pveSsh.host,
   });
   const baseline = await ensureGuestLinuxBaseline({ exec, log, flags, vaultAccess, deployment, proxmoxPackageRoot: proxmoxRoot });
+  const appDump = ensureAppDumpSchedule({
+    exec,
+    log,
+    flags,
+    spec: {
+      systemId,
+      name: "vaultwarden",
+      dumpCommands: vaultwardenDumpCommands(),
+    },
+  });
 
   return {
-    ok: result.ok && baseline.ok,
+    ok: result.ok && baseline.ok && appDump.ok,
+    app_dump: appDump,
     system_id: systemId,
     host_id: hostId,
     vmid,

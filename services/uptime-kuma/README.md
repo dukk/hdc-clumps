@@ -1,6 +1,6 @@
 # Uptime Kuma (`uptime-kuma`)
 
-Deploy Uptime Kuma on Proxmox LXC or Oracle Cloud VM (Node 22, systemd, port 3001), upgrade releases, probe health, and reconcile monitors and Discord notifications from config.
+Deploy Uptime Kuma on Proxmox LXC or Oracle Cloud VM (Node 22, systemd, port 3001), upgrade releases, probe health, and reconcile monitors and notifications (Discord + SMTP) from config.
 
 ## Prerequisites
 
@@ -50,9 +50,10 @@ hdc run service uptime-kuma query -- --live
    hdc run service uptime-kuma maintain -- --instance ext-a
    ```
 
-## Discord notifications
+## Notifications (Discord + SMTP)
 
-Add to config (root or per-deployment):
+Add to config (root or per-deployment). Two managed types: `discord` (webhook from
+vault) and `smtp` (email — the second alert path when Discord is down):
 
 ```json
 "notifications": [
@@ -64,9 +65,26 @@ Add to config (root or per-deployment):
     "discord_webhook_vault_key": "HDC_OPS_DISCORD_WEBHOOK_URL",
     "discord_username": "Uptime Kuma",
     "apply_to_monitors": true
+  },
+  {
+    "id": "hdc-ops-mail",
+    "name": "HDC Ops Mail",
+    "type": "smtp",
+    "managed": true,
+    "use_mail_relay": true,
+    "mail_to": "ops@example.invalid",
+    "custom_subject": "[Uptime Kuma] {{name}} is {{status}}",
+    "apply_to_monitors": true
   }
 ]
 ```
+
+**SMTP fields:** `use_mail_relay: true` fills `smtp_host`/`smtp_port`/`mail_from` from
+postfix-relay `client_defaults` (LAN instance; no auth). For the external OCI instance
+the relay is unreachable — set explicit `smtp_host`/`smtp_port` (e.g. SMTP2GO) plus
+`smtp_username_env` (env var name) and `smtp_password_vault_key` (vault key), and
+override `notifications` on that deployment. Optional: `smtp_secure`,
+`smtp_ignore_tls_error`, `mail_cc`, `mail_bcc`, `mail_from`.
 
 `maintain` syncs notifications before monitors. Use `--skip-notifications` to skip.
 
@@ -93,9 +111,11 @@ See hdc-private `clumps/services/uptime-kuma/plan.md` for Console setup and roll
 2. **Web UI:** `http://<guest-ip>:3001` (LAN), SSH port-forward or restricted direct HTTP for OCI admin when `oci.admin_ingress` is set, or `https://status-ext.dukk.org` for the public-edge status page only.
 3. **First run:** create the admin account matching vault credentials.
 
-## Email notifications (manual)
+## Email notifications
 
-For `uptime-kuma-a`, configure SMTP in the UK UI (Settings → Notifications → Email). Use internal postfix-relay (`postfix-relay.home.example.invalid:25`, no auth). Guest baseline configures OS mail on Proxmox LXCs.
+Managed via `notifications[]` `type: smtp` (see above) — no UI setup needed. LAN
+instance uses internal postfix-relay via `use_mail_relay`; guest baseline configures OS
+mail on Proxmox LXCs.
 
 ## Related
 

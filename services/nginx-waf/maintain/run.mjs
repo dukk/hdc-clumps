@@ -42,7 +42,7 @@ import {
   mergeGuestBaselineIntoResult,
 } from "hdc/package/guest-baseline-report.mjs";
 import { ensureWazuhLogCollection } from "hdc/package/wazuh-log-collection.mjs";
-import { resolveNginxWafWazuhLogCollection } from "hdc/package/wazuh-log-collection.mjs";
+import { resolveNginxWafWazuhLogCollection } from "../lib/wazuh-log-collection.mjs";
 import { createPackageVaultAccess } from "hdc/package/package-vault-access.mjs";
 import { runOperationReportTail } from "hdc/package/operation-report.mjs";
 import { repoRoot } from "hdc/cli/paths.mjs";

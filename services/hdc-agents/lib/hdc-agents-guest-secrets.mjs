@@ -13,10 +13,11 @@ import { ensureMcpApiKeysForAgents, mcpApiKeyRoles } from "./mcp-api-keys-ensure
  *   privateRoot: string,
  *   hdcAgents: Record<string, unknown>,
  *   rotateMcpKeys?: boolean,
+ *   systemId?: string,
  * }} opts
  */
 export async function prepareAgentsGuestSecrets(opts) {
-  const { vault, privateRoot, hdcAgents, rotateMcpKeys = false } = opts;
+  const { vault, privateRoot, hdcAgents, rotateMcpKeys = false, systemId } = opts;
   const secretsByRole = await ensureMcpApiKeysForAgents({
     vault,
     privateRoot,
@@ -31,6 +32,8 @@ export async function prepareAgentsGuestSecrets(opts) {
     "HDC_ROOT=/opt/hdc",
     "HDC_AGENTS_META_ROOT=/opt/hdc-agents-meta",
   ];
+  const sid = typeof systemId === "string" ? systemId.trim() : "";
+  if (sid) envLines.push(`HDC_OPS_SYSTEM_ID=${sid}`);
 
   for (const role of mcpApiKeyRoles(hdcAgents)) {
     const vk = mcpApiKeyVaultKey(role);

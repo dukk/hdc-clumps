@@ -35,3 +35,28 @@ jobs:
             echo "Found 10.0.0.x addresses; use 192.0.2.x (RFC 5737) in public examples."
             exit 1
           fi
+
+  # Colocated *.test.mjs also run from the hdc repo CI (vitest include hdc-clumps/**).
+  # This job re-runs them against the PR's hdc-clumps tree for package-only PRs.
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: hdc-clumps
+      - uses: actions/checkout@v4
+        with:
+          repository: dukk/hdc
+          path: hdc
+          ref: main
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: hdc/package-lock.json
+      - name: Run colocated package unit tests
+        working-directory: hdc
+        run: |
+          set -euo pipefail
+          npm ci
+          npx vitest run ../hdc-clumps/**/*.test.mjs

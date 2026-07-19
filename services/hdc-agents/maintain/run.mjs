@@ -100,6 +100,7 @@ async function maintainOne(deployment, flags, vaultAccess) {
     privateRoot,
     hdcAgents: hdcAgentsCfg,
     rotateMcpKeys,
+    systemId,
   });
 
   const guestIp = readCtPrimaryIp(pveSsh.user, pveSsh.host, vmid);
@@ -165,6 +166,7 @@ async function maintainOne(deployment, flags, vaultAccess) {
       mailboxJson: guestSecrets.mailboxJson,
       notificationsJson: guestSecrets.notificationsJson,
       metaRoot,
+      systemId,
     },
   );
 

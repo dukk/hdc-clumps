@@ -24,6 +24,7 @@
  *   --no-prune             Do not remove unsupported Ubuntu LXC/QEMU templates
  *   --skip-storage           Skip NAS storage ensure (nas-a, nas-b)
  *   --skip-backups           Skip scheduled backup jobs and backup frequency tags (provision.backups)
+ *   --skip-backup-verify     Skip backup freshness verification (last vzdump run status/age per job)
  *   --skip-notifications     Skip notification target/matcher ensure (provision.notifications)
  *   --skip-replication       Skip storage replication job ensure (provision.replication)
  *   --skip-ha                Skip HA group/resource ensure (provision.ha)
@@ -72,6 +73,7 @@ import { runProxmoxApiTokenMaintain } from "hdc/package/proxmox-api-token-mainta
 import { runProxmoxServiceAccountMaintain } from "hdc/package/proxmox-service-account-maintain.mjs";
 import { runProxmoxStorageMaintain } from "hdc/package/proxmox-storage-maintain.mjs";
 import { runProxmoxBackupMaintain } from "hdc/package/proxmox-backup-maintain.mjs";
+import { runProxmoxBackupVerify } from "hdc/package/proxmox-backup-verify.mjs";
 import { runProxmoxNotificationsMaintain } from "hdc/package/proxmox-notifications-maintain.mjs";
 import { runProxmoxReplicationMaintain } from "hdc/package/proxmox-replication-maintain.mjs";
 import { runProxmoxHaMaintain } from "hdc/package/proxmox-ha-maintain.mjs";
@@ -204,6 +206,7 @@ async function main() {
   const skipTemplates = argv.includes("--skip-templates");
   const skipStorage = argv.includes("--skip-storage");
   const skipBackups = argv.includes("--skip-backups");
+  const skipBackupVerify = argv.includes("--skip-backup-verify");
   const skipNotifications = argv.includes("--skip-notifications");
   const skipReplication = argv.includes("--skip-replication");
   const skipHa = argv.includes("--skip-ha");
@@ -594,6 +597,54 @@ async function main() {
         title: "Scheduled backup jobs",
         ran: false,
         skipReason: "--skip-backups",
+      });
+    }
+
+    if (!skipBackupVerify) {
+      try {
+        const verifyResult = await runProxmoxBackupVerify({
+          clumpRoot,
+          log,
+          warn,
+          vault,
+        });
+        if (!verifyResult.ok) exitCode = 1;
+        /** @type {string[]} */
+        const verifyNotes = [];
+        for (const row of verifyResult.results ?? []) {
+          verifyNotes.push(
+            `${row.id} vmid=${row.vmid} last=${row.lastRunIso ?? "never"} age=${row.ageHours ?? "?"}h max=${row.maxAgeHours}h ${row.status}`,
+          );
+        }
+        recordStep(reportCtx, {
+          id: "backup-verify",
+          title: "Backup freshness (last run status/age)",
+          ran: !verifyResult.skipped,
+          ok: verifyResult.ok !== false,
+          skipReason: verifyResult.skipped ? "disabled or no config" : undefined,
+          notes: verifyNotes.length ? verifyNotes : undefined,
+        });
+      } catch (e) {
+        if (e instanceof CliExit) {
+          exitCode = exitCode || e.code;
+        } else {
+          log(`backup verify fatal: ${/** @type {Error} */ (e).stack || e}`);
+          exitCode = 1;
+        }
+        recordStep(reportCtx, {
+          id: "backup-verify",
+          title: "Backup freshness (last run status/age)",
+          ran: true,
+          ok: false,
+          notes: [String(/** @type {Error} */ (e).message || e)],
+        });
+      }
+    } else {
+      recordStep(reportCtx, {
+        id: "backup-verify",
+        title: "Backup freshness (last run status/age)",
+        ran: false,
+        skipReason: "--skip-backup-verify",
       });
     }
 

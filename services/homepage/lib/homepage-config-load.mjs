@@ -48,6 +48,10 @@ export function homepageConfigFilePaths(homepage) {
 }
 
 /**
+ * Map a path under the homepage package root to the repo-relative path used by
+ * hdc-private resolve (`clumps/services/homepage/...`). When the package lives
+ * in an external hdc-clumps tree, `relative(repoRoot, abs)` would escape with `../`.
+ *
  * @param {string} packageRoot
  * @param {string} relPath
  */
@@ -61,7 +65,11 @@ function packageRelToRepoRel(packageRoot, relPath) {
     throw new Error(`homepage config path must be relative to package root: ${trimmed}`);
   }
   const abs = join(packageRoot, trimmed);
-  return relative(root, abs).replace(/\\/g, "/");
+  const viaRelative = relative(root, abs).replace(/\\/g, "/");
+  if (viaRelative && !viaRelative.startsWith("..") && !viaRelative.startsWith("/")) {
+    return viaRelative;
+  }
+  return `clumps/services/homepage/${trimmed}`.replace(/\\/g, "/");
 }
 
 /**

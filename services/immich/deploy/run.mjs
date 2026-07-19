@@ -30,6 +30,7 @@ import {
   normalizeImmichConfig,
   resolveImmichDeployments,
 } from "hdc/package/deployments.mjs";
+import { deployOk } from "hdc/package/deploy-ok.mjs";
 import { installImmichOnHost } from "hdc/package/immich-install.mjs";
 import { promptExistingGuestAction } from "hdc/package/prompt-existing.mjs";
 import { attachQemuDataDisk } from "hdc/package/proxmox-data-disk.mjs";
@@ -138,7 +139,7 @@ async function deployOne(deployment, dbPassword, flags, log) {
     );
     const configure = await deployImmichOnSynology(deployment, dbPassword);
     return {
-      ok: configure.ok !== false,
+      ok: deployOk(configure),
       system_id: deployment.systemId,
       mode: "synology-docker",
       configure,
@@ -150,7 +151,12 @@ async function deployOne(deployment, dbPassword, flags, log) {
   if (skipProvision(flags) || deployment.mode === "configure-only") {
     errout.write(`[hdc] ${target} ${verb}: ${deployment.systemId} configure-only …\n`);
     const configure = await runConfigure({ deployment, dbPassword });
-    return { ok: true, system_id: deployment.systemId, mode: "configure-only", configure };
+    return {
+      ok: deployOk(configure),
+      system_id: deployment.systemId,
+      mode: "configure-only",
+      configure,
+    };
   }
 
   const px = deployment.proxmox;
@@ -217,7 +223,7 @@ async function deployOne(deployment, dbPassword, flags, log) {
       );
       const configure = await runConfigure({ deployment, dbPassword });
       return {
-        ok: true,
+        ok: deployOk(configure),
         system_id: deployment.systemId,
         skipped_provision: true,
         configure,
@@ -377,7 +383,7 @@ async function deployOne(deployment, dbPassword, flags, log) {
   });
 
   return {
-    ok: configure.ok !== false,
+    ok: deployOk(configure),
     system_id: deployment.systemId,
     provision: provisionResult,
     configure,

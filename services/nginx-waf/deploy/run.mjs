@@ -54,7 +54,7 @@ import { runOperationReportTail } from "hdc/package/operation-report.mjs";
 import { loadClumpConfigFromClumpRoot, tryLoadClumpConfigFromClumpRoot } from "hdc/package/clump-run-config.mjs";
 import { configureExecFromDeployment } from "hdc/package/configure-exec.mjs";
 import { ensureWazuhLogCollection } from "hdc/package/wazuh-log-collection.mjs";
-import { resolveNginxWafWazuhLogCollection } from "hdc/package/wazuh-log-collection.mjs";
+import { resolveNginxWafWazuhLogCollection } from "../lib/wazuh-log-collection.mjs";
 
 
 const here = dirname(fileURLToPath(import.meta.url));

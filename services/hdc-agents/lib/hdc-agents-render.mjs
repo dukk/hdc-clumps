@@ -107,7 +107,7 @@ CMD ["node", "apps/hdc-agent-server/server.mjs"]
 /**
  * @param {Record<string, unknown>} hdcAgents
  * @param {Record<string, unknown>} install
- * @param {{ guestIp?: string | null }} [opts]
+ * @param {{ guestIp?: string | null; systemId?: string | null }} [opts]
  */
 export function renderComposeYaml(hdcAgents, install, opts = {}) {
   const image = imageName(hdcAgents);
@@ -118,6 +118,18 @@ export function renderComposeYaml(hdcAgents, install, opts = {}) {
     typeof hdcAgents.default_model === "string" && hdcAgents.default_model.trim()
       ? hdcAgents.default_model.trim()
       : "lan-best-available";
+  const systemId =
+    typeof opts.systemId === "string" && opts.systemId.trim() ? opts.systemId.trim() : "";
+
+  /**
+   * Append shared system identity env lines under an existing `environment:` block.
+   * @param {string[]} lines
+   * @param {string} [notifyApp]
+   */
+  function pushSystemEnv(lines, notifyApp) {
+    if (systemId) lines.push(`      HDC_OPS_SYSTEM_ID: ${JSON.stringify(systemId)}`);
+    if (notifyApp) lines.push(`      HDC_OPS_NOTIFY_APP: ${JSON.stringify(notifyApp)}`);
+  }
 
   /** @type {string[]} */
   const lines = ["services:"];
@@ -127,6 +139,7 @@ export function renderComposeYaml(hdcAgents, install, opts = {}) {
     const keyEnv = `HDC_AGENT_LITELLM_KEY_${role.replace(/-/g, "_").toUpperCase()}`;
     lines.push(`  ${svc}:`);
     lines.push(`    container_name: ${svc}`);
+    if (systemId) lines.push(`    hostname: ${JSON.stringify(systemId)}`);
     lines.push(`    image: ${image}`);
     lines.push(`    build:`);
     lines.push(`      context: ${dir}`);
@@ -137,6 +150,7 @@ export function renderComposeYaml(hdcAgents, install, opts = {}) {
     lines.push(`    ports:`);
     lines.push(`      - "${port}:${port}/tcp"`);
     lines.push(`    environment:`);
+    pushSystemEnv(lines);
     lines.push(`      HDC_AGENT_ROLE: ${role}`);
     lines.push(`      HDC_AGENT_PORT: "${port}"`);
     lines.push(`      HDC_ROOT: /opt/hdc`);
@@ -156,6 +170,7 @@ export function renderComposeYaml(hdcAgents, install, opts = {}) {
   // CLI job scheduler (no LiteLLM)
   lines.push(`  hdc-scheduler:`);
   lines.push(`    container_name: hdc-scheduler`);
+  if (systemId) lines.push(`    hostname: ${JSON.stringify(systemId)}`);
   lines.push(`    image: ${image}`);
   lines.push(`    build:`);
   lines.push(`      context: ${dir}`);
@@ -165,6 +180,7 @@ export function renderComposeYaml(hdcAgents, install, opts = {}) {
   lines.push(`      - ${dir}/.env`);
   lines.push(`    command: ["node", "apps/hdc-agent-server/bin/scheduler.mjs"]`);
   lines.push(`    environment:`);
+  pushSystemEnv(lines);
   lines.push(`      HDC_AGENT_ROLE: hdc-scheduler`);
   lines.push(`      HDC_ROOT: /opt/hdc`);
   lines.push(`      HDC_PRIVATE_ROOT: /opt/hdc-private`);
@@ -181,6 +197,7 @@ export function renderComposeYaml(hdcAgents, install, opts = {}) {
   // Ops web UI (React)
   lines.push(`  hdc-web:`);
   lines.push(`    container_name: hdc-web`);
+  if (systemId) lines.push(`    hostname: ${JSON.stringify(systemId)}`);
   lines.push(`    image: ${image}`);
   lines.push(`    build:`);
   lines.push(`      context: ${dir}`);
@@ -192,6 +209,7 @@ export function renderComposeYaml(hdcAgents, install, opts = {}) {
   lines.push(`    ports:`);
   lines.push(`      - "9120:9120/tcp"`);
   lines.push(`    environment:`);
+  pushSystemEnv(lines, "web");
   lines.push(`      HDC_WEB_PORT: "9120"`);
   lines.push(`      HDC_ROOT: /opt/hdc`);
   lines.push(`      HDC_PRIVATE_ROOT: /opt/hdc-private`);
@@ -229,6 +247,7 @@ export function renderComposeYaml(hdcAgents, install, opts = {}) {
         : AUGMENT_SIDECAR_PORT;
     lines.push(`  ${bridgeName}:`);
     lines.push(`    container_name: ${bridgeName}`);
+    if (systemId) lines.push(`    hostname: ${JSON.stringify(systemId)}`);
     lines.push(`    image: ${image}`);
     lines.push(`    build:`);
     lines.push(`      context: ${dir}`);
@@ -240,6 +259,7 @@ export function renderComposeYaml(hdcAgents, install, opts = {}) {
     lines.push(`    ports:`);
     lines.push(`      - "${bridgePort}:${bridgePort}/tcp"`);
     lines.push(`    environment:`);
+    pushSystemEnv(lines, "augment-bridge");
     lines.push(`      HDC_AUGMENT_BRIDGE_NAME: ${bridgeName}`);
     lines.push(`      HDC_AUGMENT_RUNTIME: cursor-cloud`);
     lines.push(`      HDC_AUGMENT_BRIDGE_PORT: "${bridgePort}"`);

@@ -29,6 +29,27 @@
       "color": "#dc2626"
     }
   ],
+  "notifications": [
+    {
+      "id": "hdc-ops-discord",
+      "name": "HDC Ops Discord",
+      "type": "discord",
+      "managed": true,
+      "discord_webhook_vault_key": "HDC_OPS_DISCORD_WEBHOOK_URL",
+      "discord_username": "Uptime Kuma",
+      "apply_to_monitors": true
+    },
+    {
+      "id": "hdc-ops-mail",
+      "name": "HDC Ops Mail",
+      "type": "smtp",
+      "managed": true,
+      "use_mail_relay": true,
+      "mail_to": "ops@example.invalid",
+      "custom_subject": "[Uptime Kuma] {{name}} is {{status}}",
+      "apply_to_monitors": true
+    }
+  ],
   "status_pages": [
     { "$hdc.include": "status_pages/public.json" }
   ],
@@ -101,6 +122,19 @@
           "managed": true,
           "discord_webhook_vault_key": "HDC_OPS_DISCORD_WEBHOOK_URL",
           "discord_username": "Uptime Kuma",
+          "apply_to_monitors": true
+        },
+        {
+          "id": "hdc-ops-mail-ext",
+          "name": "HDC Ops Mail (external)",
+          "type": "smtp",
+          "managed": true,
+          "smtp_host": "mail.smtp2go.com",
+          "smtp_port": 587,
+          "smtp_username_env": "HDC_UPTIME_KUMA_SMTP_USERNAME",
+          "smtp_password_vault_key": "HDC_UPTIME_KUMA_SMTP_PASSWORD",
+          "mail_from": "uptime-kuma@example.invalid",
+          "mail_to": "ops@example.invalid",
           "apply_to_monitors": true
         }
       ],

@@ -1,3 +1,5 @@
+import { loadMailRelayClientDefaults } from "hdc/package/mail-relay-config.mjs";
+
 import {
   buildNotificationIdList,
   notificationToSocketConfig,
@@ -49,11 +51,13 @@ export function findLiveNotification(entry, liveRows) {
  * @param {import('./uptime-kuma-notifications-config.mjs').ConfigNotification[]} notifications
  * @param {Record<string, unknown>[]} liveRows
  * @param {ReturnType<typeof import('../../../lib/package-vault-access.mjs').createPackageVaultAccess>} vault
- * @param {{ dryRun?: boolean; log?: (line: string) => void }} opts
+ * @param {{ dryRun?: boolean; log?: (line: string) => void; env?: NodeJS.ProcessEnv; mailRelayDefaults?: () => { relay_hostname: string; relay_port: number; default_from: string } }} opts
  */
 export async function syncUptimeKumaNotifications(client, notifications, liveRows, vault, opts = {}) {
   const dryRun = Boolean(opts.dryRun);
   const log = opts.log ?? (() => {});
+  const env = opts.env ?? process.env;
+  const mailRelayDefaults = opts.mailRelayDefaults ?? (() => loadMailRelayClientDefaults({ env }));
   /** @type {Map<string, number>} */
   const liveIdsByConfigId = new Map();
   /** @type {Record<string, unknown>[]} */
@@ -74,20 +78,46 @@ export async function syncUptimeKumaNotifications(client, notifications, liveRow
 
     const live = findLiveNotification(entry, liveRows);
     const liveId = live ? parseLiveNotificationId(live) : null;
-    let webhookUrl = "";
-    if (entry.discord_webhook_vault_key) {
+
+    /** @type {import('./uptime-kuma-notifications-config.mjs').ResolvedNotificationSecrets} */
+    const resolved = {};
+    if (entry.type === "discord" && entry.discord_webhook_vault_key) {
       await vault.unlock({});
       const secret = await vault.getSecret(entry.discord_webhook_vault_key, { optional: true });
-      webhookUrl = typeof secret === "string" ? secret.trim() : "";
-      if (!webhookUrl) {
+      resolved.webhookUrl = typeof secret === "string" ? secret.trim() : "";
+      if (!resolved.webhookUrl) {
         const msg = `vault key ${entry.discord_webhook_vault_key} missing for notification ${entry.id}`;
         log(`error: ${msg}`);
         results.push({ ok: false, id: entry.id, error: msg });
         continue;
       }
     }
+    if (entry.type === "smtp") {
+      if (entry.use_mail_relay && (!entry.smtp_host || !entry.mail_from)) {
+        const relay = mailRelayDefaults();
+        if (!entry.smtp_host) {
+          resolved.smtpHost = relay.relay_hostname;
+          resolved.smtpPort = entry.smtp_port ?? relay.relay_port;
+        }
+        if (!entry.mail_from) resolved.mailFrom = relay.default_from;
+      }
+      if (entry.smtp_username_env) {
+        resolved.smtpUsername = String(env[entry.smtp_username_env] ?? "").trim();
+      }
+      if (entry.smtp_password_vault_key) {
+        await vault.unlock({});
+        const secret = await vault.getSecret(entry.smtp_password_vault_key, { optional: true });
+        resolved.smtpPassword = typeof secret === "string" ? secret.trim() : "";
+        if (!resolved.smtpPassword) {
+          const msg = `vault key ${entry.smtp_password_vault_key} missing for notification ${entry.id}`;
+          log(`error: ${msg}`);
+          results.push({ ok: false, id: entry.id, error: msg });
+          continue;
+        }
+      }
+    }
 
-    const configJson = notificationToSocketConfig(entry, webhookUrl);
+    const configJson = notificationToSocketConfig(entry, resolved);
     if (dryRun) {
       log(`dry-run: would ${liveId != null ? "edit" : "add"} notification ${entry.id}`);
       if (liveId != null) liveIdsByConfigId.set(entry.id, liveId);

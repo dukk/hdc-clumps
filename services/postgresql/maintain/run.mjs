@@ -4,7 +4,7 @@ import { guestBaselineResultFields, guestBaselineUsersOk } from "hdc/package/gue
 /**
  * Re-apply PostgreSQL configuration; optional package upgrade.
  *
- * Usage: hdc run service postgresql maintain -- [--instance a] [--skip-package-upgrade] [--skip-clamav]
+ * Usage: hdc run service postgresql maintain -- [--instance a] [--skip-package-upgrade] [--skip-clamav] [--skip-app-dump]
  */
 import { basename, dirname, join } from "node:path";
 import { existsSync, readFileSync } from "node:fs";
@@ -33,9 +33,14 @@ import { instanceLetterFromSystemId, replicationPasswordVaultKey, superuserPassw
 import { createPostgresqlVaultAccess } from "hdc/package/vault-deps.mjs";
 import { postgresqlReportExtraSections } from "hdc/package/postgresql-report.mjs";
 import { ensureGuestLinuxBaseline } from "hdc/package/guest-linux-baseline.mjs";
+import {
+  ensureAppDumpSchedule,
+  postgresqlDumpCommands,
+} from "hdc/package/app-dump-schedule.mjs";
 import { createPackageVaultAccess } from "hdc/package/package-vault-access.mjs";
 import { runOperationReportTail } from "hdc/package/operation-report.mjs";
-import { repoRoot } from "hdc/cli/paths.mjs";import { loadClumpConfigFromClumpRoot, tryLoadClumpConfigFromClumpRoot } from "hdc/package/clump-run-config.mjs";
+import { repoRoot } from "hdc/cli/paths.mjs";
+import { loadClumpConfigFromClumpRoot, tryLoadClumpConfigFromClumpRoot } from "hdc/package/clump-run-config.mjs";
 
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -197,12 +202,23 @@ async function main() {
         });
       }
       const baseline = await ensureGuestLinuxBaseline({ exec, log, flags, vaultAccess, deployment, proxmoxPackageRoot: proxmoxRoot });
-      const rowOk = clamav.ok;
+      const appDump = ensureAppDumpSchedule({
+        exec,
+        log,
+        flags,
+        spec: {
+          systemId: deployment.systemId,
+          name: "postgresql",
+          dumpCommands: postgresqlDumpCommands(),
+        },
+      });
+      const rowOk = configure.ok !== false && baseline.ok && appDump.ok;
       results.push({
         ok: rowOk,
         system_id: deployment.systemId,
         role: deployment.role,
         configure,
+        app_dump: appDump,
         ...guestBaselineResultFields(baseline),
       });
     } catch (e) {

@@ -21,6 +21,7 @@ import { createProxmoxHostProvisioner } from "../../../infrastructure/proxmox/li
 import { ensureQemuGuestAgentOnDeploy } from "../../../infrastructure/proxmox/lib/proxmox-qemu-guest-agent-install.mjs";
 import { guestResourceOptsFromBlock } from "../../../infrastructure/proxmox/lib/proxmox-guest-resources.mjs";
 import { waitForCloneTaskAndEnableAgent } from "../../../infrastructure/proxmox/lib/proxmox-qemu-post-clone.mjs";
+import { deployOk } from "hdc/package/deploy-ok.mjs";
 import { configureSplunkStandalone, createConfigureExec } from "hdc/package/splunk-configure.mjs";
 import {
   dataDiskGbFromDeployment,
@@ -145,7 +146,12 @@ async function deployOne(deployment, global, adminPassword, flags, log) {
   if (skipProvision(flags) || deployment.mode === "configure-only") {
     errout.write(`[hdc] ${target} ${verb}: ${deployment.systemId} configure-only …\n`);
     const configure = await runConfigure({ deployment, global, adminPassword, log });
-    return { ok: true, system_id: deployment.systemId, mode: "configure-only", configure };
+    return {
+      ok: deployOk(configure),
+      system_id: deployment.systemId,
+      mode: "configure-only",
+      configure,
+    };
   }
 
   const px = deployment.proxmox;
@@ -211,7 +217,7 @@ async function deployOne(deployment, global, adminPassword, flags, log) {
       );
       const configure = await runConfigure({ deployment, global, adminPassword, log });
       return {
-        ok: true,
+        ok: deployOk(configure),
         system_id: deployment.systemId,
         skipped_provision: true,
         configure,
@@ -342,7 +348,7 @@ async function deployOne(deployment, global, adminPassword, flags, log) {
   });
 
   return {
-    ok: true,
+    ok: deployOk(provisionResult, configure),
     system_id: deployment.systemId,
     provision: provisionResult,
     configure,

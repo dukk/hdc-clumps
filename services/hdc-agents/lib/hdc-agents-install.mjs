@@ -124,7 +124,7 @@ export function readCtPrimaryIp(user, pveHost, vmid) {
  * @param {number} vmid
  * @param {Record<string, unknown>} hdcAgents
  * @param {Record<string, unknown>} install
- * @param {{ composeEnv?: string, schedulesJson?: string, metaRoot?: string }} [opts]
+ * @param {{ composeEnv?: string, schedulesJson?: string, metaRoot?: string, systemId?: string }} [opts]
  */
 export async function installHdcAgentsInCt(user, pveHost, vmid, hdcAgents, install, opts = {}) {
   errout.write(`[hdc] hdc-agents install: Docker Compose build in CT ${vmid} …\n`);
@@ -137,7 +137,10 @@ export async function installHdcAgentsInCt(user, pveHost, vmid, hdcAgents, insta
   const ip = readCtPrimaryIp(user, pveHost, vmid);
   const dir = composeDir(install);
   const dockerfile = renderDockerfile(hdcAgents);
-  const composeYaml = renderComposeYaml(hdcAgents, install, { guestIp: ip });
+  const composeYaml = renderComposeYaml(hdcAgents, install, {
+    guestIp: ip,
+    systemId: opts.systemId,
+  });
   const script = buildStackScript(dir, dockerfile, composeYaml, {
     build: true,
     composeEnv: opts.composeEnv,
@@ -171,14 +174,17 @@ export async function installHdcAgentsInCt(user, pveHost, vmid, hdcAgents, insta
  * @param {number} vmid
  * @param {Record<string, unknown>} hdcAgents
  * @param {Record<string, unknown>} install
- * @param {{ skipUpgrade?: boolean, composeEnv?: string, schedulesJson?: string, metaRoot?: string }} [opts]
+ * @param {{ skipUpgrade?: boolean, composeEnv?: string, schedulesJson?: string, metaRoot?: string, systemId?: string }} [opts]
  */
 export async function maintainHdcAgentsInCt(user, pveHost, vmid, hdcAgents, install, opts = {}) {
   errout.write(`[hdc] hdc-agents maintain: re-push compose in CT ${vmid} …\n`);
   const ip = readCtPrimaryIp(user, pveHost, vmid);
   const dir = composeDir(install);
   const dockerfile = renderDockerfile(hdcAgents);
-  const composeYaml = renderComposeYaml(hdcAgents, install, { guestIp: ip });
+  const composeYaml = renderComposeYaml(hdcAgents, install, {
+    guestIp: ip,
+    systemId: opts.systemId,
+  });
   const script = buildMaintainScript(dir, dockerfile, composeYaml, opts);
   const r = pctExec(user, pveHost, vmid, script, { capture: true });
   if (r.status !== 0) {

@@ -2,7 +2,7 @@
 
 Proxmox LXC + Docker Compose on **hdc-agents-a**:
 
-- One container per roster role (`hdc-manager` … `hdc-sre-engineer` on ports 9200–9208) via `apps/hdc-agent-server`
+- One container per roster role (`hdc-manager` … `hdc-qa` on ports 9200–9206, 9208–9209; no 9207) via `apps/hdc-agent-server`
 - **`hdc-scheduler`** — cron CLI jobs (`hdc_agents.schedules[]`)
 - **`hdc-web`** — React ops UI / API (`apps/hdc-web-server` on `:9120`)
 

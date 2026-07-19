@@ -1,5 +1,13 @@
 import https from "node:https";
 
+import { withRetries } from "hdc/package/http-retry.mjs";
+
+/** Default per-request timeout for Proxmox API calls (override: HDC_PVE_HTTP_TIMEOUT_MS). */
+export const PVE_HTTP_DEFAULT_TIMEOUT_MS = 120_000;
+
+/** Default retries for transient Proxmox API failures (override: HDC_PVE_HTTP_RETRIES). */
+export const PVE_HTTP_DEFAULT_RETRIES = 2;
+
 /**
  * @param {unknown} body
  * @returns {body is Record<string, unknown>}
@@ -9,25 +17,73 @@ function isObject(body) {
 }
 
 /**
+ * @param {{ timeoutMs?: number } | undefined} opts
+ * @param {NodeJS.ProcessEnv} [env]
+ */
+export function resolvePveHttpTimeoutMs(opts, env = process.env) {
+  const fromOpts = Number(opts?.timeoutMs);
+  if (Number.isFinite(fromOpts) && fromOpts > 0) return Math.round(fromOpts);
+  const fromEnv = Number(env.HDC_PVE_HTTP_TIMEOUT_MS);
+  if (Number.isFinite(fromEnv) && fromEnv > 0) return Math.round(fromEnv);
+  return PVE_HTTP_DEFAULT_TIMEOUT_MS;
+}
+
+/**
+ * @param {{ retries?: number } | undefined} opts
+ * @param {NodeJS.ProcessEnv} [env]
+ */
+export function resolvePveHttpRetries(opts, env = process.env) {
+  if (opts?.retries != null) {
+    const n = Number(opts.retries);
+    if (Number.isFinite(n) && n >= 0) return Math.round(n);
+  }
+  const fromEnv = Number(env.HDC_PVE_HTTP_RETRIES);
+  if (Number.isFinite(fromEnv) && fromEnv >= 0) return Math.round(fromEnv);
+  return PVE_HTTP_DEFAULT_RETRIES;
+}
+
+/**
  * @param {string} method
  * @param {string} baseUrl
  * @param {string} path e.g. /nodes/hypervisor-a/lxc (no /api2/json prefix)
  * @param {string} authorization full Authorization header value
  * @param {boolean} rejectUnauthorized
  * @param {string | undefined} formBody application/x-www-form-urlencoded
+ * @param {{ timeoutMs?: number; retries?: number; log?: (line: string) => void }} [opts]
  * @returns {Promise<unknown>}
  */
-export function pveJsonRequest(method, baseUrl, path, authorization, rejectUnauthorized, formBody) {
+export function pveJsonRequest(method, baseUrl, path, authorization, rejectUnauthorized, formBody, opts = {}) {
+  const retries = resolvePveHttpRetries(opts);
+  return withRetries(() => pveJsonRequestOnce(method, baseUrl, path, authorization, rejectUnauthorized, formBody, opts), {
+    retries,
+    log: opts.log,
+  });
+}
+
+/**
+ * Single attempt (no retry). Prefer {@link pveJsonRequest}.
+ * @param {string} method
+ * @param {string} baseUrl
+ * @param {string} path
+ * @param {string} authorization
+ * @param {boolean} rejectUnauthorized
+ * @param {string | undefined} formBody
+ * @param {{ timeoutMs?: number }} [opts]
+ * @returns {Promise<unknown>}
+ */
+export function pveJsonRequestOnce(method, baseUrl, path, authorization, rejectUnauthorized, formBody, opts = {}) {
   const root = baseUrl.replace(/\/$/, "");
   const p = path.startsWith("/") ? path : `/${path}`;
   const url = `${root}/api2/json${p}`;
   const agent = new https.Agent({ rejectUnauthorized });
+  const timeoutMs = resolvePveHttpTimeoutMs(opts);
   return new Promise((resolve, reject) => {
     const req = https.request(
       url,
       {
         method,
         agent,
+        timeout: timeoutMs,
         headers: {
           Accept: "application/json",
           Authorization: authorization,
@@ -58,6 +114,9 @@ export function pveJsonRequest(method, baseUrl, path, authorization, rejectUnaut
         });
       },
     );
+    req.on("timeout", () => {
+      req.destroy(new Error(`Proxmox request timed out after ${timeoutMs}ms: ${method} ${p}`));
+    });
     req.on("error", reject);
     if (formBody) req.write(formBody);
     req.end();

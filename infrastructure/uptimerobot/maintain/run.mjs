@@ -12,13 +12,12 @@ import { fileURLToPath } from "node:url";
 import { stderr as errout } from "node:process";
 
 import { loadClumpConfigFromClumpRoot } from "hdc/package/clump-run-config.mjs";
+import { repoRoot } from "hdc/cli/paths.mjs";
 import { parseArgvFlags, flagGet } from "hdc/package/parse-argv-flags.mjs";
 import {
   createOperationReportContext,
   recordStep,
   runOperationReportTail,
-  setOutcome,
-  setStdoutPayload,
   pushWarning,
 } from "hdc/package/operation-report.mjs";
 import { createUptimerobotClient } from "hdc/package/uptimerobot-api.mjs";
@@ -332,16 +331,23 @@ async function main() {
     log("skip status pages (--skip-status-pages)");
   }
 
-  setStdoutPayload(reportCtx, {
+  await runOperationReportTail({
+    clumpRoot,
+    repoRoot: repoRoot(),
+    verb,
+    argv,
+    payload: {
+      ok: overallOk,
+      verb: "maintain",
+      package: "uptimerobot",
+      config_source: source,
+      dry_run: reportCtx.dryRun,
+      prune,
+    },
     ok: overallOk,
-    verb: "maintain",
-    package: "uptimerobot",
-    config_source: source,
-    dry_run: reportCtx.dryRun,
-    prune,
+    log,
+    reportCtx,
   });
-  setOutcome(reportCtx, overallOk ? "success" : "partial_failure");
-  await runOperationReportTail(reportCtx, log);
   if (!overallOk) process.exitCode = 1;
 }
 

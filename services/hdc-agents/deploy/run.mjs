@@ -398,6 +398,7 @@ async function deployOne(deployment, flags, log, runOpts) {
       vault: vaultAccess,
       privateRoot,
       hdcAgents: hdcAgentsCfg,
+      systemId,
     });
     secretOpts = {
       composeEnv: guestSecrets.composeEnv,
@@ -405,6 +406,7 @@ async function deployOne(deployment, flags, log, runOpts) {
       mailboxJson: guestSecrets.mailboxJson,
       notificationsJson: guestSecrets.notificationsJson,
       metaRoot,
+      systemId,
     };
     installResult = await installHdcAgentsInCt(
       pveSsh.user,

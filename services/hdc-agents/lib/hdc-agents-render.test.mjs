@@ -4,21 +4,30 @@ import { enabledAgents, litellmA2aAgentEntries, renderComposeYaml, renderDockerf
 
 describe("hdc-agents-render", () => {
   it("defaults to full roster when agents empty", () => {
-    expect(enabledAgents({}).length).toBe(9);
+    const agents = enabledAgents({});
+    expect(agents.length).toBe(9);
     expect(enabledAgents({ agents: [] }).length).toBe(9);
+    expect(agents.find((a) => a.role === "hdc-qa")).toMatchObject({ port: 9209 });
+    expect(agents.map((a) => a.role)).not.toContain("hdc-engineer");
   });
 
   it("renders compose with manager on 9200", () => {
     const yaml = renderComposeYaml(
       { litellm_base_url: "http://192.0.2.116:4000" },
       { compose_dir: "/opt/hdc-agents" },
+      { systemId: "hdc-agents-a" },
     );
     expect(yaml).toContain("HDC_AGENT_ROLE: hdc-manager");
+    expect(yaml).toContain('HDC_OPS_SYSTEM_ID: "hdc-agents-a"');
+    expect(yaml).toContain('hostname: "hdc-agents-a"');
+    expect(yaml).toContain('HDC_OPS_NOTIFY_APP: "web"');
     expect(yaml).toContain('"9200:9200/tcp"');
     expect(yaml).not.toContain("hdc-engineer");
     expect(yaml).not.toContain("/opt/hdc:rw");
     expect(yaml).toContain("hdc-sre-ops");
     expect(yaml).toContain("hdc-sre-engineer");
+    expect(yaml).toContain("hdc-qa");
+    expect(yaml).toContain('"9209:9209/tcp"');
     expect(yaml).toContain("hdc-scheduler");
     expect(yaml).toContain("hdc-web");
     expect(yaml).toContain("HDC_MCP_REQUIRE_API_KEY");
