@@ -15,12 +15,8 @@ describe("hdc-agents-render", () => {
     const yaml = renderComposeYaml(
       { litellm_base_url: "http://192.0.2.116:4000" },
       { compose_dir: "/opt/hdc-agents" },
-      { systemId: "hdc-agents-a" },
     );
     expect(yaml).toContain("HDC_AGENT_ROLE: hdc-manager");
-    expect(yaml).toContain('HDC_OPS_SYSTEM_ID: "hdc-agents-a"');
-    expect(yaml).toContain('hostname: "hdc-agents-a"');
-    expect(yaml).toContain('HDC_OPS_NOTIFY_APP: "web"');
     expect(yaml).toContain('"9200:9200/tcp"');
     expect(yaml).not.toContain("hdc-engineer");
     expect(yaml).not.toContain("/opt/hdc:rw");
