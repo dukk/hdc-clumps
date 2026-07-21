@@ -56,9 +56,10 @@ export const HOMEPAGE_WIDGET_CATALOG = [
   },
   {
     tileNames: ["Audiobookshelf"],
-    widgetType: "audiobookshelf",
+    widgetType: "customapi",
     configKey: "audiobookshelf_widget",
-    placeholders: ["HOMEPAGE_VAR_AUDIOBOOKSHELF_URL", "HOMEPAGE_VAR_AUDIOBOOKSHELF_KEY"],
+    placeholders: [],
+    builtin: true,
   },
   {
     tileNames: ["Uptime Kuma", "Uptime Kuma (Public Edge)"],

@@ -568,7 +568,7 @@ export async function syncUptimeKumaMonitors(client, monitors, live, opts = {}) 
   if (prune) {
     const hasManaged = monitors.some((m) => m.managed);
     for (const liveRow of live.monitors) {
-    if (monitors.some((entry) => findLiveMonitor(entry, [liveRow]))) continue;
+      if (monitors.some((entry) => findLiveMonitor(entry, [liveRow]))) continue;
       const plan = planMonitorDelete({ uptimeKumaId: liveRow.uptime_kuma_id, managed: hasManaged });
       if (plan.action === "skip") continue;
       log(`prune monitor ${liveRow.name} (uptime_kuma_id=${liveRow.uptime_kuma_id})`);
@@ -576,6 +576,33 @@ export async function syncUptimeKumaMonitors(client, monitors, live, opts = {}) 
         dryRun,
         log,
         name: liveRow.name,
+      });
+      results.push(result);
+    }
+
+    // Group rows are excluded from live.monitors; prune unused type=group parents separately.
+    // Desired set is all managed monitors in config (not only --monitor filter) so selective
+    // maintain does not delete unrelated groups.
+    const desiredGroupNames = new Set(
+      monitors
+        .filter((m) => m.managed && m.group)
+        .map((m) => String(m.group).trim().toLowerCase())
+        .filter(Boolean),
+    );
+    for (const row of live.raw.monitorRows) {
+      if (row.type !== "group") continue;
+      const name = typeof row.name === "string" ? row.name.trim() : "";
+      if (!name) continue;
+      if (desiredGroupNames.has(name.toLowerCase())) continue;
+      const groupId = parseUptimeKumaId(row.id);
+      if (groupId == null) continue;
+      const plan = planMonitorDelete({ uptimeKumaId: groupId, managed: hasManaged });
+      if (plan.action === "skip") continue;
+      log(`prune group monitor ${name} (uptime_kuma_id=${groupId})`);
+      const result = await applyMonitorDelete(client, plan, {
+        dryRun,
+        log,
+        name,
       });
       results.push(result);
     }

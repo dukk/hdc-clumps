@@ -1,4 +1,7 @@
 import { stderr as errout } from "node:process";
+import { existsSync, readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 
 import { pctExec } from "hdc/package/pve-pct-remote.mjs";
 import { waitForCt } from "../../ollama/lib/ollama-install.mjs";
@@ -13,11 +16,31 @@ import {
 
 export { resolvePveSshForHost };
 
+const pkgRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
+
+/**
+ * @param {string[]} lines
+ * @param {string} metaRoot
+ */
+function appendMetaBinScripts(lines, metaRoot) {
+  const meta = metaRoot.replace(/'/g, `'\\''`);
+  const binDir = join(pkgRoot, "meta", "bin");
+  if (!existsSync(binDir)) return;
+  lines.push(`mkdir -p '${meta}/bin'`);
+  for (const name of ["run-agent-task.mjs"]) {
+    const abs = join(binDir, name);
+    if (!existsSync(abs)) continue;
+    const b64 = Buffer.from(readFileSync(abs, "utf8"), "utf8").toString("base64");
+    lines.push(`echo '${b64}' | base64 -d > '${meta}/bin/${name.replace(/'/g, `'\\''`)}'`);
+    lines.push(`chmod 755 '${meta}/bin/${name.replace(/'/g, `'\\''`)}'`);
+  }
+}
+
 /**
  * @param {string} composeDirPath
  * @param {string} dockerfile
  * @param {string} composeYaml
- * @param {{ build?: boolean, composeEnv?: string, schedulesJson?: string, mailboxJson?: string, notificationsJson?: string, metaRoot?: string }} [opts]
+ * @param {{ build?: boolean, composeEnv?: string, schedulesJson?: string, mailboxJson?: string, notificationsJson?: string, webConfigJson?: string, metaRoot?: string }} [opts]
  */
 export function buildStackScript(composeDirPath, dockerfile, composeYaml, opts = {}) {
   const dir = composeDirPath.replace(/'/g, `'\\''`);
@@ -36,11 +59,18 @@ export function buildStackScript(composeDirPath, dockerfile, composeYaml, opts =
     "  apt-get install -y -qq docker-ce docker-ce-cli containerd.io docker-compose-plugin",
     "fi",
     "systemctl enable --now docker",
-    `mkdir -p '${dir}/hdc' /opt/hdc-private/operations/tasks /opt/hdc-src '${meta}/logs'`,
+    `mkdir -p '${dir}/hdc' '${dir}/hdc-clumps' /opt/hdc-private/operations/tasks /opt/hdc-src /opt/hdc-clumps '${meta}/logs'`,
     "if test -d /opt/hdc-src/apps; then",
     `  rsync -a --delete --exclude node_modules --exclude .git /opt/hdc-src/ '${dir}/hdc/'`,
     "elif test -d /opt/hdc/apps; then",
     `  rsync -a --delete --exclude node_modules --exclude .git /opt/hdc/ '${dir}/hdc/'`,
+    "fi",
+    "if test -d /opt/hdc-clumps/services; then",
+    `  rsync -a --delete --exclude node_modules --exclude .git /opt/hdc-clumps/ '${dir}/hdc-clumps/'`,
+    "elif test -d /root/.hdc/clump-repos/hdc-clumps/services; then",
+    `  rsync -a --delete --exclude node_modules --exclude .git /root/.hdc/clump-repos/hdc-clumps/ '${dir}/hdc-clumps/'`,
+    "else",
+    `  mkdir -p '${dir}/hdc-clumps'`,
     "fi",
     `cat > '${dir}/Dockerfile' <<'HDDOCKERFILE'`,
     dockerfile.trimEnd(),
@@ -68,6 +98,11 @@ export function buildStackScript(composeDirPath, dockerfile, composeYaml, opts =
     const b64 = Buffer.from(opts.notificationsJson, "utf8").toString("base64");
     lines.push(`echo '${b64}' | base64 -d > '${meta}/notifications.json'`);
   }
+  if (opts.webConfigJson) {
+    const b64 = Buffer.from(opts.webConfigJson, "utf8").toString("base64");
+    lines.push(`echo '${b64}' | base64 -d > '${meta}/web-config.json'`);
+  }
+  appendMetaBinScripts(lines, meta);
   lines.push(`cd '${dir}'`);
   if (opts.build !== false) {
     lines.push("docker compose build");
@@ -80,7 +115,7 @@ export function buildStackScript(composeDirPath, dockerfile, composeYaml, opts =
  * @param {string} composeDirPath
  * @param {string} dockerfile
  * @param {string} composeYaml
- * @param {{ skipUpgrade?: boolean, composeEnv?: string, schedulesJson?: string, mailboxJson?: string, notificationsJson?: string, metaRoot?: string }} [opts]
+ * @param {{ skipUpgrade?: boolean, composeEnv?: string, schedulesJson?: string, mailboxJson?: string, notificationsJson?: string, webConfigJson?: string, metaRoot?: string }} [opts]
  */
 export function buildMaintainScript(composeDirPath, dockerfile, composeYaml, opts = {}) {
   return buildStackScript(composeDirPath, dockerfile, composeYaml, {
@@ -89,6 +124,7 @@ export function buildMaintainScript(composeDirPath, dockerfile, composeYaml, opt
     schedulesJson: opts.schedulesJson,
     mailboxJson: opts.mailboxJson,
     notificationsJson: opts.notificationsJson,
+    webConfigJson: opts.webConfigJson,
     metaRoot: opts.metaRoot,
   });
 }
@@ -124,7 +160,7 @@ export function readCtPrimaryIp(user, pveHost, vmid) {
  * @param {number} vmid
  * @param {Record<string, unknown>} hdcAgents
  * @param {Record<string, unknown>} install
- * @param {{ composeEnv?: string, schedulesJson?: string, metaRoot?: string, systemId?: string }} [opts]
+ * @param {{ composeEnv?: string, schedulesJson?: string, metaRoot?: string, systemId?: string, webConfigJson?: string, mailboxJson?: string, notificationsJson?: string }} [opts]
  */
 export async function installHdcAgentsInCt(user, pveHost, vmid, hdcAgents, install, opts = {}) {
   errout.write(`[hdc] hdc-agents install: Docker Compose build in CT ${vmid} …\n`);
@@ -147,6 +183,7 @@ export async function installHdcAgentsInCt(user, pveHost, vmid, hdcAgents, insta
     schedulesJson: opts.schedulesJson,
     mailboxJson: opts.mailboxJson,
     notificationsJson: opts.notificationsJson,
+    webConfigJson: opts.webConfigJson,
     metaRoot: opts.metaRoot,
   });
   const r = pctExec(user, pveHost, vmid, script, { capture: true });
@@ -174,7 +211,7 @@ export async function installHdcAgentsInCt(user, pveHost, vmid, hdcAgents, insta
  * @param {number} vmid
  * @param {Record<string, unknown>} hdcAgents
  * @param {Record<string, unknown>} install
- * @param {{ skipUpgrade?: boolean, composeEnv?: string, schedulesJson?: string, metaRoot?: string, systemId?: string }} [opts]
+ * @param {{ skipUpgrade?: boolean, composeEnv?: string, schedulesJson?: string, metaRoot?: string, systemId?: string, webConfigJson?: string, mailboxJson?: string, notificationsJson?: string }} [opts]
  */
 export async function maintainHdcAgentsInCt(user, pveHost, vmid, hdcAgents, install, opts = {}) {
   errout.write(`[hdc] hdc-agents maintain: re-push compose in CT ${vmid} …\n`);

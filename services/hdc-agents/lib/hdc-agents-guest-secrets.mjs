@@ -3,10 +3,25 @@
  */
 import { randomBytes } from "node:crypto";
 
-import { mcpApiKeyVaultKey } from "../../../../apps/hdc-mcp-server/lib/api-keys.mjs";
-import { schedulesFromConfig } from "../../../../apps/hdc-agent-server/lib/scheduler-catalog.mjs";
-import { buildNotificationsJson } from "../../../../apps/hdc-cli/lib/notifications-config.mjs";
+import { mcpApiKeyVaultKey } from "hdc/apps/hdc-mcp-server/lib/api-keys.mjs";
+import { schedulesFromConfig } from "hdc/apps/hdc-agent-server/lib/scheduler-catalog.mjs";
+import { buildNotificationsJson, normalizeNotificationsConfig } from "hdc/cli/lib/notifications-config.mjs";
 import { ensureMcpApiKeysForAgents, mcpApiKeyRoles } from "./mcp-api-keys-ensure.mjs";
+
+/**
+ * Replace or append a KEY=value line in guest env lines.
+ *
+ * @param {string[]} lines
+ * @param {string} key
+ * @param {string} value
+ */
+function upsertEnvLine(lines, key, value) {
+  const prefix = `${key}=`;
+  const idx = lines.findIndex((line) => line.startsWith(prefix));
+  const entry = `${key}=${value}`;
+  if (idx >= 0) lines[idx] = entry;
+  else lines.push(entry);
+}
 /**
  * @param {{
  *   vault: { unlock: Function, getSecret: Function, setSecret: Function },
@@ -149,7 +164,11 @@ export async function prepareAgentsGuestSecrets(opts) {
     ...new Set([
       "HDC_OPS_DISCORD_WEBHOOK_URL",
       agentsWebhookVaultKey,
+      "HDC_OPS_SLACK_WEBHOOK_URL",
       "HDC_AGENTS_SLACK_WEBHOOK_URL",
+      "HDC_SLACK_BOT_TOKEN",
+      "HDC_SLACK_DECISION_CHANNEL",
+      "HDC_SLACK_HDC_APP_SIGNING_SECRET",
       "HDC_AGENTS_TEAMS_WEBHOOK_URL",
       "HDC_AGENTS_TELEGRAM_BOT_TOKEN",
       "HDC_LITELLM_MASTER_KEY",
@@ -161,6 +180,32 @@ export async function prepareAgentsGuestSecrets(opts) {
   for (const key of passThroughKeys) {
     const val = String((await vault.getSecret(key, { optional: true })) ?? "").trim();
     if (val) envLines.push(`${key}=${val}`);
+  }
+
+  const notificationsNormalized = normalizeNotificationsConfig(
+    /** @type {Record<string, unknown>} */ (hdcAgents),
+  );
+  const slackApp = notificationsNormalized.channels["slack-hdc-app"] ?? {};
+  const slackChannelId =
+    typeof slackApp.channel_id === "string" ? slackApp.channel_id.trim() : "";
+  if (slackChannelId) {
+    upsertEnvLine(envLines, "HDC_SLACK_DECISION_CHANNEL", slackChannelId);
+  }
+  const authorizedUsers = Array.isArray(slackApp.decision_authorized_users)
+    ? slackApp.decision_authorized_users
+    : [];
+  if (authorizedUsers.length) {
+    upsertEnvLine(
+      envLines,
+      "HDC_SLACK_DECISION_AUTHORIZED_USERS",
+      authorizedUsers.join(","),
+    );
+  }
+  const authorizedFromVault = String(
+    (await vault.getSecret("HDC_SLACK_DECISION_AUTHORIZED_USERS", { optional: true })) ?? "",
+  ).trim();
+  if (authorizedFromVault) {
+    upsertEnvLine(envLines, "HDC_SLACK_DECISION_AUTHORIZED_USERS", authorizedFromVault);
   }
 
   const applicationId =

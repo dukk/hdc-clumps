@@ -39,6 +39,9 @@ export function printDeveloperPortalChecklist(opts) {
     if (app.portal_checklist.notes) {
       logBlock(`  Notes: ${app.portal_checklist.notes}`, log);
     }
+    if (app.icon?.repo_path) {
+      logBlock(`  icon: ${app.icon.repo_path} (managed via PATCH /applications/@me)`, log);
+    }
     logBlock("", log);
   }
 }

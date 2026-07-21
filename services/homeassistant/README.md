@@ -15,13 +15,25 @@ Deploy **Home Assistant OS** as a Proxmox QEMU VM with optional USB passthrough 
 |------|---------|
 | `deploy` | Import HAOS OVA qcow2, create VM, USB passthrough, start, wait for HTTP `:8123` |
 | `maintain` | Sync nginx-waf `trusted_proxies` when `public_url` is HTTPS; HTTP health probe; `--reapply-usb` to refresh USB mapping |
-| `query` | Config summary; `--live` for Proxmox guest + HTTP probe |
+| `query` | Config summary; `--live` for Proxmox guest + HTTP probe; `--import --yes` pulls integrations + UI automations/scripts/scenes into split sidecars |
 | `teardown` | Destroy QEMU guest (`--dry-run`, `--yes`) |
 
 ```bash
 hdc run service homeassistant deploy -- --instance a --destroy-existing
 hdc run service homeassistant query -- --live
+hdc run service homeassistant query -- --import --yes
 ```
+
+## Config import (`query --import`)
+
+Read-only snapshot into hdc-private via the HA REST API (long-lived access token). Writes:
+
+- `integrations/<domain>.json` — one file per integration domain (config entry metadata; HA does not expose `data`/`options` over REST)
+- `automations/<id>.json`, `scripts/<id>.json`, `scenes/<id>.json` — UI-managed YAML configs
+
+Vault: `HDC_HOMEASSISTANT_TOKEN` (or `homeassistant.api.token_vault_key`). Create the token under **Settings → People → Long-lived access tokens**. The same token may be reused for the homepage HA widget (`HDC_HOMEPAGE_HA_TOKEN`) if you store it under both keys.
+
+**Limits:** Raw `packages/*.yaml` and integration options (hosts, API keys) are not available over REST. Import does not push changes back to HA.
 
 ## USB passthrough
 
@@ -55,4 +67,4 @@ homeassistant:
 
 `--instance a`, `--system-id`, `--destroy-existing`, `--skip-provision`, `--usb-id`, `--no-wait-http`, `--reapply-usb`, `--skip-reverse-proxy`, `--no-report`.
 
-No vault secrets for v1. Pair ZHA/Z-Wave in the Home Assistant UI after deploy.
+Vault: `HDC_HOMEASSISTANT_TOKEN` for `query --import`. Pair ZHA/Z-Wave in the Home Assistant UI after deploy.

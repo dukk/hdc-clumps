@@ -1,8 +1,11 @@
 {
-  "schema_version": 2,
+  "schema_version": 3,
   "homeassistant": {
     "release": "16.0",
-    "public_url": "https://ha.example.invalid"
+    "public_url": "https://ha.example.invalid",
+    "api": {
+      "token_vault_key": "HDC_HOMEASSISTANT_TOKEN"
+    }
   },
   "defaults": {
     "mode": "proxmox-qemu-haos",

@@ -33,6 +33,7 @@ import { findLiveMonitor, parseUptimeKumaId } from "./uptime-kuma-config.mjs";
  *   analytics_script_url: string | null;
  *   analytics_type: string | null;
  *   groups: ConfigStatusPageGroup[];
+ *   include_all_monitors: boolean;
  *   managed: boolean;
  * }} ConfigStatusPage */
 
@@ -121,8 +122,65 @@ function normalizeStatusPageEntry(p) {
     analytics_script_url: typeof p.analytics_script_url === "string" ? p.analytics_script_url : null,
     analytics_type: typeof p.analytics_type === "string" ? p.analytics_type : null,
     groups: normalizeStatusPageGroups(p.groups),
+    include_all_monitors: p.include_all_monitors === true,
     managed: p.managed === true,
   };
+}
+
+/**
+ * Build status-page groups from monitor `group` fields (fallback "Other").
+ * Group names sorted alphabetically; monitor ids sorted within each group.
+ *
+ * @param {import('./uptime-kuma-config.mjs').ConfigMonitor[]} monitors
+ * @returns {ConfigStatusPageGroup[]}
+ */
+export function groupsFromConfigMonitors(monitors) {
+  /** @type {Map<string, ConfigStatusPageMonitor[]>} */
+  const byGroup = new Map();
+  for (const m of monitors) {
+    if (!m || typeof m.id !== "string" || !m.id.trim()) continue;
+    if (m.type === "group") continue;
+    const name =
+      typeof m.group === "string" && m.group.trim() ? m.group.trim() : "Other";
+    const list = byGroup.get(name) ?? [];
+    list.push({ id: m.id.trim(), send_url: false, url: null });
+    byGroup.set(name, list);
+  }
+
+  const names = [...byGroup.keys()].sort((a, b) => a.localeCompare(b));
+  return names.map((name, idx) => {
+    const monitorsInGroup = (byGroup.get(name) ?? []).sort((a, b) => a.id.localeCompare(b.id));
+    return {
+      name,
+      weight: idx + 1,
+      monitors: monitorsInGroup,
+    };
+  });
+}
+
+/**
+ * When `include_all_monitors` is set, replace groups with every config monitor.
+ * Explicit groups are left unchanged when the flag is false.
+ *
+ * @param {ConfigStatusPage} entry
+ * @param {import('./uptime-kuma-config.mjs').ConfigMonitor[]} monitors
+ * @returns {ConfigStatusPage}
+ */
+export function expandStatusPageGroupsFromMonitors(entry, monitors) {
+  if (!entry.include_all_monitors) return entry;
+  return {
+    ...entry,
+    groups: groupsFromConfigMonitors(monitors),
+  };
+}
+
+/**
+ * @param {ConfigStatusPage[]} statusPages
+ * @param {import('./uptime-kuma-config.mjs').ConfigMonitor[]} monitors
+ * @returns {ConfigStatusPage[]}
+ */
+export function expandStatusPagesWithAllMonitors(statusPages, monitors) {
+  return statusPages.map((p) => expandStatusPageGroupsFromMonitors(p, monitors));
 }
 
 /**
@@ -297,6 +355,7 @@ export function liveStatusPageToConfig(
       existing?.groups?.length
         ? existing.groups
         : groupsFromPublicGroupList(publicGroupList, monitorHdcIdByUkId, log),
+    include_all_monitors: existing?.include_all_monitors === true,
     managed: existing?.managed ?? (importManagedDefault ? true : false),
   };
 }

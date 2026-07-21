@@ -1,6 +1,7 @@
 import { stderr as errout } from "node:process";
 
 import { loadClumpConfigFromClumpRoot } from "hdc/package/clump-run-config.mjs";
+import { fetchAudiobookshelfWidgetStats } from "./homepage-audiobookshelf-stats.mjs";
 import {
   isObject,
   readRequiredVaultSecret,
@@ -10,6 +11,8 @@ import {
 } from "./homepage-widget-utils.mjs";
 
 export const DEFAULT_AUDIOBOOKSHELF_TOKEN_VAULT_KEY = "HDC_HOMEPAGE_AUDIOBOOKSHELF_TOKEN";
+
+/** @typedef {{ rel: string; json: Record<string, unknown> }} HomepageStatsFile */
 
 /** @param {unknown} v */
 function isObjectLocal(v) {
@@ -25,6 +28,15 @@ function normalizeAudiobookshelfConfig(cfg) {
   }
   const defaults = isObjectLocal(cfg.defaults) ? cfg.defaults : {};
   return { defaults, deployments: cfg.deployments.filter(isObjectLocal) };
+}
+
+/**
+ * @param {Record<string, unknown>} widget
+ */
+function libraryBucketsFromWidget(widget) {
+  const raw = widget.library_buckets;
+  if (!isObject(raw)) return undefined;
+  return /** @type {import("./homepage-audiobookshelf-stats.mjs").AudiobookshelfLibraryBuckets} */ (raw);
 }
 
 /**
@@ -45,7 +57,7 @@ export async function resolveHomepageAudiobookshelfWidgetEnv(opts) {
   const { homepage, audiobookshelfPackageRoot, vaultAccess, dryRun = false } = opts;
   if (!audiobookshelfWidgetEnabled(homepage)) return null;
 
-  errout.write("[hdc] homepage: resolving Audiobookshelf widget env …\n");
+  errout.write("[hdc] homepage: resolving Audiobookshelf widget stats …\n");
 
   const loaded = loadClumpConfigFromClumpRoot(audiobookshelfPackageRoot, {
     exampleRel: "clumps/services/audiobookshelf/config.example.json",
@@ -68,12 +80,19 @@ export async function resolveHomepageAudiobookshelfWidgetEnv(opts) {
 
   const widget = /** @type {Record<string, unknown>} */ (homepage.audiobookshelf_widget);
   const vaultKey = vaultKeyFromWidget(widget, "token_vault_key", DEFAULT_AUDIOBOOKSHELF_TOKEN_VAULT_KEY);
+  const libraryBuckets = libraryBucketsFromWidget(widget);
 
   if (dryRun) {
     return {
-      lines: [`# dry-run: would inject HOMEPAGE_VAR_AUDIOBOOKSHELF_* (vault ${vaultKey})`],
+      lines: [`# dry-run: would write stats/audiobookshelf.json (vault ${vaultKey})`],
       vault_key: vaultKey,
       url,
+      statsFiles: [
+        {
+          rel: "stats/audiobookshelf.json",
+          json: { audiobooks: 0, ebooks: 0, other: 0, total_storage_bytes: 0, dry_run: true },
+        },
+      ],
     };
   }
 
@@ -83,11 +102,18 @@ export async function resolveHomepageAudiobookshelfWidgetEnv(opts) {
     `homepage audiobookshelf_widget requires admin API token in ${vaultKey}`,
   );
 
-  errout.write(`[hdc] homepage: Audiobookshelf widget env ready (${url}, vault ${JSON.stringify(vaultKey)}).\n`);
+  const counts = await fetchAudiobookshelfWidgetStats({ url, token, libraryBuckets });
+  const statsFiles = [{ rel: "stats/audiobookshelf.json", json: counts }];
+
+  errout.write(
+    `[hdc] homepage: Audiobookshelf widget stats ready (${url}, audiobooks=${counts.audiobooks}, ebooks=${counts.ebooks}, other=${counts.other}, storage=${counts.total_storage_bytes} bytes).\n`,
+  );
 
   return {
-    lines: [`HOMEPAGE_VAR_AUDIOBOOKSHELF_URL=${url}`, `HOMEPAGE_VAR_AUDIOBOOKSHELF_KEY=${token}`],
+    lines: [],
     vault_key: vaultKey,
     url,
+    statsFiles,
+    counts,
   };
 }

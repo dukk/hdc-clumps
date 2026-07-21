@@ -6,20 +6,24 @@ Discover zones in your Cloudflare account and apply declarative DNS records, Pag
 
 - **Config:** copy [`config.example.json`](config.example.json) to `config.json` in hdc-private (same path).
 - **API token:** `HDC_CLOUDFLARE_API_TOKEN` in repo `.env` or the hdc vault (`secrets set`; used when `.env` is unset).
-- **Permissions:** Zone **Read**, DNS **Edit**, Page Rules **Edit**, Email Routing Rules **Edit** (for full sync).
+- **Permissions:** Zone **Read**, DNS **Edit**, Page Rules **Edit**, Email Routing Rules **Edit** (for full sync). Optional **Registrar** read for native expiry via API; otherwise query uses public **RDAP** for `expires_at`.
 - **Optional env:** `HDC_CLOUDFLARE_ACCOUNT_ID` when listing zones requires an account filter.
 
 See [`docs/manually-deployed/cloudflare.md`](../../../docs/manually-deployed/cloudflare.md) for token setup.
+
+**Domain portfolio:** `query` always includes `domains[]` (apex, zone status, RDAP expiry). Persist automated inventory with `--export-inventory --yes` → `operations/automated/domains/<apex>.json` (skips the full DNS/page-rule/email scan). Manual purpose/mail/renewal live under `operations/inventory/domains/`. Implementation: `lib/cloudflare-domain-registrar.mjs` (DomainRegistrar interface).
 
 ## Commands
 
 | Verb | Purpose |
 |------|---------|
-| `query` | List account zones, diff DNS/page rules/email routing vs config (JSON on stdout) |
+| `query` | List account zones, diff DNS/page rules/email routing vs config; include `domains[]` (JSON on stdout) |
 | `maintain` | Apply managed DNS, page rules, and email routing for zones in config |
 
 ```bash
 hdc run infrastructure cloudflare query --
+hdc run infrastructure cloudflare query -- --export-inventory --yes
+hdc run infrastructure cloudflare query -- --export-inventory --skip-domain-expiry --yes
 hdc run infrastructure cloudflare maintain -- --dry-run
 hdc help run infrastructure cloudflare
 ```

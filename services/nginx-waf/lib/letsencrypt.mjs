@@ -60,6 +60,23 @@ function runChecked(exec, cmd, log) {
 }
 
 /**
+ * First meaningful line from a certbot/SSH error blob (skip known_hosts noise).
+ * @param {string} msg
+ */
+export function firstMeaningfulErrorLine(msg) {
+  const lines = String(msg)
+    .split(/\r?\n/)
+    .map((l) => l.trim())
+    .filter(Boolean);
+  for (const line of lines) {
+    if (/^\s*Warning:\s*Permanently added/i.test(line)) continue;
+    if (/^\s*#\s*hdc\b/i.test(line)) continue;
+    return line;
+  }
+  return lines[0] || String(msg).trim() || "unknown error";
+}
+
+/**
  * @param {import("../../postfix-relay/lib/postfix-relay-configure.mjs").ConfigureExec} exec
  * @param {string} remotePath
  * @param {string} content
@@ -78,6 +95,70 @@ export function certExistsOnHost(exec, domain) {
   const safe = String(domain).replace(/[^a-zA-Z0-9._-]/g, "");
   const r = exec.run(`test -f /etc/letsencrypt/live/${safe}/fullchain.pem`, { capture: true });
   return r.status === 0;
+}
+
+/**
+ * Parse openssl `x509 -ext subjectAltName` (or similar) output into DNS names.
+ * @param {string} text
+ * @returns {string[]}
+ */
+export function parseCertSanOutput(text) {
+  /** @type {string[]} */
+  const names = [];
+  for (const m of String(text).matchAll(/DNS:([^\s,]+)/gi)) {
+    const n = m[1].trim().toLowerCase();
+    if (n && !names.includes(n)) names.push(n);
+  }
+  return names;
+}
+
+/**
+ * Read DNS SANs from a live Let's Encrypt cert on the host.
+ * @param {import("../../postfix-relay/lib/postfix-relay-configure.mjs").ConfigureExec} exec
+ * @param {string} certName
+ * @returns {string[] | null} null when the cert file is missing or unreadable
+ */
+export function readCertSansOnHost(exec, certName) {
+  const safe = String(certName).replace(/[^a-zA-Z0-9._-]/g, "");
+  const path = `/etc/letsencrypt/live/${safe}/fullchain.pem`;
+  const r = exec.run(
+    `test -f ${shellQuote(path)} && openssl x509 -noout -ext subjectAltName -in ${shellQuote(path)}`,
+    { capture: true },
+  );
+  if (r.status !== 0) return null;
+  return parseCertSanOutput(`${r.stdout}\n${r.stderr}`);
+}
+
+/**
+ * Desired hostnames not present in live SANs (case-insensitive).
+ * @param {string[]} desired
+ * @param {string[]} live
+ * @returns {string[]}
+ */
+export function sansMissingFromLive(desired, live) {
+  const liveSet = new Set(live.map((n) => String(n).trim().toLowerCase()).filter(Boolean));
+  /** @type {string[]} */
+  const missing = [];
+  for (const raw of desired) {
+    const n = String(raw).trim().toLowerCase();
+    if (!n || liveSet.has(n) || missing.includes(n)) continue;
+    missing.push(n);
+  }
+  return missing;
+}
+
+/**
+ * True when the cert is missing or live SANs do not cover every configured name.
+ * @param {import("../../postfix-relay/lib/postfix-relay-configure.mjs").ConfigureExec} exec
+ * @param {string} certName
+ * @param {string[]} sans
+ */
+export function certNeedsEnsureOnHost(exec, certName, sans) {
+  if (!certExistsOnHost(exec, certName)) return true;
+  const desired = sans.length ? sans : [certName];
+  const live = readCertSansOnHost(exec, certName);
+  if (live === null) return true;
+  return sansMissingFromLive(desired, live).length > 0;
 }
 
 /**
@@ -154,17 +235,18 @@ export function buildCertonlyCommand(opts) {
   const { acme, email, certName, sans } = opts;
   const agree = " --agree-tos --non-interactive";
   const domainFlags = (sans.length ? sans : [certName]).map((n) => `-d ${n}`).join(" ");
+  const certFlags = ` --cert-name ${shellQuote(certName)} --expand`;
   const serverFlag = acmeServerFlag(acme);
   const caBundle = acmeCaBundlePrefix(acme);
   if (acme.challenge === "dns-01") {
     return (
       `${caBundle}certbot certonly --dns-rfc2136 --dns-rfc2136-credentials ${shellQuote(CERTBOT_DNS_CREDENTIALS)} ` +
-      `--email ${shellQuote(email)}${agree}${serverFlag} ${domainFlags}`
+      `--email ${shellQuote(email)}${agree}${certFlags}${serverFlag} ${domainFlags}`
     );
   }
   return (
     `${caBundle}mkdir -p ${shellQuote(acme.webroot || "/var/www/letsencrypt")} && certbot certonly --webroot -w ${shellQuote(acme.webroot || "/var/www/letsencrypt")} ` +
-    `--email ${shellQuote(email)}${agree}${serverFlag} ${domainFlags}`
+    `--email ${shellQuote(email)}${agree}${certFlags}${serverFlag} ${domainFlags}`
   );
 }
 
@@ -230,67 +312,123 @@ function obtainCertificateWithChallenge(opts) {
  * @param {Record<string, unknown>[]} opts.sites
  * @param {string} [opts.tsigSecret]
  */
+/**
+ * @param {object} opts
+ * @param {import("../../postfix-relay/lib/postfix-relay-configure.mjs").ConfigureExec} opts.exec
+ * @param {import("../../../lib/host-provisioner.mjs").ProvisionLog} opts.log
+ * @param {ReturnType<typeof import("./deployments.mjs").parseAcmeSettings>} opts.acme
+ * @param {string} opts.email
+ * @param {string} opts.certName
+ * @param {string[]} opts.sans
+ * @param {string} [opts.tsigSecret]
+ * @returns {boolean} true when a certificate was written
+ */
+function tryObtainOrExpandCertificate(opts) {
+  const { exec, log, acme, email, certName, sans, tsigSecret } = opts;
+  const names = sans.length ? sans : [certName];
+  try {
+    obtainCertificateWithChallenge({ exec, log, acme, email, certName, sans, tsigSecret });
+    return true;
+  } catch (httpErr) {
+    const msg = String(/** @type {Error} */ (httpErr).message || httpErr);
+    const short = firstMeaningfulErrorLine(msg);
+    if (acme.challenge !== "http-01" || !canDnsFallback(acme, tsigSecret, sans, certName)) {
+      if (
+        acme.challenge === "http-01" &&
+        acme.dnsZone &&
+        tsigSecret &&
+        !acmeNamesCoveredByZone(names, acme.dnsZone)
+      ) {
+        log.info(
+          `certificate obtain failed for ${certName}: ${short} (dns-01 fallback skipped: cert names not in BIND zone ${acme.dnsZone})`,
+        );
+      } else {
+        log.info(`certificate obtain failed for ${certName}: ${short}`);
+      }
+      return false;
+    }
+    log.info(`http-01 failed for ${certName}, retrying dns-01`);
+    try {
+      const dnsAcme = { ...acme, challenge: "dns-01" };
+      obtainCertificateWithChallenge({
+        exec,
+        log,
+        acme: dnsAcme,
+        email,
+        certName,
+        sans,
+        tsigSecret,
+      });
+      return true;
+    } catch (dnsErr) {
+      const dnsMsg = String(/** @type {Error} */ (dnsErr).message || dnsErr);
+      log.info(`certificate obtain failed for ${certName}: ${firstMeaningfulErrorLine(dnsMsg)}`);
+      return false;
+    }
+  }
+}
+
+/**
+ * Obtain missing certs and expand existing certs when configured SANs are incomplete.
+ * @param {object} opts
+ * @param {import("../../postfix-relay/lib/postfix-relay-configure.mjs").ConfigureExec} opts.exec
+ * @param {import("../../../lib/host-provisioner.mjs").ProvisionLog} opts.log
+ * @param {ReturnType<typeof import("./deployments.mjs").nginxWafGroupSettings>} opts.global
+ * @param {string} opts.email
+ * @param {Record<string, unknown>[]} opts.sites
+ * @param {string} [opts.tsigSecret]
+ */
 export function obtainMissingCertificates(opts) {
   const { exec, log, global, email, sites, tsigSecret } = opts;
   const plans = tlsCertObtainPlans(sites, global);
   if (!plans.length) {
     log.info("no TLS domains configured");
-    return { obtained: [], skipped: [] };
+    return { obtained: [], expanded: [], skipped: [] };
   }
   if (!email) throw new Error("ACME account email required (config or vault)");
 
   /** @type {string[]} */
   const obtained = [];
   /** @type {string[]} */
+  const expanded = [];
+  /** @type {string[]} */
   const skipped = [];
 
   for (const plan of plans) {
     const { certName, sans, acme } = plan;
-    if (certExistsOnHost(exec, certName)) {
-      skipped.push(certName);
-      continue;
-    }
-    try {
-      obtainCertificateWithChallenge({ exec, log, acme, email, certName, sans, tsigSecret });
-      obtained.push(certName);
-    } catch (httpErr) {
-      const msg = String(/** @type {Error} */ (httpErr).message || httpErr);
-      const names = sans.length ? sans : [certName];
-      if (acme.challenge !== "http-01" || !canDnsFallback(acme, tsigSecret, sans, certName)) {
-        if (
-          acme.challenge === "http-01" &&
-          acme.dnsZone &&
-          tsigSecret &&
-          !acmeNamesCoveredByZone(names, acme.dnsZone)
-        ) {
-          log.info(
-            `certificate obtain failed for ${certName}: ${msg.split("\n")[0]} (dns-01 fallback skipped: cert names not in BIND zone ${acme.dnsZone})`,
-          );
-        } else {
-          log.info(`certificate obtain failed for ${certName}: ${msg.split("\n")[0]}`);
-        }
+    const desired = sans.length ? sans : [certName];
+    const exists = certExistsOnHost(exec, certName);
+    if (exists) {
+      const live = readCertSansOnHost(exec, certName) ?? [];
+      const missing = sansMissingFromLive(desired, live);
+      if (!missing.length) {
+        skipped.push(certName);
         continue;
       }
-      log.info(`http-01 failed for ${certName}, retrying dns-01`);
-      try {
-        const dnsAcme = { ...acme, challenge: "dns-01" };
-        obtainCertificateWithChallenge({
-          exec,
-          log,
-          acme: dnsAcme,
-          email,
-          certName,
-          sans,
-          tsigSecret,
-        });
-        obtained.push(certName);
-      } catch (dnsErr) {
-        const dnsMsg = String(/** @type {Error} */ (dnsErr).message || dnsErr);
-        log.info(`certificate obtain failed for ${certName}: ${dnsMsg.split("\n")[0]}`);
+      log.info(`expanding certificate ${certName}: adding ${missing.join(", ")}`);
+      if (tryObtainOrExpandCertificate({ exec, log, acme, email, certName, sans, tsigSecret })) {
+        expanded.push(certName);
       }
+      continue;
+    }
+    if (tryObtainOrExpandCertificate({ exec, log, acme, email, certName, sans, tsigSecret })) {
+      obtained.push(certName);
     }
   }
-  return { obtained, skipped };
+  return { obtained, expanded, skipped };
+}
+
+/**
+ * Whether any site cert on the host is missing or needs SAN expansion.
+ * @param {import("../../postfix-relay/lib/postfix-relay-configure.mjs").ConfigureExec} exec
+ * @param {Record<string, unknown>[]} sites
+ * @param {ReturnType<typeof import("./deployments.mjs").nginxWafGroupSettings>} groupGlobal
+ */
+export function anyCertNeedsEnsureOnHost(exec, sites, groupGlobal) {
+  for (const plan of tlsCertObtainPlans(sites, groupGlobal)) {
+    if (certNeedsEnsureOnHost(exec, plan.certName, plan.sans)) return true;
+  }
+  return false;
 }
 
 /**

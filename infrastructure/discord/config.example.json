@@ -16,6 +16,9 @@
       },
       "display_name": "HDC Ops",
       "bot_token_vault_key": "HDC_OPS_DISCORD_BOT_TOKEN",
+      "icon": {
+        "repo_path": "assets/beetle-agent.png"
+      },
       "public_key": null,
       "ops_decisions": {
         "channel_id": null

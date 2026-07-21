@@ -31,9 +31,13 @@ import {
 } from "hdc/package/nginx-waf-configure.mjs";
 import { configureExecFromDeployment } from "hdc/package/configure-exec.mjs";
 import { runCertSync } from "hdc/package/cert-sync.mjs";
-import { obtainMissingCertificates, queryCertExpiry, renewCertificates } from "hdc/package/letsencrypt.mjs";
+import {
+  anyCertNeedsEnsureOnHost,
+  obtainMissingCertificates,
+  queryCertExpiry,
+  renewCertificates,
+} from "hdc/package/letsencrypt.mjs";
 import { tlsDomainsFromSites } from "hdc/package/nginx-waf-render.mjs";
-import { certExistsOnHost } from "hdc/package/letsencrypt.mjs";
 import { nginxWafReportExtraSections } from "hdc/package/nginx-waf-report.mjs";
 import { ensureGuestLinuxBaseline } from "hdc/package/guest-linux-baseline.mjs";
 import {
@@ -229,12 +233,10 @@ async function main() {
         ? await loadGroupSecrets(global, vault)
         : { email: global.email, tsigSecret: "" };
 
-      const missingTlsPrimary = tlsDomainsFromSites(certSites, global).filter(
-        (d) => !certExistsOnHost(certPrimaryExec, d),
-      );
-      if (missingTlsPrimary.length && email) {
+      const needsCertEnsure = Boolean(email) && anyCertNeedsEnsureOnHost(certPrimaryExec, certSites, global);
+      if (needsCertEnsure) {
         errout.write(
-          `[hdc] ${target} ${verb}: group ${ctx.groupId}: obtaining certificate(s) ${missingTlsPrimary.join(", ")} on ${certPrimary.systemId} …\n`,
+          `[hdc] ${target} ${verb}: group ${ctx.groupId}: ensuring certificate(s) (obtain/expand) on ${certPrimary.systemId} …\n`,
         );
         if (global.challenge === "dns-01") {
           installNginxWafBase({

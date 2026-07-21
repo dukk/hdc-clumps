@@ -7,6 +7,7 @@ import {
 } from "./discord-config.mjs";
 import { diffApplication } from "./discord-diff.mjs";
 import { createDiscordClient } from "./discord-api.mjs";
+import { collectIconState } from "./discord-icon.mjs";
 import { checkBotTokenPresent, resolveDiscordBotToken } from "./vault-deps.mjs";
 
 /**
@@ -28,6 +29,7 @@ export async function fetchLiveApplication(api, log = () => {}) {
  * @param {boolean} opts.requireVault
  * @param {(msg: string) => void} [opts.warn]
  * @param {(line: string) => void} [opts.log]
+ * @param {{ hdcRoot?: string }} [opts.resolveOpts]
  */
 export async function collectDiscordState(opts) {
   const { config, vault, appFilterId, noDerive, requireVault } = opts;
@@ -82,6 +84,11 @@ export async function collectDiscordState(opts) {
     const drift = diffApplication({ desired, live });
     if (drift.has_drift) anyDrift = true;
 
+    const iconState = opts.resolveOpts?.hdcRoot
+      ? collectIconState(cfgApp, opts.resolveOpts.hdcRoot)
+      : { configured: false, drift: false };
+    if (iconState.configured && iconState.drift) anyDrift = true;
+
     applications.push({
       config_id: cfgApp.id,
       display_name: cfgApp.display_name,
@@ -105,6 +112,8 @@ export async function collectDiscordState(opts) {
           }
         : null,
       drift,
+      icon_drift: iconState.configured ? iconState.drift : undefined,
+      icon: iconState.configured ? iconState : undefined,
       vault: {
         bot_token_vault_key: cfgApp.bot_token_vault_key,
         bot_token_present: botTokenPresent,

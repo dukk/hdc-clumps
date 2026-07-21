@@ -53,11 +53,16 @@
       },
       "audiobookshelf_widget": {
         "enabled": true,
-        "token_vault_key": "HDC_HOMEPAGE_AUDIOBOOKSHELF_TOKEN"
+        "token_vault_key": "HDC_HOMEPAGE_AUDIOBOOKSHELF_TOKEN",
+        "library_buckets": {
+          "audiobooks": ["Audiobooks"],
+          "ebooks": ["Ebooks"],
+          "other": ["Podcasts"]
+        }
       },
       "uptime_kuma_widget": {
         "enabled": true,
-        "slug": "hdc",
+        "slug": "all-monitors",
         "instances": ["a", "ext-a"],
         "slugs": {
           "ext-a": "public-edge"

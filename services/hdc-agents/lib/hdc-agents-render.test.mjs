@@ -5,8 +5,8 @@ import { enabledAgents, litellmA2aAgentEntries, renderComposeYaml, renderDockerf
 describe("hdc-agents-render", () => {
   it("defaults to full roster when agents empty", () => {
     const agents = enabledAgents({});
-    expect(agents.length).toBe(9);
-    expect(enabledAgents({ agents: [] }).length).toBe(9);
+    expect(agents.length).toBe(10);
+    expect(enabledAgents({ agents: [] }).length).toBe(10);
     expect(agents.find((a) => a.role === "hdc-qa")).toMatchObject({ port: 9209 });
     expect(agents.map((a) => a.role)).not.toContain("hdc-engineer");
   });
@@ -82,6 +82,9 @@ describe("hdc-agents-render", () => {
   });
 
   it("renders dockerfile with agent-server cmd", () => {
-    expect(renderDockerfile({})).toContain("apps/hdc-agent-server/server.mjs");
+    const df = renderDockerfile({});
+    expect(df).toContain("apps/hdc-agent-server/server.mjs");
+    expect(df).toContain("COPY hdc-clumps/ /opt/hdc-clumps/");
+    expect(df).toContain("HDC_CLUMPS_ROOT=/opt/hdc-clumps");
   });
 });

@@ -1,18 +1,17 @@
 /**
- * Upsert inventory/manual/systems/*.json from MeshCentral agents + hardware collect.
+ * Upsert operations/inventory/systems/*.json from MeshCentral agents + hardware collect.
  */
 import { join } from "node:path";
 
-import {
-  preferredNewFilePath,
-  resolveRepoFile,
-  writeResolvedRepoJson,
-} from "hdc/cli/lib/private-repo.mjs";
+import { writeResolvedRepoJson } from "hdc/cli/lib/private-repo.mjs";
+import { resolveSystemSidecarWrite } from "hdc/package/hardware-inventory.mjs";
 import { tryLoadClumpConfigFromClumpRoot } from "hdc/package/clump-run-config.mjs";
 import { loadManualSystemSidecar } from "hdc/package/inventory-sidecar.mjs";
 import { CLIENT_PLATFORMS } from "hdc/package/clients/client-config.mjs";
 import { normalizeHardwareMac } from "./meshcentral-ops.mjs";
 import { slugDeviceId } from "./meshcentral-devices.mjs";
+
+export { resolveSystemSidecarWrite } from "hdc/package/hardware-inventory.mjs";
 
 /** @param {unknown} v */
 function isObject(v) {
@@ -186,26 +185,6 @@ export function mergeSystemSidecar(opts) {
   };
 
   return next;
-}
-
-/**
- * Resolve write target for inventory/manual/systems/<id>.json (prefer hdc-private for new).
- * @param {string} publicRoot
- * @param {string} systemId
- */
-export function resolveSystemSidecarWrite(publicRoot, systemId) {
-  const rel = `inventory/manual/systems/${systemId}.json`;
-  const existing = resolveRepoFile(publicRoot, rel);
-  if (existing.found) return existing;
-  const path = preferredNewFilePath(publicRoot, rel);
-  return {
-    path,
-    rel,
-    found: false,
-    source: path.includes("hdc-private") || path !== existing.publicPath ? "private" : "public",
-    privateRoot: existing.privateRoot,
-    publicPath: existing.publicPath,
-  };
 }
 
 /**

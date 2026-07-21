@@ -19,6 +19,7 @@ import {
 import { normalizeDiscordConfig, CLUMP_CONFIG_EXAMPLE } from "hdc/package/discord-config.mjs";
 import { importDiscordToConfig } from "hdc/package/discord-import.mjs";
 import { createDiscordVaultAccess } from "hdc/package/vault-deps.mjs";
+import { repoRoot } from "hdc/cli/paths.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const verb = basename(here);
@@ -105,6 +106,7 @@ async function main() {
     appFilterId: appId,
     noDerive,
     requireVault,
+    resolveOpts: { hdcRoot: repoRoot() },
     warn: (msg) => log(`warning: ${msg}`),
     log,
   });

@@ -140,7 +140,13 @@ export async function resolveAllHomepageWidgetEnv(opts) {
   });
   if (audiobookshelf) {
     lines.push(...audiobookshelf.lines);
-    meta.audiobookshelf_widget = { vault_key: audiobookshelf.vault_key, url: audiobookshelf.url };
+    statsFiles.push(...(audiobookshelf.statsFiles ?? []));
+    meta.audiobookshelf_widget = {
+      vault_key: audiobookshelf.vault_key,
+      url: audiobookshelf.url,
+      counts: audiobookshelf.counts,
+      stats_files: audiobookshelf.statsFiles?.length ?? 0,
+    };
   }
 
   const uptimeKuma = await resolveHomepageUptimeKumaWidgetEnv({

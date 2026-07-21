@@ -4,6 +4,7 @@
  *
  * Usage: hdc run service uptime-kuma query -- [--instance a | --system-id uptime-kuma-a]
  *        hdc run service uptime-kuma query -- [--live] [--import] [--import-from-homepage] [--yes]
+ *        hdc run service uptime-kuma query -- [--failing-only]
  */
 import { createInterface } from "node:readline/promises";
 import { basename, dirname, join } from "node:path";
@@ -28,6 +29,7 @@ import {
   importHomepageMonitorsToConfig,
   importUptimeKumaMonitorsToConfig,
 } from "hdc/package/uptime-kuma-import.mjs";
+import { fetchFailingUptimeKumaMonitors } from "hdc/package/uptime-kuma-heartbeat-status.mjs";
 import {
   withUptimeKumaClientFromSlices,
 } from "hdc/package/uptime-kuma-monitor-sync-runner.mjs";
@@ -177,11 +179,57 @@ async function main() {
 
   const flags = parseArgvFlags(process.argv.slice(2));
   const liveFlag = flags.live === "1";
+  const failingOnly = flags["failing-only"] === "1";
   const doImport = flags.import === "1";
   const importHomepage = flags["import-from-homepage"] === "1";
   const yes = flags.yes === "1";
 
   let cfg = readCfg();
+
+  if (failingOnly) {
+    const syncSlices = resolveDeploymentConfigSlicesForSync(cfg, flags);
+    try {
+      await withUptimeKumaClientFromSlices(
+        {
+          cfgRaw: cfg,
+          flags,
+          unlockVault: true,
+          log: (line) => errout.write(`[hdc] ${target} ${verb}: ${line}\n`),
+        },
+        async ({ client }) => {
+          const result = await fetchFailingUptimeKumaMonitors(client, (line) =>
+            errout.write(`[hdc] ${target} ${verb}: ${line}\n`),
+          );
+          const ok = result.failing_count === 0;
+          process.stdout.write(
+            `${JSON.stringify(
+              {
+                ok,
+                target,
+                verb,
+                failing_only: true,
+                system_id: syncSlices[0]?.systemId ?? null,
+                monitor_count: result.monitor_count,
+                failing_count: result.failing_count,
+                failing: result.failing,
+              },
+              null,
+              2,
+            )}\n`,
+          );
+          process.exitCode = ok ? 0 : 1;
+        },
+      );
+    } catch (e) {
+      const msg = String(/** @type {Error} */ (e).message || e);
+      errout.write(`[hdc] ${target} ${verb}: failing-only check failed: ${msg}\n`);
+      process.stdout.write(
+        `${JSON.stringify({ ok: false, target, verb, failing_only: true, message: msg }, null, 2)}\n`,
+      );
+      process.exitCode = 1;
+    }
+    return;
+  }
 
   if (importHomepage) {
     errout.write("[hdc] uptime-kuma query: import monitors from homepage/services.yaml …\n");

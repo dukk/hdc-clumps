@@ -1,0 +1,75 @@
+{
+  "schema_version": 1,
+  "slack": {
+    "api_base_url": "https://slack.com/api",
+    "config_token_vault_key": "HDC_SLACK_CONFIG_TOKEN",
+    "config_refresh_token_vault_key": "HDC_SLACK_CONFIG_REFRESH_TOKEN"
+  },
+  "defaults": {
+    "managed": false
+  },
+  "apps": [
+    {
+      "id": "hdc",
+      "managed": true,
+      "match": {
+        "app_id": null
+      },
+      "display_name": "HDC",
+      "bot_display_name": "HDC",
+      "bot_scopes": [
+        "app_mentions:read",
+        "channels:read",
+        "chat:write",
+        "chat:write.public",
+        "commands",
+        "groups:read",
+        "im:history",
+        "users:read"
+      ],
+      "icon": {
+        "repo_path": "assets/beetle-agent-no-bg.png",
+        "background_color": "#0a0a0a"
+      },
+      "interactivity": {
+        "enabled": true,
+        "request_url": null,
+        "derive_from": {
+          "hdc_agents_public_url": true,
+          "path": "/api/slack/interactions"
+        }
+      },
+      "event_subscriptions": {
+        "enabled": true,
+        "request_url": null,
+        "derive_from": {
+          "hdc_agents_public_url": true,
+          "path": "/api/slack/events"
+        },
+        "bot_events": ["app_mention", "message.im"]
+      },
+      "slash_commands": [
+        {
+          "command": "/hdc",
+          "description": "Ask the HDC manager agent",
+          "url": null,
+          "derive_from": {
+            "hdc_agents_public_url": true,
+            "path": "/api/slack/commands"
+          }
+        }
+      ],
+      "vault": {
+        "signing_secret_key": "HDC_SLACK_HDC_APP_SIGNING_SECRET",
+        "client_id_key": "HDC_SLACK_HDC_APP_CLIENT_ID",
+        "client_secret_key": "HDC_SLACK_HDC_APP_CLIENT_SECRET",
+        "bot_token_key": "HDC_SLACK_BOT_TOKEN"
+      },
+      "portal_checklist": {
+        "notes": "After deploy: Install App to the workspace, reauthorize for new scopes, copy Bot User OAuth Token into HDC_SLACK_BOT_TOKEN, set HDC_SLACK_DECISION_CHANNEL, enable notifications.channels.slack-hdc-app, invite the bot to channels, and run hdc-agents maintain. Chat: DM the bot (Messages Tab must be on — slack maintain pushes app_home), @mention it, or /hdc <prompt>."
+      },
+      "consumer": "hdc-agents-a",
+      "notes": "Approve/Deny via /api/slack/interactions; manager chat via Events + /hdc slash. DMs need features.app_home Messages Tab (writable)."
+    }
+  ]
+}

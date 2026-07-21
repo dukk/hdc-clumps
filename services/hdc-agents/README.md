@@ -19,7 +19,7 @@ See [docs/multi-agent-ops.md](../../../docs/multi-agent-ops.md) and
 - **Inventory:** `inventory/manual/systems/hdc-agents-a.json`; `inventory/manual/services/hdc-agents.json`
 - **Sizing:** defaults 4 vCPU / 8192 MB / 32 GB rootfs
 - **Vault:** per-agent LiteLLM keys (`HDC_AGENT_LITELLM_KEY_<ROLE>`); deploy/maintain also mints scoped MCP keys (`HDC_MCP_API_KEY_<ROLE>`) and web secrets (`HDC_WEB_UI_SESSION_SECRET`, `HDC_WEB_API_TOKEN`). Optional initial web admin password: vault `HDC_WEB_ADMIN_PASSWORD` (used only when the admin user does not exist yet). OIDC (`HDC_WEB_OIDC_CLIENT_SECRET`) is opt-in via `hdc_agents.oidc` + Keycloak maintain. Registry hashes: `hdc-private/operations/mcp-api-keys.json`.
-- **Web login (default):** encrypted htpasswd on first start (`admin` user); optional SSO when `hdc_agents.public_url` and `hdc_agents.oidc.issuer` are set. Apply Keycloak client first, then hdc-agents maintain.
+- **Web login (default):** encrypted htpasswd on first start (`admin` user) plus optional Keycloak SSO when `hdc_agents.public_url` and `hdc_agents.oidc.issuer` are set (`web.auth_mode`: `both`, default). Maintain writes `{meta_root}/web-config.json`. Use `web.auth_mode: oidc` for SSO-only. Apply Keycloak client first, then hdc-agents maintain.
 
 ## Commands
 

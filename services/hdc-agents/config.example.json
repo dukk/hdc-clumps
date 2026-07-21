@@ -22,6 +22,7 @@
       "default_model": "lan-best-available",
       "public_url": null,
       "web": {
+        "auth_mode": "both",
         "admin_username": "admin",
         "admin_password_vault_key": "HDC_WEB_ADMIN_PASSWORD"
       },
@@ -94,9 +95,16 @@
             "bot_token_vault_key": "HDC_OPS_DISCORD_BOT_TOKEN",
             "channel_id": null
           },
-          "slack": {
-            "enabled": false,
+          "slack-incoming-webhook": {
+            "enabled": true,
             "webhook_vault_key": "HDC_AGENTS_SLACK_WEBHOOK_URL"
+          },
+          "slack-hdc-app": {
+            "enabled": false,
+            "bot_token_vault_key": "HDC_SLACK_BOT_TOKEN",
+            "channel_id": null,
+            "channel_env": "HDC_SLACK_DECISION_CHANNEL",
+            "decision_authorized_users": []
           },
           "teams": {
             "enabled": false,
@@ -109,10 +117,10 @@
           }
         },
         "routes": {
-          "needs_decision": ["discord"],
-          "mailbox_received": ["discord"],
-          "mailbox_spoof": ["discord"],
-          "mailbox_task_update": ["discord"]
+          "needs_decision": ["discord", "slack-incoming-webhook"],
+          "mailbox_received": ["discord", "slack-incoming-webhook"],
+          "mailbox_spoof": ["discord", "slack-incoming-webhook"],
+          "mailbox_task_update": ["discord", "slack-incoming-webhook"]
         }
       },
       "schedules": [
@@ -136,6 +144,27 @@
           "cron": "30 4 * * 0",
           "cli": ["run", "service", "bind", "maintain"],
           "cli_args": ["--no-reboot", "--skip-resources"]
+        },
+        {
+          "id": "client-maintain-weekly-windows",
+          "cron": "0 4 * * 0",
+          "cli": ["run", "client", "windows", "maintain"],
+          "cli_args": ["--"],
+          "mail": { "enabled": true, "on_failure_only": true }
+        },
+        {
+          "id": "client-maintain-weekly-ubuntu",
+          "cron": "5 4 * * 0",
+          "cli": ["run", "client", "client-ubuntu", "maintain"],
+          "cli_args": ["--"],
+          "mail": { "enabled": true, "on_failure_only": true }
+        },
+        {
+          "id": "client-maintain-weekly-raspberrypi",
+          "cron": "10 4 * * 0",
+          "cli": ["run", "client", "raspberrypi", "maintain"],
+          "cli_args": ["--"],
+          "mail": { "enabled": true, "on_failure_only": true }
         }
       ],
       "sync": {

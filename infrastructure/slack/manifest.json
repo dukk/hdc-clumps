@@ -1,0 +1,53 @@
+{
+  "id": "slack",
+  "title": "Slack applications",
+  "env_required": [],
+  "inventory_docs": [
+    "clumps/infrastructure/slack/config.json"
+  ],
+  "services": [
+    {
+      "id": "slack-query",
+      "title": "Slack query",
+      "verb": "query",
+      "summary": "Diff App Manifest apps vs config; optional --import from apps.manifest.export (JSON on stdout)."
+    },
+    {
+      "id": "slack-deploy",
+      "title": "Slack deploy",
+      "verb": "deploy",
+      "summary": "Create managed Slack apps via App Manifest API; store signing secret / client credentials in vault."
+    },
+    {
+      "id": "slack-maintain",
+      "title": "Slack maintain",
+      "verb": "maintain",
+      "summary": "Update managed app manifests (interactivity URL, scopes); rotate config tokens; print portal checklist."
+    }
+  ],
+  "verbs": {
+    "deploy": {
+      "script": "run.mjs"
+    },
+    "maintain": {
+      "script": "run.mjs"
+    },
+    "query": {
+      "script": "run.mjs"
+    },
+    "health": {
+      "script": "run.mjs"
+    }
+  },
+  "operation_report": {
+    "next_steps": [
+      "Run `hdc run infrastructure slack query --` to verify manifest drift.",
+      "Install the app to the workspace, then `hdc secrets set HDC_SLACK_BOT_TOKEN`.",
+      "Set interactivity request URL to https://<hdc-web>/api/slack/interactions (managed via maintain).",
+      "Enable notifications.channels.slack-hdc-app and add slack-hdc-app to routes.needs_decision."
+    ]
+  },
+  "health": {
+    "family": "infra-api"
+  }
+}

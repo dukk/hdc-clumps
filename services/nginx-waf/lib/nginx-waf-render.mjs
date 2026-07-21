@@ -799,6 +799,14 @@ ${acme}${cloudflareRealIp}${httpServe}
   }
 
   if (listen.includes(443) && tlsEnabled) {
+    const acme443 =
+      http01Acme && webroot
+        ? `
+    location ^~ /.well-known/acme-challenge/ {
+        root ${webroot};
+        default_type "text/plain";
+    }`
+        : "";
     blocks.push(`server {
     listen 443 ssl${http2ListenSuffix};
     listen [::]:443 ssl${http2ListenSuffix};
@@ -807,7 +815,7 @@ ${acme}${cloudflareRealIp}${httpServe}
     ssl_certificate_key /etc/letsencrypt/live/${certName}/privkey.pem;
     include /etc/letsencrypt/options-ssl-nginx.conf;
     ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
-${cloudflareRealIp}${locBlocks.join("\n")}
+${acme443}${cloudflareRealIp}${locBlocks.join("\n")}
 }
 `);
   } else if (!listen.includes(80)) {

@@ -96,6 +96,24 @@ export function waitForStatusPageListEvent(socket, timeoutMs) {
 }
 
 /**
+ * Uptime Kuma pushes heartbeat history per monitor on the heartbeatList socket event after login.
+ *
+ * @param {import("socket.io-client").Socket} socket
+ * @param {number} timeoutMs
+ */
+export function waitForHeartbeatListEvent(socket, timeoutMs) {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      reject(new Error("Uptime Kuma socket timeout waiting for heartbeatList event"));
+    }, timeoutMs);
+    socket.once("heartbeatList", (list) => {
+      clearTimeout(timer);
+      resolve(list);
+    });
+  });
+}
+
+/**
  * @param {string} baseUrl
  * @param {string} slug
  */
@@ -124,6 +142,8 @@ export function createUptimeKumaClient(baseUrl, auth) {
   let cachedStatusPageList = null;
   /** @type {Record<string, unknown>[] | null} */
   let cachedNotificationList = null;
+  /** @type {Record<string, unknown[]> | null} */
+  let cachedHeartbeatList = null;
 
   /**
    * @param {string} event
@@ -185,8 +205,10 @@ export function createUptimeKumaClient(baseUrl, auth) {
       }
       cachedStatusPageList = null;
       cachedNotificationList = null;
+      cachedHeartbeatList = null;
       const statusPageListPromise = waitForStatusPageListEvent(socket, timeoutMs);
       const notificationListPromise = waitForNotificationListEvent(socket, timeoutMs);
+      const heartbeatListPromise = waitForHeartbeatListEvent(socket, timeoutMs);
       const resp = await new Promise((resolve, reject) => {
         const timer = setTimeout(() => {
           reject(new Error("Uptime Kuma socket timeout waiting for login"));
@@ -216,6 +238,11 @@ export function createUptimeKumaClient(baseUrl, auth) {
       } catch {
         cachedNotificationList = [];
       }
+      try {
+        cachedHeartbeatList = normalizeHeartbeatListPayload(await heartbeatListPromise);
+      } catch {
+        cachedHeartbeatList = {};
+      }
       return resp;
     },
 
@@ -226,6 +253,32 @@ export function createUptimeKumaClient(baseUrl, auth) {
       }
       cachedStatusPageList = null;
       cachedNotificationList = null;
+      cachedHeartbeatList = null;
+    },
+
+    /**
+     * Latest heartbeat map keyed by monitor id (string keys).
+     * @returns {Promise<Record<string, unknown[]>>}
+     */
+    async getHeartbeatList() {
+      if (cachedHeartbeatList) {
+        return cachedHeartbeatList;
+      }
+      if (!socket) {
+        throw new Error("Uptime Kuma socket not connected");
+      }
+      const listPromise = waitForHeartbeatListEvent(socket, timeoutMs);
+      try {
+        await emitWithCallback("getMonitorList");
+      } catch {
+        /* heartbeatList may still arrive after login */
+      }
+      try {
+        cachedHeartbeatList = normalizeHeartbeatListPayload(await listPromise);
+      } catch {
+        cachedHeartbeatList = {};
+      }
+      return cachedHeartbeatList;
     },
 
     /**
@@ -485,4 +538,21 @@ export function createUptimeKumaClient(baseUrl, auth) {
       return emitWithCallback("testNotification", notificationId);
     },
   };
+}
+
+/**
+ * @param {unknown} list
+ * @returns {Record<string, unknown[]>}
+ */
+export function normalizeHeartbeatListPayload(list) {
+  if (!list || typeof list !== "object") return {};
+  if (Array.isArray(list)) return {};
+  /** @type {Record<string, unknown[]>} */
+  const out = {};
+  for (const [key, value] of Object.entries(list)) {
+    if (Array.isArray(value)) {
+      out[String(key)] = value;
+    }
+  }
+  return out;
 }

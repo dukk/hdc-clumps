@@ -181,14 +181,20 @@ async function queryDevicesApi(cfg, flags, argv) {
             continue;
           }
           log(`collecting hardware for ${id} …`);
-          const hw = await collectHardware(
-            session.client,
-            { ...dev, ...liveRow, node_id: nodeId },
-            { log },
-          );
-          hardwareById.set(id, hw);
-          if (!hw.ok) {
-            log(`hardware collect failed for ${id}: ${hw.message || "unknown error"}`);
+          try {
+            const hw = await collectHardware(
+              session.client,
+              { ...dev, ...liveRow, node_id: nodeId },
+              { log },
+            );
+            hardwareById.set(id, hw);
+            if (!hw.ok) {
+              log(`hardware collect failed for ${id}: ${hw.message || "unknown error"}`);
+            }
+          } catch (e) {
+            const msg = String(/** @type {Error} */ (e).message || e);
+            log(`hardware collect error for ${id}: ${msg}`);
+            hardwareById.set(id, { ok: false, message: msg });
           }
         }
       } else {

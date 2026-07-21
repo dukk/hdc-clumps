@@ -26,6 +26,7 @@ import { deriveRedirectUrisFromNginxWaf } from "./derive-redirect-uris.mjs";
  *   };
  *   consumer: string | null;
  *   notes: string | null;
+ *   icon: { repo_path: string; applied_sha256: string | null } | null;
  * }} ConfigApplication
  */
 
@@ -190,6 +191,8 @@ export function normalizeDiscordConfig(cfg) {
     const publicKey =
       typeof raw.public_key === "string" && raw.public_key.trim() ? raw.public_key.trim() : null;
 
+    const iconRaw = isObject(raw.icon) ? raw.icon : null;
+
     /** @type {{ channel_id: string | null } | null} */
     let opsDecisions = null;
     if (isObject(raw.ops_decisions)) {
@@ -227,6 +230,16 @@ export function normalizeDiscordConfig(cfg) {
       consumer:
         typeof raw.consumer === "string" && raw.consumer.trim() ? raw.consumer.trim() : null,
       notes: typeof raw.notes === "string" && raw.notes.trim() ? raw.notes.trim() : null,
+      icon: iconRaw
+        ? {
+            repo_path:
+              typeof iconRaw.repo_path === "string" ? iconRaw.repo_path.trim() : "",
+            applied_sha256:
+              typeof iconRaw.applied_sha256 === "string"
+                ? iconRaw.applied_sha256.trim().toLowerCase()
+                : null,
+          }
+        : null,
     };
     applications.push(app);
   }

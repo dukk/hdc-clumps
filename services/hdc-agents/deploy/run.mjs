@@ -44,6 +44,7 @@ import { promptExistingGuestAction } from "hdc/package/prompt-existing.mjs";
 import { runOperationReportTail } from "hdc/package/operation-report.mjs";
 import { loadClumpConfigFromClumpRoot } from "hdc/package/clump-run-config.mjs";
 import { registerFleetA2aOnLitellm } from "../lib/litellm-a2a-register.mjs";
+import { renderWebConfigJson } from "../lib/hdc-agents-web-config.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const target = basename(dirname(here));
@@ -405,6 +406,7 @@ async function deployOne(deployment, flags, log, runOpts) {
       schedulesJson: guestSecrets.schedulesJson,
       mailboxJson: guestSecrets.mailboxJson,
       notificationsJson: guestSecrets.notificationsJson,
+      webConfigJson: renderWebConfigJson(hdcAgentsCfg),
       metaRoot,
       systemId,
     };

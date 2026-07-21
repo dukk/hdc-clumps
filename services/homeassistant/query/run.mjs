@@ -4,6 +4,7 @@
  *
  * Usage: hdc run service homeassistant query -- [--instance a | --system-id vm-homeassistant-a]
  *        hdc run service homeassistant query -- --live
+ *        hdc run service homeassistant query -- --import --yes
  */
 import { basename, dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -20,6 +21,7 @@ import { probeHomeAssistantHttp } from "hdc/package/query-status.mjs";
 import { authorizeProxmoxForHost } from "../../../infrastructure/proxmox/lib/proxmox-deploy-auth.mjs";
 import { locateGuest } from "../../bind/lib/proxmox-qemu-redeploy.mjs";
 import { loadClumpConfigFromClumpRoot, tryLoadClumpConfigFromClumpRoot } from "hdc/package/clump-run-config.mjs";
+import { importHomeassistantToConfig } from "../lib/ha-import.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const clumpRoot = join(here, "..");
@@ -44,8 +46,15 @@ async function main() {
   const cfg = loaded.ok && loaded.data ? loaded.data : null;
   const flags = parseArgvFlags(process.argv.slice(2));
   const live = flagGet(flags, "live") !== undefined;
+  const doImport = flagGet(flags, "import") !== undefined;
+  const yes = flagGet(flags, "yes") !== undefined;
 
   errout.write(`[hdc] ${target} ${verb}: config ${rel} ${loaded.ok ? "loaded" : "not loaded"}.\n`);
+  if (doImport) {
+    errout.write(
+      `[hdc] ${target} ${verb}: import will write integrations/automations/scripts/scenes sidecars.\n`,
+    );
+  }
 
   /** @type {unknown[]} */
   let deployments = [];
@@ -65,6 +74,40 @@ async function main() {
 
   /** @type {Record<string, unknown>[]} */
   const liveResults = [];
+  /** @type {Record<string, unknown> | null} */
+  let importResult = null;
+
+  if (doImport) {
+    if (!cfg || configError) {
+      configError = configError ?? "config required for --import";
+    } else if (!yes) {
+      errout.write(`[hdc] ${target} ${verb}: import requires --yes (non-interactive).\n`);
+      process.exitCode = 1;
+      process.stdout.write(
+        `${JSON.stringify({ ok: false, target, verb, message: "import requires --yes" }, null, 2)}\n`,
+      );
+      return;
+    } else {
+      try {
+        const selected = resolveHomeassistantDeployments(cfg, flags);
+        if (selected.length !== 1) {
+          throw new Error(
+            `import requires exactly one deployment (got ${selected.length}); pass --instance or --system-id`,
+          );
+        }
+        const d = selected[0];
+        errout.write(`[hdc] ${target} ${verb}: importing from ${d.systemId} …\n`);
+        importResult = await importHomeassistantToConfig({
+          clumpRoot,
+          cfg,
+          deployment: d,
+          log: (line) => errout.write(`[hdc] ${target} ${verb}: ${line}\n`),
+        });
+      } catch (e) {
+        configError = String(/** @type {Error} */ (e).message || e);
+      }
+    }
+  }
 
   if (live && cfg && !configError) {
     try {
@@ -113,6 +156,7 @@ async function main() {
     config_error: configError,
     deployments,
     live: live ? liveResults : undefined,
+    import: importResult ?? undefined,
     generated_at: new Date().toISOString(),
   };
 

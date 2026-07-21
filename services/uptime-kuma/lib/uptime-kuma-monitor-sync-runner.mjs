@@ -7,7 +7,10 @@ import {
   normalizeUptimeKumaMonitorConfig,
   resolveUptimeKumaApiUrl,
 } from "./uptime-kuma-config.mjs";
-import { normalizeUptimeKumaStatusPageConfig } from "./uptime-kuma-status-page-config.mjs";
+import {
+  expandStatusPagesWithAllMonitors,
+  normalizeUptimeKumaStatusPageConfig,
+} from "./uptime-kuma-status-page-config.mjs";
 import {
   normalizeUptimeKumaConfig as normalizeDeployments,
   resolveDeploymentConfigSlicesForSync,
@@ -305,9 +308,13 @@ async function runUptimeKumaSyncForDeployment(opts) {
             opts.log,
             { skipLogin: true },
           );
+          const statusPages = expandStatusPagesWithAllMonitors(
+            statusPageCfg.status_pages,
+            monitorCfg.monitors,
+          );
           statusPageSync = await syncUptimeKumaStatusPages(
             client,
-            statusPageCfg.status_pages,
+            statusPages,
             livePages,
             monitorCfg.monitors,
             liveMonitors.monitors,

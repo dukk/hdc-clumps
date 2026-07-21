@@ -7,6 +7,7 @@ export const AUGMENT_SIDECAR_PORT = 9210;
 export const AGENT_ROSTER = [
   { role: "hdc-manager", port: 9200 },
   { role: "hdc-monitor", port: 9201 },
+  { role: "hdc-maintainer", port: 9207 },
   { role: "hdc-sre-ops", port: 9202 },
   { role: "hdc-security-expert", port: 9203 },
   { role: "hdc-security-architect", port: 9204 },
@@ -20,6 +21,7 @@ export const AGENT_ROSTER = [
 export const RW_OPERATIONS_ROLES = new Set([
   "hdc-manager",
   "hdc-monitor",
+  "hdc-maintainer",
   "hdc-security-expert",
   "hdc-research",
   "hdc-sre-ops",
@@ -91,13 +93,17 @@ RUN apt-get update -qq \\
   && apt-get install -y -qq ca-certificates git \\
   && rm -rf /var/lib/apt/lists/*
 COPY hdc/ /opt/hdc/
+# Optional: package tree for hdc/clump/* resolution (skip when absent in build context).
+COPY hdc-clumps/ /opt/hdc-clumps/
 WORKDIR /opt/hdc/apps/hdc-mcp-server
 RUN npm install --omit=dev --no-fund --no-audit || true
 WORKDIR /opt/hdc/apps/hdc-web-server
 RUN npm install --omit=dev --no-fund --no-audit || true
 RUN npm run build || true
 ENV HDC_ROOT=/opt/hdc
+ENV HDC_CLUMPS_ROOT=/opt/hdc-clumps
 ENV NODE_ENV=production
+ENV NODE_OPTIONS=--import=/opt/hdc/apps/hdc-cli/lib/package/preload.mjs
 WORKDIR /opt/hdc
 EXPOSE 9120 9200
 CMD ["node", "apps/hdc-agent-server/server.mjs"]

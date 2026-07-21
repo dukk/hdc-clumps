@@ -56,8 +56,24 @@ const root = repoRoot();
 async function main() {
   errout.write(`[hdc] ${target} ${verb}: Synology NAS health (stderr log; JSON on stdout).\n`);
 
+  const argv = process.argv.slice(2);
+  const { maybeRunSynologyHardwareImport } = await import("../lib/synology-hardware-import.mjs");
+  const hardwareImport = await maybeRunSynologyHardwareImport(argv, clumpRoot);
+  if (hardwareImport) {
+    const payload = {
+      ok: hardwareImport.ok !== false,
+      target,
+      verb,
+      ...hardwareImport,
+      generated_at: new Date().toISOString(),
+    };
+    process.stdout.write(`${JSON.stringify(payload, null, 2)}\n`);
+    process.exitCode = payload.ok ? 0 : 1;
+    return;
+  }
+
   const cfg = readCfg();
-  const flags = parseArgvFlags(process.argv.slice(2));
+  const flags = parseArgvFlags(argv);
   let deployments;
   try {
     deployments = resolveSynologyDeployments(cfg, flags);

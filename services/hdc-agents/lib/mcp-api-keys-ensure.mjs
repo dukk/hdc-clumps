@@ -7,7 +7,7 @@ import {
   mintMcpApiKeySecret,
   mcpApiKeyVaultKey,
   registerMcpApiKeyHash,
-} from "../../../../apps/hdc-mcp-server/lib/api-keys.mjs";
+} from "hdc/apps/hdc-mcp-server/lib/api-keys.mjs";
 import { AGENT_ROSTER, enabledAgents } from "./hdc-agents-render.mjs";
 
 /** Roles that need MCP API keys (roster + scheduler). */

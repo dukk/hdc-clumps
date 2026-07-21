@@ -19,9 +19,12 @@ export function nginxWafReportExtraSections(ctx) {
     let detail = "";
     if (typeof step === "string") detail = `step=${step}`;
     if (certs && typeof certs === "object" && !Array.isArray(certs)) {
-      const obtained = /** @type {Record<string, unknown>} */ (certs).obtained;
-      if (Array.isArray(obtained) && obtained.length) {
-        detail += (detail ? "; " : "") + `certs obtained: ${obtained.length}`;
+      const c = /** @type {Record<string, unknown>} */ (certs);
+      if (Array.isArray(c.obtained) && c.obtained.length) {
+        detail += (detail ? "; " : "") + `certs obtained: ${c.obtained.length}`;
+      }
+      if (Array.isArray(c.expanded) && c.expanded.length) {
+        detail += (detail ? "; " : "") + `certs expanded: ${c.expanded.length}`;
       }
     }
     if (typeof row.synced_to === "string") {

@@ -27,18 +27,23 @@ whenever the matching files are actually in play.
 
 @.cursor/rules/proxmox-resource-planning.mdc
 
+@.cursor/rules/hdc-okf-ai-docs.mdc
+
 ## Skills
 
 | Skill | Use when |
 |-------|----------|
 | `hdc-service-deploy` | Deploying a new service package end-to-end (plan → approve → deploy) |
 | `proxmox-resource-planning` | Sizing a new Proxmox VM/CT and checking cluster headroom |
+| `hdc-okf` | Promote / maintain OKF in `hdc-private/ai-docs/` (fleet skill in sibling hdc) |
 
 Claude Code thin pointers under `.claude/skills/` target the Cursor IDE skills in `.cursor/skills/`.
 
 ## Subagents
 
 Thin pointer: [`.claude/agents/hdc-sre-engineer.md`](.claude/agents/hdc-sre-engineer.md) → canonical definition in sibling [hdc `apps/hdc-agent-server/agents/`](../hdc/apps/hdc-agent-server/agents/). The hdc platform is human/operator-owned; package work stays on hdc-clumps via **hdc-sre-engineer**.
+
+Agent OKF knowledge (recall): start at [`../hdc-private/ai-docs/index.md`](../hdc-private/ai-docs/index.md); human docs in `../hdc/docs/`.
 
 ## Quality gate
 

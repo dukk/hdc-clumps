@@ -39,7 +39,14 @@ export function inferPlatformFromNode(node) {
  * @returns {Record<string, unknown>}
  */
 export function normalizeLiveDevice(node) {
-  const nodeId = typeof node._id === "string" ? node._id : typeof node.id === "string" ? node.id : "";
+  const nodeId =
+    typeof node._id === "string" && node._id
+      ? node._id
+      : typeof node.node_id === "string" && node.node_id
+        ? node.node_id
+        : typeof node.id === "string" && String(node.id).startsWith("node/")
+          ? node.id
+          : "";
   const name = typeof node.name === "string" ? node.name.trim() : "";
   const ip =
     typeof node.host === "string"
@@ -60,8 +67,8 @@ export function normalizeLiveDevice(node) {
     connected: conn > 0,
     conn,
     power: pwr,
-    online: conn > 0,
-    platform,
+    online: conn > 0 || node.online === true,
+    platform: typeof node.platform === "string" && node.platform !== "unknown" ? node.platform : platform,
     osdesc: typeof node.osdesc === "string" ? node.osdesc : null,
   };
 }

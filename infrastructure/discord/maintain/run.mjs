@@ -3,7 +3,7 @@
  * Discord maintain: PATCH managed Developer applications.
  *
  * Usage: hdc run infrastructure discord maintain --
- *   [--app <id>] [--dry-run] [--no-derive] [--no-report] [--report <path>]
+ *   [--app <id>] [--dry-run] [--no-derive] [--skip-icon] [--no-report] [--report <path>]
  */
 import { basename, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -19,11 +19,14 @@ import {
   setStdoutPayload,
   pushWarning,
 } from "hdc/package/operation-report.mjs";
+import { writeResolvedRepoJson } from "hdc/cli/lib/private-repo.mjs";
 import { repoRoot } from "hdc/cli/paths.mjs";
 import { printDeveloperPortalChecklist } from "hdc/package/discord-checklist.mjs";
 import { collectDiscordState, fetchLiveApplication } from "hdc/package/discord-collect.mjs";
 import { createDiscordClient } from "hdc/package/discord-api.mjs";
 import { normalizeDiscordConfig, CLUMP_CONFIG_EXAMPLE } from "hdc/package/discord-config.mjs";
+import { DISCORD_COMPACT_ARRAY_KEYS } from "hdc/package/discord-import.mjs";
+import { syncConfiguredAppIcons } from "hdc/package/discord-icon.mjs";
 import { applyAppSync, planAppSync } from "hdc/package/discord-sync.mjs";
 import { createDiscordVaultAccess, resolveDiscordBotToken } from "hdc/package/vault-deps.mjs";
 
@@ -49,6 +52,7 @@ async function main() {
   const flags = parseArgvFlags(argv);
   const appFilter = flagGet(flags, "app");
   const noDerive = flags["no-derive"] === "1";
+  const skipIcon = flags["skip-icon"] === "1";
 
   const reportCtx = createOperationReportContext({
     clumpId: "discord",
@@ -60,14 +64,15 @@ async function main() {
 
   log(`${verb}: starting${reportCtx.dryRun ? " (dry-run)" : ""}`);
 
-  const { data: cfgRaw, source } = loadClumpConfigFromClumpRoot(clumpRoot, {
+  const { data: cfgRaw, source, resolved } = loadClumpConfigFromClumpRoot(clumpRoot, {
     exampleRel: CLUMP_CONFIG_EXAMPLE,
     log: (line) => errout.write(line),
   });
   log(`config loaded (${source})`);
 
-  const config = normalizeDiscordConfig(cfgRaw);
+  let config = normalizeDiscordConfig(cfgRaw);
   const vault = createDiscordVaultAccess();
+  const hdcRoot = repoRoot();
 
   let entries = config.applications.filter((a) => a.managed);
   if (appFilter) {
@@ -82,6 +87,8 @@ async function main() {
   }
 
   let overallOk = true;
+  let configDirty = false;
+  const nextApplications = Array.isArray(cfgRaw.applications) ? [...cfgRaw.applications] : [];
 
   for (const entry of entries) {
     let live = null;
@@ -145,12 +152,55 @@ async function main() {
     if (!applyResult.ok) overallOk = false;
   }
 
+  if (!skipIcon && entries.length) {
+    const iconSync = await syncConfiguredAppIcons({
+      apps: entries,
+      hdcRoot,
+      configApplications: nextApplications,
+      dryRun: reportCtx.dryRun,
+      log,
+      createApiForApp: async (app) => {
+        const token = await resolveDiscordBotToken(vault, app.bot_token_vault_key);
+        return createDiscordClient({ botToken: token, apiBaseUrl: config.apiBase });
+      },
+    });
+    for (const iconResult of iconSync.results) {
+      recordStep(reportCtx, {
+        id: `icon-${iconResult.id}`,
+        title: `Icon: ${iconResult.id}`,
+        ran: iconResult.action === "upload",
+        skipReason:
+          iconResult.action === "unchanged"
+            ? "unchanged"
+            : iconResult.action === "missing_token"
+              ? "bot token unavailable"
+              : undefined,
+        ok: iconResult.ok !== false,
+        notes: iconResult.error ? [iconResult.error] : [],
+      });
+      if (iconResult.ok === false) overallOk = false;
+    }
+    if (iconSync.configDirty && !reportCtx.dryRun) {
+      configDirty = true;
+      nextApplications.splice(0, nextApplications.length, ...iconSync.nextApplications);
+    }
+  }
+
+  if (configDirty && !reportCtx.dryRun) {
+    writeResolvedRepoJson(resolved, { ...cfgRaw, applications: nextApplications }, {
+      compactArrayKeys: DISCORD_COMPACT_ARRAY_KEYS,
+    });
+    log(`wrote icon.applied_sha256 updates to ${resolved.rel}`);
+    config = normalizeDiscordConfig({ ...cfgRaw, applications: nextApplications });
+  }
+
   const snapshot = await collectDiscordState({
     config,
     vault,
     appFilterId: appFilter,
     noDerive,
     requireVault: false,
+    resolveOpts: { hdcRoot },
     warn: (msg) => log(`warning: ${msg}`),
     log,
   });
@@ -177,7 +227,8 @@ async function main() {
   await runOperationReportTail({
     ctx: reportCtx,
     clumpRoot,
-    repoRoot: repoRoot(),
+    repoRoot: hdcRoot,
+    log,
   });
 
   log(overallOk ? `${verb}: completed successfully` : `${verb}: completed with errors`);

@@ -29,6 +29,7 @@ import { syncHdcTreesToGuest, syncHdcTreesViaPct } from "hdc/package/hdc-agents-
 import { runOperationReportTail } from "hdc/package/operation-report.mjs";
 import { loadClumpConfigFromClumpRoot } from "hdc/package/clump-run-config.mjs";
 import { registerFleetA2aOnLitellm } from "../lib/litellm-a2a-register.mjs";
+import { renderWebConfigJson } from "../lib/hdc-agents-web-config.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const target = basename(dirname(here));
@@ -165,6 +166,7 @@ async function maintainOne(deployment, flags, vaultAccess) {
       schedulesJson: guestSecrets.schedulesJson,
       mailboxJson: guestSecrets.mailboxJson,
       notificationsJson: guestSecrets.notificationsJson,
+      webConfigJson: renderWebConfigJson(hdcAgentsCfg),
       metaRoot,
       systemId,
     },

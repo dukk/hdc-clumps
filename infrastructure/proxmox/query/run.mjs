@@ -6,6 +6,11 @@
  *   --guest <vmid|system-id>   Status, guest-agent ping, optional ICMP/SSH
  *   --find-template <vmid>     Locate QEMU template across cluster nodes
  *   --host-capacity <host-id>  free/df/qm list/pct list via SSH
+ *   --failing-only             Emit only stopped guests / unhealthy hypervisor nodes
+ *   --reboot-required          Running Linux LXC guests with /var/run/reboot-required
+ *   --pending-os-updates       Hypervisor apt upgradable package counts (read-only)
+ *   --import-hardware [--yes]  Upsert physical host hardware[] into operations/inventory/systems/pve-*.json
+ *   --dry-run                  With --import-hardware: preview sidecar writes without writing
  *
  * Auth: Proxmox API token (see Datacenter → Permissions → API Tokens). Stored in the vault
  * as HDC_PROXMOX_API_TOKEN or per-host HDC_PROXMOX_API_TOKEN_<HOST_ID> (e.g. HDC_PROXMOX_API_TOKEN_HYPERVISOR_A).
@@ -37,6 +42,7 @@ import {
 } from "hdc/cli/lib/tls-insecure-env.mjs";
 import { defaultVaultPath } from "hdc/cli/vault.mjs";
 import { loadProxmoxPackageConfig } from "hdc/package/proxmox-package-config.mjs";
+import { collectProxmoxOutages } from "hdc/package/proxmox-outage-filter.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const target = basename(dirname(here));
@@ -143,8 +149,37 @@ function byVmid(a, b) {
 async function main() {
   const t0 = Date.now();
   const argv = process.argv.slice(2);
+  const failingOnly = argv.includes("--failing-only");
 
   try {
+    const { maybeRunProxmoxMaintenanceQuery } = await import("../lib/proxmox-maintenance-query.mjs");
+    const maintenance = await maybeRunProxmoxMaintenanceQuery(argv, clumpRoot);
+    if (maintenance) {
+      const payload = {
+        target,
+        verb: "query",
+        ...maintenance,
+        collected_at: new Date().toISOString(),
+      };
+      if (maintenance.ok === false) process.exitCode = 1;
+      output.write(`${JSON.stringify(payload, null, 2)}\n`);
+      return;
+    }
+
+    const { maybeRunProxmoxHardwareImport } = await import("../lib/proxmox-hardware-import.mjs");
+    const hardwareImport = await maybeRunProxmoxHardwareImport(argv, clumpRoot);
+    if (hardwareImport) {
+      const payload = {
+        target,
+        verb: "query",
+        ...hardwareImport,
+        collected_at: new Date().toISOString(),
+      };
+      if (hardwareImport.ok === false) process.exitCode = 1;
+      output.write(`${JSON.stringify(payload, null, 2)}\n`);
+      return;
+    }
+
     const { maybeRunProxmoxQueryDiag } = await import("../lib/proxmox-query-diag.mjs");
     const diag = await maybeRunProxmoxQueryDiag(argv, clumpRoot);
     if (diag) {
@@ -448,6 +483,24 @@ async function main() {
     message:
       "Proxmox snapshot from clumps/infrastructure/proxmox/config.json — systems[] on stdout only (inventory paths not used).",
   };
+
+  if (failingOnly) {
+    const outages = collectProxmoxOutages(payload);
+    const ok = outages.failing_count === 0;
+    const failingPayload = {
+      ok,
+      target,
+      verb: "query",
+      failing_only: true,
+      collected_at: collectedAt,
+      failing_count: outages.failing_count,
+      failing: outages.failing,
+    };
+    logUser(`Failing-only: ${outages.failing_count} outage(s).`);
+    output.write(`${JSON.stringify(failingPayload, null, 2)}\n`);
+    process.exitCode = ok ? 0 : 1;
+    return;
+  }
 
   const elapsed = ((Date.now() - t0) / 1000).toFixed(1);
   logUser(`Finished in ${elapsed}s. JSON summary on stdout for hdc.`);

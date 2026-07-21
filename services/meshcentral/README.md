@@ -7,7 +7,7 @@ Device management (inventory, power, updates, software, disk) uses the MeshCentr
 ## Prerequisites
 
 - **Config:** copy [`config.example.json`](config.example.json) to `config.json` in hdc-private (`clumps/services/meshcentral/config.json`)
-- **Inventory:** [`inventory/manual/systems/meshcentral-a.json`](../../../inventory/manual/systems/meshcentral-a.json), [`inventory/manual/services/meshcentral.json`](../../../inventory/manual/services/meshcentral.json)
+- **Inventory:** [`operations/inventory/systems/meshcentral-a.json`](../../../operations/inventory/systems/meshcentral-a.json), [`operations/inventory/services/meshcentral.json`](../../../operations/inventory/services/meshcentral.json)
 - **Static IP** on the LXC (`proxmox.lxc.ip_config`)
 - **Privileged LXC** (`unprivileged: 0`) with Docker nesting features
 - **nginx-waf** site + BIND `meshcentral` CNAME to WAF (see deploy plan)
@@ -29,7 +29,7 @@ MongoDB is not published on the host — Docker network only.
 |------|---------|
 | `deploy` | LXC provision + Docker Compose (`--instance a`, `--skip-install`, `--skip-existing`, `--redeploy-existing`) |
 | `maintain` | Re-push compose + `.env`, `docker compose pull` + `up -d`; guest Linux baseline **or** device ops (see below) |
-| `query` | Config summary; `--live` for CT docker/HTTP + device list via API; `--import --yes` syncs `devices[]` + `inventory/manual/systems` (hardware from online agents; `--skip-hardware` for identity-only) |
+| `query` | Config summary; `--live` for CT docker/HTTP + device list via API; `--import --yes` syncs `devices[]` + `operations/inventory/systems` (hardware + OEM Windows key presence from online agents; `--skip-hardware` for identity-only) |
 | `teardown` | Optional compose down then destroy LXC (`--dry-run`, `--yes`, `--skip-compose-down`) |
 
 ### Device ops
@@ -38,7 +38,7 @@ MongoDB is not published on the host — Docker network only.
 # List agents + CT health
 hdc run service meshcentral query -- --live
 
-# Import live agents into config devices[] + inventory/manual/systems (with hardware)
+# Import live agents into config devices[] + operations/inventory/systems (with hardware)
 hdc run service meshcentral query -- --import --yes
 
 # Identity/IP only (no remote hardware collect)
@@ -67,7 +67,7 @@ hdc run service meshcentral maintain -- --device lan-1 --disk --dry-run
 2. Open `meshcentral.public_url` and create the first admin account.
 3. Store that account in the vault as `HDC_MESHCENTRAL_USERNAME` and `HDC_MESHCENTRAL_PASSWORD`.
 4. Install agents using the same public URL.
-5. `query --import --yes` to seed `meshcentral.devices[]` and client `inventory/manual/systems/<id>.json` sidecars (CPU/RAM/disk/MAC from online agents). Device ids prefer matches against `clumps/clients/*/config.json` hosts (`id` / IP).
+5. `query --import --yes` to seed `meshcentral.devices[]` and client `operations/inventory/systems/<id>.json` sidecars (CPU/RAM/disk/MAC + OEM Windows key presence from online agents). Device ids prefer matches against `clumps/clients/*/config.json` hosts (`id` / IP).
 
 ## Related
 

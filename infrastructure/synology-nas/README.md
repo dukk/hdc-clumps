@@ -5,7 +5,7 @@ Query and maintain Synology DSM hosts over SSH: versions, RAID, disk usage, DSM 
 ## Prerequisites
 
 - **Config:** copy [`config.example.json`](config.example.json) to `config.json`.
-- **Inventory:** [`inventory/manual/systems/nas-a.json`](../../../inventory/manual/systems/nas-a.json), [`nas-b.json`](../../../inventory/manual/systems/nas-b.json).
+- **Inventory:** [`operations/inventory/systems/nas-a.json`](../../../operations/inventory/systems/nas-a.json), [`nas-b.json`](../../../operations/inventory/systems/nas-b.json).
 - **DSM:** enable SSH (Control Panel → Terminal & SNMP).
 - **Vault:** `HDC_SYNOLOGY_SSH_USER` (optional); `HDC_SYNOLOGY_SSH_PASSWORD_NAS_1`, `HDC_SYNOLOGY_SSH_PASSWORD_NAS_2` for first bootstrap unless pubkey auth already works.
 
@@ -13,11 +13,12 @@ Query and maintain Synology DSM hosts over SSH: versions, RAID, disk usage, DSM 
 
 | Verb | Purpose |
 |------|---------|
-| `query` | DSM version, volumes, RAID, disks, Docker status (JSON on stdout) |
+| `query` | DSM version, volumes, RAID, disks, Docker status (JSON on stdout); `--import-hardware --yes` upserts `hardware[]` on NAS system sidecars |
 | `maintain` | SSH keys, Docker ensure, DSM upgrade, `synopkg upgradeall` (one NAS at a time) |
 
 ```bash
 hdc run infrastructure synology-nas query --
+hdc run infrastructure synology-nas query -- --import-hardware --yes
 hdc run infrastructure synology-nas maintain --
 hdc help run infrastructure synology-nas
 ```

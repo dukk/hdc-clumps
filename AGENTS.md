@@ -18,6 +18,10 @@ Automation **plugins** for the Home Data Center. Package scripts live in this re
 
 Open [hdc.code-workspace](hdc.code-workspace) for a multi-root Cursor/VS Code workspace (hdc-clumps + hdc).
 
+## Agent knowledge (OKF)
+
+[`../hdc-private/ai-docs/`](../hdc-private/ai-docs/) is Google Open Knowledge Format for **agent recall** (platform, package, and site). Start at [`../hdc-private/ai-docs/index.md`](../hdc-private/ai-docs/index.md). Human prose stays in `../hdc/docs/`. After learning a durable package fact, update a concept + `log.md` in hdc-private (primary package writer: `hdc-sre-engineer`).
+
 ## Invoke hdc (from hdc repo root)
 
 ```bash
@@ -72,4 +76,4 @@ cd ../hdc && npm test
 
 ## Deeper context
 
-Full CLI reference, inventory schemas, and per-package docs: [hdc AGENTS.md](../hdc/AGENTS.md) and [README.md](README.md).
+Full CLI reference, inventory schemas, and per-package docs: [hdc AGENTS.md](../hdc/AGENTS.md) and [README.md](README.md). Agent OKF: [`../hdc-private/ai-docs/index.md`](../hdc-private/ai-docs/index.md).

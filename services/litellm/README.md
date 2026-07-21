@@ -19,7 +19,7 @@ OpenAI-compatible AI gateway on Proxmox LXC (Docker Compose + bundled Postgres, 
 |------|---------|
 | `deploy` | LXC + Docker LiteLLM + Postgres |
 | `maintain` | Re-push `config.yaml` + `.env`; `docker compose pull` + `up -d`; guest baseline. `--align-db-password` ALTERs the Postgres role to the vault password (fix P1000 drift). `--reset-db --yes` wipes `postgres_data` and recreates. |
-| `query` | Config summary; `--live` for Docker + `/health/liveliness` + DB auth drift booleans + `/v1/models` |
+| `query` | Config summary; `--live` for Docker + `/health/liveliness` + DB auth drift booleans (incl. TCP `psql_tcp_ok_with_file_password`) + `/v1/models` |
 | `teardown` | Optional compose down, destroy LXC |
 
 ```bash

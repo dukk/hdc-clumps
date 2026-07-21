@@ -97,7 +97,7 @@ Additional gethomepage service widgets resolve credentials at maintain time and 
 | `glances_widget` | Glances | URL from glances package config |
 | `homeassistant_widget` | Home Assistant | `HDC_HOMEPAGE_HA_TOKEN` (long-lived token) |
 | `plex_widget` | Plex | `HDC_HOMEPAGE_PLEX_TOKEN`; optional `url` |
-| `audiobookshelf_widget` | Audiobookshelf | `HDC_HOMEPAGE_AUDIOBOOKSHELF_TOKEN` |
+| `audiobookshelf_widget` | Audiobookshelf | `HDC_HOMEPAGE_AUDIOBOOKSHELF_TOKEN`; `customapi` stats file `stats/audiobookshelf.json` (audiobooks / ebooks / other counts + `total_storage_bytes`); optional `library_buckets` name overrides |
 | `uptime_kuma_widget` | Uptime Kuma, Uptime Kuma (Public Edge) | `slug` (default status page); optional `instances[]` and `slugs{}` per deployment (e.g. LAN `a` + OCI `ext-a`) |
 | `crowdsec_widget` | CrowdSec | `HDC_HOMEPAGE_CROWDSEC_LAPI_PASSWORD`; optional `machine_id` |
 | `unifi_widget` | UniFi | `HDC_UNIFI_NETWORK_API_KEY` (shared with unifi-network); URL/site from unifi-network config |

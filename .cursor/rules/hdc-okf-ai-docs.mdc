@@ -1,0 +1,32 @@
+---
+description: OKF ai-docs authorship checklist — frontmatter, indexes, logs; single bundle in hdc-private.
+globs: ai-docs/**/*.md,**/ai-docs/**/*.md
+alwaysApply: false
+---
+
+# OKF ai-docs (Open Knowledge Format)
+
+Human prose stays under sibling `../hdc/docs/`. Agent recall lives under **`../hdc-private/ai-docs/`** only (OKF v0.1). Full promote workflow: skill **`hdc-okf`** in sibling hdc (`apps/hdc-agent-server/skills/hdc-okf/SKILL.md` or `.cursor/skills/hdc-okf/`).
+
+## Bundle ownership
+
+| Knowledge | Bundle | Writers |
+| --- | --- | --- |
+| All agent OKF (platform, package, site) | **`hdc-private/ai-docs/`** | Humans / IDE; fleet `hdc-sre-ops`, `hdc-manager`, `hdc-sre-engineer` |
+
+This repo (hdc-clumps) does **not** carry `ai-docs/`. Promote package gotchas and playbooks into hdc-private.
+
+## Checklist when creating or editing concepts
+
+1. **Reserved files:** `index.md` (listings; root may set `okf_version: "0.1"`) and `log.md` (newest-first ISO dates) — do not use those names for concepts.
+2. **Every other `.md`:** YAML frontmatter with required non-empty `type`. Prefer `title`, `description`, `tags`, `timestamp` (ISO 8601).
+3. **HDC `type` values:** `Convention`, `Architecture`, `Playbook`, `Reference`, `Gotcha`, `SiteFact`.
+4. **Body:** headings, lists, tables, fenced commands — not essays. Link within the same bundle as `/path/to/concept.md`.
+5. **Citations:** point at human `hdc/docs/` or authoritative `operations/` files.
+6. **Indexes:** add/update the parent directory `index.md` listing when adding a concept.
+7. **Log:** append a newest-first entry under root `log.md` after meaningful changes.
+8. **Secrets:** env var **names** only — never secret values. Public trees (this repo): RFC 5737 / `example.invalid` only.
+
+## Recall
+
+Start at `../hdc-private/ai-docs/index.md`. Prefer OKF for durable process knowledge before inventing procedures.

@@ -1,6 +1,7 @@
 /**
  * OS-aware disk / updates / package / hardware ops via MeshCentral runcommands.
  */
+import { oemWindowsHardwareEntry } from "hdc/package/hardware-inventory.mjs";
 import { runOnDevice } from "./meshcentral-runcommand.mjs";
 
 /**
@@ -54,11 +55,21 @@ export function hardwareCommand(platform) {
       "      [pscustomobject]@{ name=$_.Name; vram_mb=$vram } " +
       "    }) " +
       "}; " +
+      "$oa3Present=$false; $oa3Desc=$null; $partial=$null; $channel=$null; " +
+      "try { " +
+      "  $sls=Get-CimInstance SoftwareLicensingService -ErrorAction SilentlyContinue; " +
+      "  if ($sls -and $sls.OA3xOriginalProductKey) { $oa3Present=$true; $oa3Desc=$sls.OA3xOriginalProductKeyDescription }; " +
+      "  $prod=@(Get-CimInstance SoftwareLicensingProduct -ErrorAction SilentlyContinue | " +
+      "    Where-Object { $_.PartialProductKey -and $_.LicenseStatus -eq 1 } | Select-Object -First 1)[0]; " +
+      "  if ($prod) { $partial=$prod.PartialProductKey; $channel=$prod.ProductKeyChannel } " +
+      "} catch {}; " +
       "[pscustomobject]@{ " +
       "manufacturer=$cs.Manufacturer; model=$cs.Model; serial=$bios.SerialNumber; " +
       "cpu_model=$cpu.Name; logical_cores=[int]$cs.NumberOfLogicalProcessors; " +
       "memory_gb=[math]::Round(($cs.TotalPhysicalMemory/1GB),2); " +
-      "mac=$(if($nic){$nic.MACAddress}else{$null}); disks=$disks; gpus=$gpus " +
+      "mac=$(if($nic){$nic.MACAddress}else{$null}); disks=$disks; gpus=$gpus; " +
+      "oem_oa3_key_present=$oa3Present; oem_oa3_description=$oa3Desc; " +
+      "oem_partial_product_key=$partial; oem_channel=$channel " +
       "} | ConvertTo-Json -Compress -Depth 5"
     );
   }
@@ -124,8 +135,11 @@ export function hardwareCommand(platform) {
     "        if name: gpus.append({'name':name,'vram_mb':None})\n" +
     "  except Exception:\n" +
     "    pass\n" +
+    "oem_msdm=os.path.exists('/sys/firmware/acpi/tables/MSDM')\n" +
+    "oem_slic=os.path.exists('/sys/firmware/acpi/tables/SLIC')\n" +
     "print(json.dumps({'manufacturer':manuf,'model':model,'serial':serial,'cpu_model':cpu_model," +
-    "'logical_cores':cores,'memory_gb':round(mem_kb/1048576,2),'mac':mac or None,'disks':disks,'gpus':gpus}))\n" +
+    "'logical_cores':cores,'memory_gb':round(mem_kb/1048576,2),'mac':mac or None,'disks':disks,'gpus':gpus," +
+    "'oem_firmware_msdm':oem_msdm,'oem_firmware_slic':oem_slic}))\n" +
     "PY"
   );
 }
@@ -273,6 +287,25 @@ export function parseHardwareOutput(output) {
     if (Number.isFinite(free) && free >= 0) disk.free_gb = Math.round(free * 100) / 100;
     hardware.push(disk);
   }
+
+  const oemExplicit =
+    "oem_firmware_msdm" in payload ||
+    "oem_firmware_slic" in payload ||
+    "oem_oa3_key_present" in payload ||
+    "oem_partial_product_key" in payload;
+  if (oemExplicit) {
+    const oem = oemWindowsHardwareEntry({
+      firmwareMsdm: payload.oem_firmware_msdm === true,
+      firmwareSlic: payload.oem_firmware_slic === true,
+      oa3KeyPresent: payload.oem_oa3_key_present === true,
+      partialProductKey:
+        typeof payload.oem_partial_product_key === "string" ? payload.oem_partial_product_key : null,
+      channel: typeof payload.oem_channel === "string" ? payload.oem_channel : null,
+      description: typeof payload.oem_oa3_description === "string" ? payload.oem_oa3_description : null,
+    });
+    if (oem) hardware.push(oem);
+  }
+
   if (!hardware.length) {
     return { ok: false, message: "hardware JSON contained no usable fields" };
   }

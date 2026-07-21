@@ -14,11 +14,13 @@ HDC automation for Proxmox VE hypervisors: API provisioning (LXC/QEMU), host mai
 |------|---------|
 | `deploy` | Subcommands: create LXC, clone QEMU VM, list templates |
 | `maintain` | Host hygiene: templates, firewall, API token, service accounts, upgrades, scheduled backups, replication, HA, guest startup order, guest package tags, guest-agent report |
-| `query` | Cluster/guest snapshot (JSON on stdout) |
+| `query` | Cluster/guest snapshot (JSON on stdout); `--import-hardware --yes` upserts `operations/inventory/systems/pve-*.json` with `hardware[]` (API + SSH; OEM MSDM/SLIC presence) |
 
 ```bash
 hdc run infrastructure proxmox maintain -- verify-templates
 hdc run infrastructure proxmox query --
+hdc run infrastructure proxmox query -- --import-hardware --yes
+hdc run infrastructure proxmox query -- --import-hardware --dry-run
 hdc run infrastructure proxmox deploy -- create-container
 hdc run infrastructure proxmox deploy -- create-vm
 hdc run infrastructure proxmox deploy -- list-templates

@@ -5,6 +5,7 @@
  * Usage: hdc run service homepage query -- [--instance a]
  *        hdc run service homepage query -- --live
  *        hdc run service homepage query -- --lint
+ *        hdc run service homepage query -- --failing-only
  */
 import { basename, dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -22,6 +23,10 @@ import { queryHomepageInCt } from "hdc/package/query-status.mjs";
 import { loadClumpConfigFromClumpRoot, tryLoadClumpConfigFromClumpRoot } from "hdc/package/clump-run-config.mjs";
 import { lintHomepageServicesFromConfig } from "hdc/package/homepage-services-lint.mjs";
 import { loadHomepageConfigFiles } from "hdc/package/homepage-config-load.mjs";
+import {
+  parseHomepageMonitorTargetsFromYaml,
+  probeHomepageMonitorTargets,
+} from "hdc/package/homepage-sitemonitor-probe.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const packageRoot = join(here, "..");
@@ -61,6 +66,7 @@ async function main() {
   const flags = parseArgvFlags(process.argv.slice(2));
   const live = flagGet(flags, "live") !== undefined;
   const lintOnly = flagGet(flags, "lint") !== undefined;
+  const failingOnly = flagGet(flags, "failing-only") !== undefined;
 
   errout.write(`[hdc] ${target} ${verb}: config ${rel} ${loaded.ok ? "loaded" : "not loaded"}.\n`);
 
@@ -72,6 +78,84 @@ async function main() {
 
   /** @type {Record<string, unknown> | null} */
   let lintResult = null;
+
+  if (cfg && failingOnly) {
+    try {
+      const deployment = resolveHomepageDeployments(cfg, flags)[0];
+      const homepage = deployment?.homepage && isObject(deployment.homepage) ? deployment.homepage : {};
+      const loadedFiles = loadHomepageConfigFiles(homepage, packageRoot);
+      const targets = parseHomepageMonitorTargetsFromYaml(loadedFiles.servicesYaml);
+      errout.write(
+        `[hdc] ${target} ${verb}: failing-only probe of ${targets.length} siteMonitor/ping target(s) …\n`,
+      );
+      const probe = await probeHomepageMonitorTargets(targets, {
+        log: (line) => errout.write(`[hdc] ${target} ${verb}: ${line}\n`),
+      });
+
+      /** @type {Record<string, unknown>[]} */
+      const dashboardFailures = [];
+      if (deployment) {
+        const px = isObject(deployment.proxmox) ? deployment.proxmox : {};
+        const hostId = typeof px.host_id === "string" ? px.host_id.trim() : "";
+        const lxc = isObject(px.lxc) ? px.lxc : {};
+        const vmid = typeof lxc.vmid === "number" ? lxc.vmid : Number(lxc.vmid);
+        if (hostId && Number.isFinite(vmid)) {
+          try {
+            const pveSsh = resolvePveSshForHost(proxmoxRoot, hostId);
+            const status = await queryHomepageInCt(
+              pveSsh.user,
+              pveSsh.host,
+              vmid,
+              deployment.homepage,
+              deployment.install,
+            );
+            if (!status.http_ok) {
+              dashboardFailures.push({
+                kind: "dashboard",
+                system_id: deployment.systemId,
+                target: status.upstream_url ?? status.web_url ?? null,
+                error: status.http_error ?? "homepage HTTP probe failed",
+              });
+            }
+          } catch (e) {
+            dashboardFailures.push({
+              kind: "dashboard",
+              system_id: deployment.systemId,
+              error: String(/** @type {Error} */ (e).message || e),
+            });
+          }
+        }
+      }
+
+      const failing = [...probe.failing, ...dashboardFailures];
+      const ok = failing.length === 0;
+      process.stdout.write(
+        `${JSON.stringify(
+          {
+            ok,
+            target,
+            verb,
+            failing_only: true,
+            target_count: probe.target_count,
+            failing_count: failing.length,
+            failing,
+          },
+          null,
+          2,
+        )}\n`,
+      );
+      process.exitCode = ok ? 0 : 1;
+      return;
+    } catch (e) {
+      const msg = String(/** @type {Error} */ (e).message || e);
+      errout.write(`[hdc] ${target} ${verb}: failing-only check failed: ${msg}\n`);
+      process.stdout.write(
+        `${JSON.stringify({ ok: false, target, verb, failing_only: true, message: msg }, null, 2)}\n`,
+      );
+      process.exitCode = 1;
+      return;
+    }
+  }
 
   if (cfg && lintOnly) {
     try {
