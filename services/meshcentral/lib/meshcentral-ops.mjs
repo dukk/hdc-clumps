@@ -444,7 +444,7 @@ export async function collectHardware(client, device, opts = {}) {
     platform,
     dryRun: opts.dryRun,
     log: opts.log,
-    timeoutMs: 90_000,
+    timeoutMs: 180_000,
   });
   if (opts.dryRun) {
     return { ok: true, platform, hardware: [], mac: null, dry_run: true, output: "" };

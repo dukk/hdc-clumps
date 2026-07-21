@@ -16,14 +16,26 @@ const ICONS_REL_DIR = "homepage/icons";
 export function listVendoredIconFilenames(packageRoot) {
   const root = repoRoot();
   const abs = join(packageRoot, ICONS_REL_DIR);
-  const repoRel = relative(root, abs).replace(/\\/g, "/");
-  const resolved = resolveRepoFilePath(root, repoRel);
-  if (!resolved.found) return new Set();
+  /** @type {string | null} */
+  let iconsDir = null;
+  if (existsSync(abs)) {
+    iconsDir = abs;
+  } else {
+    const repoRel = relative(root, abs).replace(/\\/g, "/");
+    if (repoRel && !repoRel.startsWith("..") && !repoRel.startsWith("/")) {
+      const resolved = resolveRepoFilePath(root, repoRel);
+      if (resolved.found) iconsDir = resolved.path;
+    } else {
+      const remapped = resolveRepoFilePath(root, `clumps/services/homepage/${ICONS_REL_DIR}`);
+      if (remapped.found) iconsDir = remapped.path;
+    }
+  }
+  if (!iconsDir) return new Set();
 
   /** @type {Set<string>} */
   const names = new Set();
   try {
-    for (const entry of readdirSync(resolved.path, { withFileTypes: true })) {
+    for (const entry of readdirSync(iconsDir, { withFileTypes: true })) {
       if (entry.isFile() && /\.png$/i.test(entry.name)) names.add(entry.name);
     }
   } catch {
@@ -100,7 +112,12 @@ export function lintHomepageServicesYaml(opts) {
       widget && typeof widget.type === "string" ? String(widget.type).trim().toLowerCase() : null;
 
     if (widgetType) {
-      const entry = catalogEntryByWidgetType(widgetType);
+      // Prefer tile-name match: multiple catalog rows share widgetType (e.g. customapi).
+      const entryByTile = catalog;
+      const entry =
+        entryByTile && entryByTile.widgetType === widgetType
+          ? entryByTile
+          : catalogEntryByWidgetType(widgetType);
       if (!entry) {
         errors.push(`${svc.name}: unknown widget type ${JSON.stringify(widgetType)}`);
       } else if (!widgetBlockEnabled(homepage, entry.configKey)) {

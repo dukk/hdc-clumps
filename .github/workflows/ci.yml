@@ -59,4 +59,4 @@ jobs:
         run: |
           set -euo pipefail
           npm ci
-          npx vitest run ../hdc-clumps/**/*.test.mjs
+          npx vitest run ../hdc-clumps

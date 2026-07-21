@@ -48,7 +48,7 @@ export function imageName(hdcAgents) {
  */
 export function litellmBaseUrl(hdcAgents) {
   const u = typeof hdcAgents.litellm_base_url === "string" ? hdcAgents.litellm_base_url.trim() : "";
-  return u || "http://10.0.0.116:4000";
+  return u || "http://192.0.2.116:4000";
 }
 
 /**

@@ -4,7 +4,7 @@ function isObject(v) {
 }
 
 const DEFAULT_LISTEN_PORT = 4242;
-const DEFAULT_ALLOWED_SENDERS = ["10.0.0.1/32"];
+const DEFAULT_ALLOWED_SENDERS = ["192.0.2.1/32"];
 
 /**
  * @param {unknown} crowdsec

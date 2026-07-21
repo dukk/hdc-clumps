@@ -51,18 +51,18 @@ describe("planPortForwardSync", () => {
     expect(plan.create[0].desired.id).toBe("pf-test");
   });
 
-  it("plans update when non-key fields drift", () => {
-    const plan = planPortForwardSync([desired({ enabled: false })], [live()]);
-    expect(plan.summary.update).toBe(1);
-    expect(plan.update[0].unifiId).toBe("abc123");
+  it("treats matched live rules as unchanged even when non-key fields drift", () => {
+    const plan = planPortForwardSync([desired({ enabled: false, log: true })], [live()]);
+    expect(plan.summary).toEqual({ create: 0, update: 0, delete: 0, unchanged: 1 });
+    expect(plan.update).toHaveLength(0);
   });
 
-  it("matches by unifi_id when configured", () => {
+  it("matches by unifi_id and does not replace when configured", () => {
     const plan = planPortForwardSync(
       [desired({ unifi_id: "abc123", name: "Renamed in config", dst_port: "8443" })],
       [live({ name: "Old name on controller", dst_port: "8443" })],
     );
-    expect(plan.summary.update).toBe(1);
+    expect(plan.summary).toEqual({ create: 0, update: 0, delete: 0, unchanged: 1 });
   });
 
   it("does not delete without prune", () => {

@@ -1,10 +1,12 @@
 #!/usr/bin/env node
 /**
- * UniFi Network maintain: apply config port_forwards[] and/or HDC IP blocks.
+ * UniFi Network maintain: apply config port_forwards[], HDC IP blocks,
+ * and optional Proxmox guest client alias sync.
  *
  * Usage: hdc run infrastructure unifi-network maintain --
  *   [--dry-run] [--prune] [--rule <id>]
  *   [--block <ip> --days 30 --reason <text>] [--unblock <ip>] [--prune-expired]
+ *   [--skip-client-aliases] [--skip-port-forwards] [--with-port-forwards]
  *   [--no-report] [--report <path>]
  *
  * Operator one-time: create a UniFi WAN_IN DROP firewall policy whose source
@@ -38,6 +40,12 @@ import {
   resolveIpBlocksPath,
   saveIpBlocksLedger,
 } from "hdc/package/unifi-ip-block.mjs";
+import {
+  applyClientAliasSync,
+  fetchLiveClientsForAliasSync,
+  loadProxmoxGuestDesired,
+  planClientAliasSync,
+} from "hdc/package/unifi-client-alias-sync.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const verb = basename(here);
@@ -47,6 +55,7 @@ const MANIFEST_NEXT_STEPS = [
   "Run `hdc run infrastructure unifi-network query --` to verify diffs after maintain.",
   "Bootstrap from live: `query -- --import-port-forwards --yes`.",
   "IP blocks: ensure a WAN_IN DROP policy uses the hdc-auto-block address group.",
+  "Client aliases: set client_aliases.enabled in config; skip with --skip-client-aliases.",
 ];
 
 /**
@@ -74,6 +83,8 @@ async function main() {
   const blockIp = flagGet(flags, "block");
   const unblockIp = flagGet(flags, "unblock");
   const pruneExpired = flags["prune-expired"] === "1";
+  const skipClientAliases = flags["skip-client-aliases"] === "1";
+  const skipPortForwards = flags["skip-port-forwards"] === "1";
   const reason = flagGet(flags, "reason") ?? undefined;
   const daysFlag = parseDays(flags);
 
@@ -95,6 +106,8 @@ async function main() {
       block: blockIp ?? null,
       unblock: unblockIp ?? null,
       prune_expired: pruneExpired,
+      skip_client_aliases: skipClientAliases,
+      skip_port_forwards: skipPortForwards,
     },
   });
 
@@ -209,8 +222,12 @@ async function main() {
   }
 
   // Default: IP-block-only invocations skip port-forward sync unless --with-port-forwards.
-  // Full maintain (no block flags) still syncs port forwards.
-  const runPortForwards = ipBlockMode ? flags["with-port-forwards"] === "1" : true;
+  // Full maintain (no block flags) still syncs port forwards unless --skip-port-forwards.
+  const runPortForwards = skipPortForwards
+    ? false
+    : ipBlockMode
+      ? flags["with-port-forwards"] === "1"
+      : true;
 
   if (runPortForwards) {
     const desired = ctx.config.managedPortForwards.filter((p) => portForwardPassesFilter(p, ruleId));
@@ -262,8 +279,70 @@ async function main() {
     }
     stdoutPayload.plan = plan.summary;
     stdoutPayload.results = applyResult.results;
+  } else if (skipPortForwards) {
+    log("Skipping port-forward sync (--skip-port-forwards)");
   } else {
     log("Skipping port-forward sync (IP-block mode; pass --with-port-forwards to include)");
+  }
+
+  // Client aliases: full maintain when enabled; skip in IP-block-only / --rule-only /
+  // --skip-client-aliases modes (selective maintain must not surprise-rename clients).
+  const aliasesEnabled = ctx.config.clientAliases?.enabled === true;
+  const selectivePortForward = Boolean(ruleId);
+  const runClientAliases =
+    aliasesEnabled && !skipClientAliases && !ipBlockMode && !selectivePortForward;
+
+  if (runClientAliases) {
+    const root = repoRoot();
+    log("Syncing UniFi client aliases from Proxmox guest inventory system ids…");
+    const desired = loadProxmoxGuestDesired(root);
+    for (const w of desired.warnings) {
+      log(`WARN: ${w}`);
+      pushWarning(reportCtx, w);
+    }
+    log(`Inventory Proxmox guests with IP/MAC: ${desired.guests.length}`);
+    const liveClients = await fetchLiveClientsForAliasSync(ctx, log);
+    const aliasPlan = planClientAliasSync(desired.byIp, desired.byMac, liveClients);
+    log(
+      `client aliases plan: update=${aliasPlan.summary.update} unchanged=${aliasPlan.summary.unchanged} skipped=${aliasPlan.summary.skipped}`,
+    );
+    for (const u of aliasPlan.update) {
+      log(
+        `  rename ${u.mac}${u.ip ? ` (${u.ip})` : ""} → ${u.systemId} (was ${JSON.stringify(u.currentName ?? "")})`,
+      );
+    }
+    const aliasResult = await applyClientAliasSync(ctx, aliasPlan, {
+      dryRun: reportCtx.dryRun,
+      log,
+    });
+    recordStep(reportCtx, {
+      id: "client-alias-sync",
+      title: "Sync client aliases (Proxmox guests)",
+      ran: true,
+      ok: aliasResult.ok,
+      notes: [
+        `update ${aliasPlan.summary.update}, unchanged ${aliasPlan.summary.unchanged}, skipped ${aliasPlan.summary.skipped}`,
+        ...aliasPlan.skipped.slice(0, 20).map((s) => `skip ${s.systemId ?? "?"}: ${s.reason}`),
+        ...aliasResult.results.filter((r) => !r.ok).map((r) => `${r.systemId}: ${r.error}`),
+      ],
+    });
+    if (!aliasResult.ok) {
+      overallOk = false;
+      pushWarning(reportCtx, "One or more client alias renames failed");
+    }
+    stdoutPayload.client_aliases = {
+      summary: aliasPlan.summary,
+      results: aliasResult.results,
+      skipped: aliasPlan.skipped,
+    };
+  } else if (aliasesEnabled && skipClientAliases) {
+    log("Skipping client alias sync (--skip-client-aliases)");
+  } else if (aliasesEnabled && (ipBlockMode || selectivePortForward)) {
+    log(
+      "Skipping client alias sync (selective maintain; omit --block/--rule or run full maintain)",
+    );
+  } else if (!aliasesEnabled) {
+    log("Client alias sync disabled (set client_aliases.enabled in config.json)");
   }
 
   setOutcome(reportCtx, {

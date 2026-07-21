@@ -11,6 +11,9 @@
     "group_name": "hdc-auto-block",
     "default_days": 30
   },
+  "client_aliases": {
+    "enabled": true
+  },
   "port_forwards": [
     {
       "id": "pf-example-service",

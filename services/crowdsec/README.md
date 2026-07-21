@@ -38,7 +38,7 @@ hdc run service crowdsec query -- --live
 
 On the UDM: **Settings → System → Remote Logging**
 
-- Server: CrowdSec LAPI CT IP (e.g. `10.0.0.201`)
+- Server: CrowdSec LAPI CT IP (e.g. `192.0.2.201`)
 - Port: `4242` (or `crowdsec.unifi.syslog.listen_port`)
 - Enable **Security Events** and **Admin Events** (CEF when offered)
 

@@ -2,7 +2,6 @@ import {
   configEntryToNormalized,
   liveRowToNormalized,
   portForwardMatchKey,
-  portForwardsNeedUpdate,
   normalizedToApiBody,
 } from "./unifi-config.mjs";
 import { classicRestWrite, normalizeClassicSiteKey } from "./unifi-api.mjs";
@@ -73,7 +72,7 @@ export function planPortForwardSync(desired, live, prune = false) {
   /** @type {Set<string>} */
   const matchedLiveKeys = new Set();
 
-  for (const [key, { desired: d, normalized }] of desiredMap) {
+  for (const [key, { desired: d }] of desiredMap) {
     let existing = null;
     const unifiId = typeof d.unifi_id === "string" ? d.unifi_id.trim() : "";
     if (unifiId && liveByUnifiId.has(unifiId)) {
@@ -86,12 +85,9 @@ export function planPortForwardSync(desired, live, prune = false) {
     if (!existing) {
       create.push({ key, desired: d });
     } else {
+      // Matched live rule: never PUT/replace (UniFi rejects overlapping updates).
       matchedLiveKeys.add(existing.key);
-      if (portForwardsNeedUpdate(normalized, existing.normalized)) {
-        update.push({ key, desired: d, live: existing.live, unifiId: existing.unifiId });
-      } else {
-        unchanged.push(key);
-      }
+      unchanged.push(key);
     }
   }
 

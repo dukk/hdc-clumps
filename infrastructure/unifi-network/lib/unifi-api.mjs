@@ -432,6 +432,78 @@ export async function classicActiveStations(base, apiKey, siteId, rejectUnauthor
 }
 
 /**
+ * Known clients (rest/user) with classic site-key fallback.
+ * @param {string} base
+ * @param {string} apiKey
+ * @param {string} siteKey
+ * @param {boolean} rejectUnauthorized
+ * @returns {Promise<{ rows: Record<string, unknown>[]; siteKey: string }>}
+ */
+export async function classicRestUsers(base, apiKey, siteKey, rejectUnauthorized) {
+  return classicRestListWithFallback(base, apiKey, siteKey, "user", rejectUnauthorized);
+}
+
+/**
+ * Lookup a known client by MAC (includes offline). Prefer over rest/user for _id resolution.
+ * @param {string} base
+ * @param {string} apiKey
+ * @param {string} siteId classic site key
+ * @param {string} mac
+ * @param {boolean} rejectUnauthorized
+ * @returns {Promise<Record<string, unknown> | null>}
+ */
+export async function classicUserByMac(base, apiKey, siteId, mac, rejectUnauthorized) {
+  const macNorm = String(mac ?? "")
+    .trim()
+    .toLowerCase();
+  if (!macNorm) return null;
+  const pathSeg = encodeURIComponent(siteId);
+  const url = `${base}/proxy/network/api/s/${pathSeg}/stat/user/${encodeURIComponent(macNorm)}`;
+  try {
+    const body = await requestJson({
+      url,
+      headers: {
+        Accept: "application/json",
+        "X-API-KEY": apiKey,
+      },
+      rejectUnauthorized,
+    });
+    const rows = classicDataArray(body);
+    return rows[0] ?? null;
+  } catch (e) {
+    // @ts-expect-error statusCode
+    if (e && typeof e === "object" && e.statusCode === 404) return null;
+    throw e;
+  }
+}
+
+/**
+ * Set UniFi client alias (display name).
+ * @param {string} base
+ * @param {string} apiKey
+ * @param {string} siteId classic site key
+ * @param {string} userId rest/user _id
+ * @param {string} name desired alias
+ * @param {boolean} rejectUnauthorized
+ */
+export async function classicSetClientName(base, apiKey, siteId, userId, name, rejectUnauthorized) {
+  const id = String(userId ?? "").trim();
+  if (!id) throw new Error("classicSetClientName: missing user _id");
+  const alias = String(name ?? "").trim();
+  if (!alias) throw new Error("classicSetClientName: empty name");
+  return classicRestWrite(
+    base,
+    apiKey,
+    siteId,
+    "user",
+    "PUT",
+    { _id: id, name: alias },
+    id,
+    rejectUnauthorized,
+  );
+}
+
+/**
  * @param {string} base
  * @param {string} apiKey
  * @param {string} siteId

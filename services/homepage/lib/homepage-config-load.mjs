@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join, relative } from "node:path";
 import { stderr as errout } from "node:process";
 
@@ -78,6 +78,17 @@ function packageRelToRepoRel(packageRoot, relPath) {
  * @param {string} label
  */
 function readPackageConfigFile(packageRoot, relPath, label) {
+  const absInPackage = join(packageRoot, relPath);
+  // Prefer the live package tree (hdc-clumps sibling or nested checkout) before
+  // remapping to clumps/… for hdc / hdc-private overlays.
+  if (existsSync(absInPackage)) {
+    errout.write(`[hdc] homepage: loading ${label} from ${absInPackage} (package)\n`);
+    let content = readFileSync(absInPackage, "utf8").replace(/\r\n/g, "\n");
+    if (!content.trim()) {
+      throw new Error(`homepage ${label} at ${absInPackage} is empty`);
+    }
+    return content.endsWith("\n") ? content : `${content}\n`;
+  }
   const repoRel = packageRelToRepoRel(packageRoot, relPath);
   const resolved = resolveRepoFilePath(repoRoot(), repoRel);
   if (!resolved.found) {

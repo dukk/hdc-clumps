@@ -11,7 +11,7 @@ export { resolvePveSshForHost };
 
 /** Default LAN CIDRs allowed to auto-register agents to LAPI. */
 export const DEFAULT_AUTO_REGISTRATION_RANGES = [
-  "10.0.0.0/24",
+  "192.0.2.0/24",
   "10.1.0.0/16",
   "10.2.0.0/16",
   "192.168.0.0/16",

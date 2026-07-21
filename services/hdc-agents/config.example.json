@@ -71,7 +71,7 @@
       "discord": {
         "enabled": true,
         "title_prefix": "[HDC]",
-        "on_failure_only": false,
+        "on_failure_only": true,
         "webhook_vault_key": "HDC_AGENTS_DISCORD_WEBHOOK_URL",
         "application_id": null,
         "public_key": null,
@@ -129,13 +129,20 @@
           "cron": "0 3 * * *",
           "cli": ["maintain", "daily"],
           "cli_args": ["--skip-clients"],
-          "mail": { "enabled": true, "on_failure_only": false },
-          "discord": { "enabled": true, "on_failure_only": false }
+          "mail": { "enabled": true, "on_failure_only": true },
+          "discord": { "enabled": true, "on_failure_only": true }
         },
         {
           "id": "hdc-ops-daily",
           "cron": "15 3 * * *",
           "cli": ["run-daily"],
+          "cli_args": [],
+          "discord": { "enabled": true, "on_failure_only": true }
+        },
+        {
+          "id": "schedule-summary",
+          "cron": "0 12 * * *",
+          "cli": ["schedule-summary"],
           "cli_args": [],
           "discord": { "enabled": true, "on_failure_only": false }
         },

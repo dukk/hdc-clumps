@@ -12,7 +12,7 @@ import { repoRoot } from "hdc/cli/paths.mjs";
 
 /** Default site CIDRs that must never be blocked (from ip-allocations.md). */
 export const DEFAULT_NEVER_BLOCK_CIDRS = Object.freeze([
-  "10.0.0.0/24",
+  "192.0.2.0/24",
   "10.0.5.0/26",
   "10.1.0.0/26",
   "10.1.1.0/26",
@@ -46,7 +46,7 @@ export function isValidIpv4(ip) {
 
 /**
  * @param {string} ip
- * @param {string} cidr e.g. 10.0.0.0/24
+ * @param {string} cidr e.g. 192.0.2.0/24
  */
 export function ipv4InCidr(ip, cidr) {
   const [net, bitsStr] = String(cidr).split("/");

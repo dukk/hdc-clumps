@@ -97,7 +97,7 @@ describe("fetchAudiobookshelfWidgetStats", () => {
     }
 
     const counts = await fetchAudiobookshelfWidgetStats({
-      url: "http://10.0.0.160:13378",
+      url: "http://192.0.2.160:13378",
       token: "test-token",
       requestFn,
     });

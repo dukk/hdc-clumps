@@ -400,7 +400,17 @@ export function normalizeUnifiConfig(cfg) {
     portForwardsById,
     managedPortForwards: portForwards.filter((p) => p.managed !== false),
     ipBlock: normalizeIpBlockConfig(cfg.ip_block),
+    clientAliases: normalizeClientAliasesConfig(cfg.client_aliases),
   };
+}
+
+/**
+ * @param {unknown} raw
+ * @returns {{ enabled: boolean }}
+ */
+export function normalizeClientAliasesConfig(raw) {
+  const o = raw && typeof raw === "object" && !Array.isArray(raw) ? /** @type {Record<string, unknown>} */ (raw) : {};
+  return { enabled: o.enabled === true };
 }
 
 /**
