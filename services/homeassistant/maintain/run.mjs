@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 /**
- * Maintain Home Assistant OS QEMU VM (USB passthrough + HTTP health).
+ * Maintain Home Assistant OS QEMU VM (USB passthrough + HTTP health + managed automations).
  *
  * Usage: hdc run service homeassistant maintain -- [--instance a]
  *        [--reapply-usb] [--repair-boot-disk] [--fix-serial-console] [--repair-secure-boot]
- *        [--skip-http] [--skip-reverse-proxy] [--dry-run]
+ *        [--skip-http] [--skip-reverse-proxy] [--skip-automations] [--automation <id>] [--dry-run]
  */
 import { basename, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -23,6 +23,9 @@ import {
 import { resolvePveSshForHost } from "../../ollama/lib/ollama-install.mjs";
 
 import { resolveHomeassistantDeployments } from "hdc/package/deployments.mjs";
+import { createHaClient } from "hdc/package/ha-api.mjs";
+import { resolveHaApiAuth } from "hdc/package/ha-api-auth.mjs";
+import { syncManagedAutomations } from "hdc/package/ha-automations-sync.mjs";
 import { forceStopHaosQemuGuest } from "hdc/package/haos-qemu-lifecycle.mjs";
 import {
   repairHaosBootDisk,
@@ -53,14 +56,15 @@ function ensurePackageConfig() {
 /**
  * @param {ReturnType<typeof resolveHomeassistantDeployments>[number]} deployment
  * @param {Record<string, string>} flags
+ * @param {Record<string, unknown>} cfg
  */
-async function maintainOne(deployment, flags) {
+async function maintainOne(deployment, flags, cfg) {
   const px = deployment.proxmox;
   const hostId = px.hostId;
   const q = px.qemu;
   const vmid = q.vmid;
 
-  errout.write(`[hdc] ${target} ${verb}: ${deployment.systemId} on ${hostId} vmid ${vmid} �\n`);
+  errout.write(`[hdc] ${target} ${verb}: ${deployment.systemId} on ${hostId} vmid ${vmid} …\n`);
 
   const auth = await authorizeProxmoxForHost({ clumpRoot: proxmoxRoot, hostId });
   const located = await locateGuest(
@@ -170,7 +174,7 @@ async function maintainOne(deployment, flags) {
       configured: q.usb,
       overrideId: usbOverride,
     });
-    errout.write(`[hdc] ${target} ${verb}: stopping VM for USB update �\n`);
+    errout.write(`[hdc] ${target} ${verb}: stopping VM for USB update …\n`);
     await forceStopHaosQemuGuest(forceStopOpts);
     await applyQemuUsb({
       apiBase: auth.host.apiBase,
@@ -231,8 +235,44 @@ async function maintainOne(deployment, flags) {
         `[hdc] ${target} ${verb}: if UEFI shows Access Denied on boot, run with --repair-secure-boot.\n`,
       );
       errout.write(
-        `[hdc] ${target} ${verb}: HTTP probe failed � confirm static IP ${q.ip} in HA Settings ? System ? Network.\n`,
+        `[hdc] ${target} ${verb}: HTTP probe failed — confirm static IP ${q.ip} in HA Settings → System → Network.\n`,
       );
+    }
+  }
+
+  if (flagGet(flags, "skip-automations") === undefined) {
+    const automations = Array.isArray(cfg.automations) ? cfg.automations : [];
+    if (automations.length > 0) {
+      try {
+        const { baseUrl, token } = await resolveHaApiAuth({
+          cfg,
+          deployment,
+          allowPrompt: false,
+          log,
+        });
+        const client = createHaClient({ baseUrl, token });
+        const automationFilter = flagGet(flags, "automation");
+        const sync = await syncManagedAutomations({
+          client,
+          automations,
+          dryRun: flagGet(flags, "dry-run") !== undefined,
+          automationId: automationFilter,
+          log,
+        });
+        extra.automations = sync;
+        if (!sync.ok) {
+          return {
+            ok: false,
+            system_id: deployment.systemId,
+            message: "managed automation sync failed",
+            ...extra,
+          };
+        }
+      } catch (e) {
+        const msg = String(/** @type {Error} */ (e).message || e);
+        errout.write(`[hdc] ${target} ${verb}: automation sync failed: ${msg}\n`);
+        return { ok: false, system_id: deployment.systemId, message: msg, ...extra };
+      }
     }
   }
 
@@ -253,7 +293,7 @@ async function main() {
     const deployments = resolveHomeassistantDeployments(cfg, flags);
     for (const deployment of deployments) {
       try {
-        const r = await maintainOne(deployment, flags);
+        const r = await maintainOne(deployment, flags, cfg);
         results.push(r);
         if (r.ok === false) ok = false;
       } catch (e) {

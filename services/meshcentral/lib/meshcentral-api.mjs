@@ -91,6 +91,7 @@ export function apiUserVaultKey(meshcentral) {
  * @property {() => Promise<Record<string, unknown>[]>} listNodes
  * @property {(nodeIds: string[], action: string) => Promise<Record<string, unknown>>} power
  * @property {(nodeId: string, cmds: string, opts?: { powershell?: boolean; timeoutMs?: number }) => Promise<{ ok: boolean; output: string; raw: Record<string, unknown> }>} runCommand
+ * @property {(nodeId: string, opts?: { timeoutMs?: number; nodeinfo?: boolean }) => Promise<{ ok: boolean; message?: string; raw: Record<string, unknown> }>} getSysInfo
  */
 
 /**
@@ -336,6 +337,32 @@ export async function connectMeshcentralApi(opts) {
     return { ok: Boolean(ok), output, raw: msg };
   }
 
+  /**
+   * Server-stored system inventory (works for offline agents when previously collected).
+   * @param {string} nodeId
+   * @param {{ timeoutMs?: number; nodeinfo?: boolean }} [sysOpts]
+   */
+  async function getSysInfo(nodeId, sysOpts = {}) {
+    const timeoutMs = sysOpts.timeoutMs ?? 30_000;
+    const nodeinfo = sysOpts.nodeinfo !== false;
+    const msg = await request(
+      "getsysinfo",
+      { nodeid: nodeId, nodeinfo },
+      {
+        timeoutMs,
+        match: (m) => {
+          if (m.action !== "getsysinfo") return false;
+          if (m.responseid != null && m.responseid !== responseId) return false;
+          return true;
+        },
+      },
+    );
+    if (typeof msg.result === "string" && msg.result && !/^ok$/i.test(msg.result)) {
+      return { ok: false, message: msg.result, raw: msg };
+    }
+    return { ok: true, raw: msg };
+  }
+
   async function close() {
     waiters.length = 0;
     if (ws.readyState === WebSocketImpl.OPEN || ws.readyState === WebSocketImpl.CONNECTING) {
@@ -343,7 +370,7 @@ export async function connectMeshcentralApi(opts) {
     }
   }
 
-  return { close, request, listNodes, power, runCommand };
+  return { close, request, listNodes, power, runCommand, getSysInfo };
 }
 
 /**

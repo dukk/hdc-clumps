@@ -56,7 +56,6 @@ export async function maybeApplyHaosReverseProxyConfig(opts) {
     sshHost: opts.sshHost,
     ipHost,
     trustedProxies,
-    externalUrl: publicUrl,
     dryRun: opts.dryRun,
     log,
   });

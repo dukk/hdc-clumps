@@ -12,7 +12,7 @@ Pull sites, clients, networks, firewall policies, and port forwards from the Uni
 
 | Verb | Purpose |
 |------|---------|
-| `query` | Network snapshot (JSON on stdout); optional `--import-port-forwards` |
+| `query` | Network snapshot (JSON on stdout); optional `--export-inventory`, `--import-port-forwards` |
 | `maintain` | Apply managed `port_forwards[]`, IP blocks, and client aliases |
 
 ```bash
@@ -20,6 +20,23 @@ hdc run infrastructure unifi-network query --
 hdc run infrastructure unifi-network maintain --
 hdc help run infrastructure unifi-network
 ```
+
+### Export live inventory (drift discovery)
+
+Persist the live controller snapshot as automated inventory sidecars (hdc-private preferred). This is **live truth** for catching manual UniFi changes that are not yet in clump configs / deploy scripts — not a replacement for managed `port_forwards[]` in `config.json`.
+
+Writes under:
+
+- `operations/automated/networks/net-*.json`
+- `operations/automated/systems/` (`unifi-device-*`, `sys-*`, `unifi-pending-*`)
+- `operations/automated/policies/` (`fw-*`, `pf-*`)
+
+```bash
+hdc run infrastructure unifi-network query -- --export-inventory --yes
+hdc run infrastructure unifi-network query -- --export-inventory --prune --yes
+```
+
+`--prune` removes UniFi-automated sidecars whose ids are no longer present in the live snapshot. Manual inventory under `operations/inventory/` is never modified.
 
 ### Bootstrap port forwards from live
 
@@ -31,7 +48,7 @@ Replaces `port_forwards[]` in hdc-private `config.json` with the current control
 
 ## Port forward maintain behavior
 
-Maintain **creates** managed `port_forwards[]` entries that are missing on the controller and **deletes** unmatched live rules only with `--prune`. When a live rule already matches (by `unifi_id` or destination/protocol/ports), it is left alone — maintain does **not** PUT/replace existing rules (avoids UniFi `PortForwardOverlaps` on cosmetic drift).
+Maintain **creates** managed `port_forwards[]` entries that are missing on the controller and **deletes** unmatched live rules only with `--prune`. When a live rule matches by `unifi_id` (or destination/protocol/ports) and `fwd`/`enabled`/other fields drifted, maintain **PUTs** that same `_id` (not a new overlapping rule). Cosmetic case-only interface/proto differences are unchanged.
 
 ## Client aliases (Proxmox guests)
 
@@ -62,7 +79,7 @@ Use `any` only when a single public IP or intentionally binding to all WAN addre
 
 ## Common flags
 
-**query:** `--import-port-forwards`, `--yes` (skip import confirmation)
+**query:** `--export-inventory`, `--import-port-forwards`, `--prune` (with export-inventory only), `--yes` (skip confirmation)
 
 **maintain:** `--dry-run`, `--prune` (delete live rules not in config), `--rule <id>`, `--skip-client-aliases`, `--skip-port-forwards`, `--no-report`, `--report <path>`
 

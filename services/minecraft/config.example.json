@@ -1,0 +1,123 @@
+{
+  "schema_version": 2,
+  "minecraft": {
+    "eula": true,
+    "java_heap_min": "2G",
+    "java_heap": "5G",
+    "install_dir": "/opt/minecraft",
+    "java_port": 25565,
+    "bedrock_port": 19132,
+    "motd": "HDC Minecraft",
+    "max_players": 20,
+    "online_mode": true,
+    "paper": {
+      "version": "latest",
+      "per_player_mob_spawns": false,
+      "keep_spawn_loaded_range": 10,
+      "anti_xray": false
+    },
+    "geyser": true,
+    "floodgate": true,
+    "bluemap": {
+      "enabled": true,
+      "web_port": 8100
+    },
+    "essentialsx": true,
+    "essentialsx_chat": true,
+    "essentialsx_spawn": true,
+    "worldedit": true,
+    "worldguard": true,
+    "vault": true,
+    "tree_feller": true,
+    "chunky": false,
+    "dead_chest": false,
+    "decent_holograms": false,
+    "drop_heads": false,
+    "luckperms": false,
+    "protocollib": false,
+    "requests": false,
+    "signshop": false,
+    "silk_spawners": false,
+    "vanish_no_packet": false,
+    "worldedit_sui": false,
+    "whitelist": {
+      "enabled": true,
+      "enforce": true,
+      "players": [
+        { "$hdc.include": "whitelist.json" }
+      ]
+    },
+    "ops": [
+      {
+        "uuid": "00000000-0000-4000-8000-000000000001",
+        "name": "alice",
+        "level": 4,
+        "bypassesPlayerLimit": false
+      }
+    ],
+    "server_properties": {
+      "enable-command-block": true,
+      "gamemode": "survival",
+      "difficulty": "easy",
+      "pvp": true,
+      "generate-structures": true,
+      "view-distance": 10,
+      "simulation-distance": 10,
+      "allow-flight": false,
+      "allow-nether": true,
+      "enable-rcon": false,
+      "enable-query": false,
+      "spawn-protection": 16,
+      "prevent-proxy-connections": false,
+      "hardcore": false,
+      "force-gamemode": false,
+      "spawn-npcs": true,
+      "spawn-animals": true,
+      "spawn-monsters": true,
+      "player-idle-timeout": 0,
+      "op-permission-level": 4,
+      "max-tick-time": 60000,
+      "network-compression-threshold": 256,
+      "entity-broadcast-range-percentage": 100,
+      "enable-status": true,
+      "max-world-size": 29999984
+    }
+  },
+  "defaults": {
+    "mode": "proxmox-qemu",
+    "proxmox": {
+      "qemu": {
+        "template_vmid": 9024,
+        "storage": "local-lvm",
+        "full": 1,
+        "cores": 4,
+        "memory_mb": 8192,
+        "rootfs_gb": 32
+      },
+      "network": {
+        "bridge": "vmbr0",
+        "gateway": "192.0.2.1"
+      }
+    },
+    "install": {
+      "enabled": true,
+      "linux_user": "minecraft"
+    }
+  },
+  "deployments": [
+    {
+      "system_id": "vm-minecraft-a",
+      "hostname": "minecraft-a",
+      "proxmox": {
+        "host_id": "hypervisor-a",
+        "qemu": {
+          "vmid": 123,
+          "ip": "192.0.2.51/24"
+        }
+      },
+      "configure": {
+        "ssh": { "host": "192.0.2.51" }
+      }
+    }
+  ]
+}

@@ -3,10 +3,12 @@ import { stdin as input, stdout as output, stderr as errout } from "node:process
 import { basename, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { repoRoot } from "hdc/cli/paths.mjs";
 import {
   automatedInventoryIdFromName,
   sanitizeAutomatedInventoryId,
 } from "hdc/package/automated-ids.mjs";
+import { writeAutomatedInventorySidecars } from "hdc/package/automated-inventory-write.mjs";
 import { parseArgvFlags } from "hdc/package/parse-argv-flags.mjs";
 import {
   classicActiveStations,
@@ -67,14 +69,52 @@ function systemSidecarBase(id, collectedAt) {
 
 /**
  * @param {Record<string, unknown>} row
- * @param {Set<string>} usedIds
+ * @returns {Record<string, unknown> | undefined}
  */
-function buildUnifiNetworkSidecar(row, usedIds) {
+function networkAccessFromQueryLast(row) {
+  /** @type {Record<string, unknown>} */
+  const access = {};
+  const cidr =
+    typeof row.ip_subnet === "string" && row.ip_subnet.trim()
+      ? row.ip_subnet.trim()
+      : typeof row.subnet === "string" && row.subnet.trim()
+        ? row.subnet.trim()
+        : "";
+  if (cidr) access.cidr = cidr;
+  if (row.vlan !== undefined && row.vlan !== null && String(row.vlan).trim() !== "") {
+    const n = Number(row.vlan);
+    access.vlan = Number.isFinite(n) ? n : row.vlan;
+  } else if (row.vlanId !== undefined && row.vlanId !== null && String(row.vlanId).trim() !== "") {
+    const n = Number(row.vlanId);
+    access.vlan = Number.isFinite(n) ? n : row.vlanId;
+  }
+  if (typeof row.dhcpd_gateway === "string" && row.dhcpd_gateway.trim()) {
+    access.gateway = row.dhcpd_gateway.trim();
+  } else if (typeof row.gateway === "string" && row.gateway.trim()) {
+    access.gateway = row.gateway.trim();
+  }
+  return Object.keys(access).length ? access : undefined;
+}
+
+/**
+ * @param {Record<string, unknown>} row
+ * @param {Set<string>} usedIds
+ * @param {string} collectedAt
+ */
+function buildUnifiNetworkSidecar(row, usedIds, collectedAt) {
   const id = automatedInventoryIdFromName("net", row, usedIds);
-  return {
+  const access = networkAccessFromQueryLast(row);
+  /** @type {Record<string, unknown>} */
+  const sidecar = {
     ...unifiSidecarBase(id, "network"),
+    automation_targets: [target],
+    last_verified: collectedAt,
+    _automated_source: target,
+    _automated_at: collectedAt,
     query_last: row,
   };
+  if (access) sidecar.access = access;
+  return sidecar;
 }
 
 /**
@@ -155,6 +195,10 @@ function buildClientSystemSidecar(row, collectedAt, usedIds) {
     id,
     kind: "system",
     tags: ["unifi", "automated", "unifi-client"],
+    automation_targets: [target],
+    last_verified: collectedAt,
+    _automated_source: target,
+    _automated_at: collectedAt,
     access: { nodes: [node] },
     query_last: entry,
   };
@@ -194,12 +238,17 @@ function buildUnifiSystemSidecar(row, collectedAt, roleTag) {
  * @param {Record<string, unknown>} row
  * @param {"firewall_policy" | "port_forward"} policyClass
  * @param {Set<string>} usedIds
+ * @param {string} collectedAt
  */
-function buildUnifiPolicySidecar(row, policyClass, usedIds) {
+function buildUnifiPolicySidecar(row, policyClass, usedIds, collectedAt) {
   const prefix = policyClass === "port_forward" ? "pf" : "fw";
   const id = automatedInventoryIdFromName(prefix, row, usedIds);
   return {
     ...unifiSidecarBase(id, "policy"),
+    automation_targets: [target],
+    last_verified: collectedAt,
+    _automated_source: target,
+    _automated_at: collectedAt,
     policy_class: policyClass,
     query_last: row,
   };
@@ -561,12 +610,19 @@ async function main() {
   const argv = process.argv.slice(2);
   const flags = parseArgvFlags(argv);
   const importPortForwards = flags["import-port-forwards"] === "1";
+  const exportInventory = flags["export-inventory"] === "1";
+  const prune = flags.prune === "1";
   const yes = flags.yes === "1";
 
   logUser(`query starting (cwd: ${process.cwd().replace(/\\/g, "/")})`);
   logUser(`clump root: ${clumpRoot.replace(/\\/g, "/")}`);
   if (importPortForwards) {
     logUser("import-port-forwards: will replace port_forwards[] in config.json with live snapshot.");
+  }
+  if (exportInventory) {
+    logUser(
+      `export-inventory: will write operations/automated/{networks,systems,policies}/*.json${prune ? " (with prune)" : ""}.`,
+    );
   }
 
   const ctx = await createUnifiRunContext({
@@ -751,7 +807,7 @@ async function main() {
   /** @type {Record<string, unknown>[]} */
   const networkRecords = [];
   for (const n of networks) {
-    networkRecords.push(buildUnifiNetworkSidecar(n, usedNetworkIds));
+    networkRecords.push(buildUnifiNetworkSidecar(n, usedNetworkIds, collectedAt));
   }
 
   /** @type {Record<string, unknown>[]} */
@@ -767,12 +823,76 @@ async function main() {
   /** @type {Record<string, unknown>[]} */
   const firewallPolicyRecords = [];
   for (const fp of firewall_policies) {
-    firewallPolicyRecords.push(buildUnifiPolicySidecar(fp, "firewall_policy", usedPolicyIds));
+    firewallPolicyRecords.push(buildUnifiPolicySidecar(fp, "firewall_policy", usedPolicyIds, collectedAt));
   }
   /** @type {Record<string, unknown>[]} */
   const portForwardRecords = [];
   for (const pf of port_forwards) {
-    portForwardRecords.push(buildUnifiPolicySidecar(pf, "port_forward", usedPolicyIds));
+    portForwardRecords.push(buildUnifiPolicySidecar(pf, "port_forward", usedPolicyIds, collectedAt));
+  }
+
+  /** @type {Record<string, unknown>[]} */
+  const systemRecords = [...deviceSystemRecords, ...clientSystemRecords, ...pendingSystemRecords];
+  /** @type {Record<string, unknown>[]} */
+  const policyRecords = [...firewallPolicyRecords, ...portForwardRecords];
+
+  /** @type {{
+   *   written: number;
+   *   pruned: number;
+   *   paths: string[];
+   *   by_category: Record<string, { written: number; pruned: number }>;
+   * } | null} */
+  let exportInventoryResult = null;
+  if (exportInventory) {
+    const total =
+      networkRecords.length + systemRecords.length + policyRecords.length;
+    if (!yes) {
+      const rl = createInterface({ input, output: errout });
+      try {
+        const pruneNote = prune ? " and prune stale UniFi automated sidecars" : "";
+        const ans = await rl.question(
+          `[unifi-network] Write ${total} automated sidecar(s) under operations/automated/{networks,systems,policies}/${pruneNote}? [y/N] `,
+        );
+        if (!/^y(es)?$/i.test(ans.trim())) {
+          errout.write("[unifi-network] Aborted: export-inventory not confirmed (use --yes).\n");
+          process.exitCode = 1;
+          return;
+        }
+      } finally {
+        rl.close();
+      }
+    }
+    const root = repoRoot();
+    const writeOpts = {
+      backendId: target,
+      prune,
+      log: { info: (/** @type {string} */ s) => logUser(s) },
+    };
+    const netOut = writeAutomatedInventorySidecars(root, networkRecords, {
+      ...writeOpts,
+      category: "networks",
+    });
+    const sysOut = writeAutomatedInventorySidecars(root, systemRecords, {
+      ...writeOpts,
+      category: "systems",
+    });
+    const polOut = writeAutomatedInventorySidecars(root, policyRecords, {
+      ...writeOpts,
+      category: "policies",
+    });
+    exportInventoryResult = {
+      written: netOut.written + sysOut.written + polOut.written,
+      pruned: netOut.pruned + sysOut.pruned + polOut.pruned,
+      paths: [...netOut.paths, ...sysOut.paths, ...polOut.paths],
+      by_category: {
+        networks: { written: netOut.written, pruned: netOut.pruned },
+        systems: { written: sysOut.written, pruned: sysOut.pruned },
+        policies: { written: polOut.written, pruned: polOut.pruned },
+      },
+    };
+    logUser(
+      `export-inventory complete: ${exportInventoryResult.written} written, ${exportInventoryResult.pruned} pruned`,
+    );
   }
 
   logUser(
@@ -848,6 +968,7 @@ async function main() {
       error: port_forward_sync.error ?? null,
     },
     import: importResult,
+    export_inventory: exportInventoryResult,
     firewall_zones,
     network_records: networkRecords,
     device_system_records: deviceSystemRecords,
@@ -856,8 +977,8 @@ async function main() {
     firewall_policy_records: firewallPolicyRecords,
     port_forward_records: portForwardRecords,
     message:
-      "UniFi snapshot from live API. Use query --import-port-forwards to bootstrap port_forwards[] in config.json; maintain applies managed rules.",
-    systems: [...deviceSystemRecords, ...clientSystemRecords, ...pendingSystemRecords],
+      "UniFi snapshot from live API. Use query --export-inventory to write automated sidecars; --import-port-forwards bootstraps port_forwards[] in config.json; maintain applies managed rules.",
+    systems: systemRecords,
   };
   output.write(`${JSON.stringify(payload, null, 2)}\n`);
 }

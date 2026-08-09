@@ -27,7 +27,7 @@ import { resolvePveSshForHost } from "hdc/package/meshcentral-install.mjs";
 import { queryMeshcentralInCt } from "hdc/package/query-status.mjs";
 import { parseDeviceSelectors, resolveDevices } from "hdc/package/meshcentral-devices.mjs";
 import { applyDevicesToConfig, mergeDevicesFromLive } from "hdc/package/meshcentral-inventory.mjs";
-import { collectDisk, collectHardware } from "hdc/package/meshcentral-ops.mjs";
+import { collectDisk, collectHardware, collectHardwareFromSysinfo } from "hdc/package/meshcentral-ops.mjs";
 import {
   loadClientHostsFromConfigs,
   upsertSystemSidecarsFromDevices,
@@ -126,6 +126,16 @@ async function queryDevicesApi(cfg, flags, argv) {
               };
             }
           }
+        } else if (wantHardware && d.node_id) {
+          log(`collecting hardware for ${d.id || d.name} from MeshCentral sysinfo (offline) …`);
+          try {
+            row.hardware = await collectHardwareFromSysinfo(session.client, d, { log });
+          } catch (e) {
+            row.hardware = {
+              ok: false,
+              message: String(/** @type {Error} */ (e).message || e),
+            };
+          }
         } else if (wantHardware) {
           row.hardware = { ok: false, message: "device offline" };
         } else {
@@ -170,30 +180,74 @@ async function queryDevicesApi(cfg, flags, argv) {
         for (const d of live) {
           if (typeof d.node_id === "string" && d.node_id) liveByNodeId.set(d.node_id, d);
         }
+        /** @type {Set<string> | null} */
+        let hardwareIdFilter = null;
+        if (selectors.length) {
+          const resolved = resolveDevices({ liveDevices: live, configDevices: merged, selectors });
+          if (resolved.ok) {
+            hardwareIdFilter = new Set(
+              resolved.devices
+                .map((d) => (typeof d.id === "string" ? d.id : ""))
+                .filter(Boolean),
+            );
+            log(`hardware collect limited to --device: ${[...hardwareIdFilter].join(", ")}`);
+          }
+        }
         for (const dev of merged) {
           const id = typeof dev.id === "string" ? dev.id : "";
+          if (hardwareIdFilter && !hardwareIdFilter.has(id)) continue;
           const nodeId = typeof dev.node_id === "string" ? dev.node_id : "";
           const liveRow = nodeId ? liveByNodeId.get(nodeId) : null;
-          if (!id || !liveRow?.online || !nodeId) {
+          if (!id || !nodeId) {
             if (id) {
-              hardwareById.set(id, { ok: false, message: "device offline or missing node_id" });
+              hardwareById.set(id, { ok: false, message: "missing node_id" });
             }
             continue;
           }
-          log(`collecting hardware for ${id} …`);
+          const mergedDev = { ...dev, ...(liveRow || {}), node_id: nodeId };
+          if (liveRow?.online) {
+            log(`collecting hardware for ${id} …`);
+            /** @type {{ ok: boolean; hardware?: Record<string, unknown>[]; mac?: string | null; message?: string }} */
+            let hw = { ok: false, message: "not collected" };
+            try {
+              hw = await collectHardware(session.client, mergedDev, { log });
+              if (!hw.ok) {
+                log(`hardware collect failed for ${id}: ${hw.message || "unknown error"}`);
+              }
+            } catch (e) {
+              const msg = String(/** @type {Error} */ (e).message || e);
+              log(`hardware collect error for ${id}: ${msg}`);
+              hw = { ok: false, message: msg };
+            }
+            if (!hw.ok) {
+              log(`falling back to MeshCentral sysinfo for ${id} …`);
+              try {
+                const sysHw = await collectHardwareFromSysinfo(session.client, mergedDev, { log });
+                if (sysHw.ok) {
+                  hw = sysHw;
+                } else {
+                  log(`sysinfo hardware failed for ${id}: ${sysHw.message || "unknown error"}`);
+                  if (!hw.message) hw = sysHw;
+                }
+              } catch (e) {
+                const msg = String(/** @type {Error} */ (e).message || e);
+                log(`sysinfo hardware error for ${id}: ${msg}`);
+              }
+            }
+            hardwareById.set(id, hw);
+            continue;
+          }
+          // Offline: use MeshCentral server-stored sysinfo (no agent runcommands).
+          log(`collecting hardware for ${id} from MeshCentral sysinfo (offline) …`);
           try {
-            const hw = await collectHardware(
-              session.client,
-              { ...dev, ...liveRow, node_id: nodeId },
-              { log },
-            );
+            const hw = await collectHardwareFromSysinfo(session.client, mergedDev, { log });
             hardwareById.set(id, hw);
             if (!hw.ok) {
-              log(`hardware collect failed for ${id}: ${hw.message || "unknown error"}`);
+              log(`sysinfo hardware failed for ${id}: ${hw.message || "unknown error"}`);
             }
           } catch (e) {
             const msg = String(/** @type {Error} */ (e).message || e);
-            log(`hardware collect error for ${id}: ${msg}`);
+            log(`sysinfo hardware error for ${id}: ${msg}`);
             hardwareById.set(id, { ok: false, message: msg });
           }
         }

@@ -2,6 +2,7 @@ import {
   configEntryToNormalized,
   liveRowToNormalized,
   portForwardMatchKey,
+  portForwardsNeedUpdate,
   normalizedToApiBody,
 } from "./unifi-config.mjs";
 import { classicRestWrite, normalizeClassicSiteKey } from "./unifi-api.mjs";
@@ -85,9 +86,19 @@ export function planPortForwardSync(desired, live, prune = false) {
     if (!existing) {
       create.push({ key, desired: d });
     } else {
-      // Matched live rule: never PUT/replace (UniFi rejects overlapping updates).
       matchedLiveKeys.add(existing.key);
-      unchanged.push(key);
+      const desiredNorm = configEntryToNormalized(d);
+      if (portForwardsNeedUpdate(desiredNorm, existing.normalized)) {
+        // Same UniFi _id: PUT fwd/enabled/etc. (not a new overlapping rule).
+        update.push({
+          key,
+          desired: d,
+          live: existing.live,
+          unifiId: existing.unifiId,
+        });
+      } else {
+        unchanged.push(key);
+      }
     }
   }
 

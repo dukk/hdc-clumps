@@ -1,0 +1,39 @@
+{
+  "id": "waddle-view-controller",
+  "title": "Waddle View controller",
+  "env_required": [
+    "HDC_WADDLE_VIEW_CONTROLLER_SESSION_SECRET"
+  ],
+  "inventory_docs": [
+    "operations/inventory/systems/waddle-view-controller-a.json",
+    "operations/inventory/services/waddle-view-controller.json"
+  ],
+  "operation_report": {
+    "next_steps": [
+      "Open https://<ct-ip>:8443 from the LAN (accept the self-signed certificate) and complete controller setup.",
+      "Set access.nodes[0].ip on operations/inventory/systems/waddle-view-controller-a.json from query --live upstream_url.",
+      "Optional later: set waddle_view_controller.public_url, add BIND A record and nginx-waf upstream when terminating real TLS."
+    ]
+  },
+  "verbs": {
+    "deploy": {
+      "script": "run.mjs"
+    },
+    "maintain": {
+      "script": "run.mjs"
+    },
+    "query": {
+      "script": "run.mjs"
+    },
+    "health": {
+      "script": "run.mjs"
+    },
+    "teardown": {
+      "script": "run.mjs"
+    }
+  },
+  "health": {
+    "path": "/bff/health",
+    "port": 8443
+  }
+}

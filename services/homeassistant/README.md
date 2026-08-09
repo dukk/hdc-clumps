@@ -14,15 +14,24 @@ Deploy **Home Assistant OS** as a Proxmox QEMU VM with optional USB passthrough 
 | Verb | Purpose |
 |------|---------|
 | `deploy` | Import HAOS OVA qcow2, create VM, USB passthrough, start, wait for HTTP `:8123` |
-| `maintain` | Sync nginx-waf `trusted_proxies` when `public_url` is HTTPS; HTTP health probe; `--reapply-usb` to refresh USB mapping |
+| `maintain` | Sync nginx-waf `trusted_proxies` when `public_url` is HTTPS; HTTP health probe; push **managed** UI automations; `--reapply-usb` to refresh USB mapping |
 | `query` | Config summary; `--live` for Proxmox guest + HTTP probe; `--import --yes` pulls integrations + UI automations/scripts/scenes into split sidecars |
 | `teardown` | Destroy QEMU guest (`--dry-run`, `--yes`) |
 
 ```bash
 hdc run service homeassistant deploy -- --instance a --destroy-existing
+hdc run service homeassistant maintain -- --instance a
 hdc run service homeassistant query -- --live
 hdc run service homeassistant query -- --import --yes
 ```
+
+## Managed automations (`maintain`)
+
+Author UI automations under `automations/<id>.json` in hdc-private (or via `$hdc.include` from root `config.json`). Set `"managed": true` to opt in to push. On `maintain`, hdc POSTs each managed entry to `/api/config/automation/config/{id}` (same endpoint as the HA UI editor).
+
+Flags: `--skip-automations`, `--automation <id>`, `--dry-run`.
+
+Imported sidecars without `managed: true` are left alone (import remains pull-only). Scripts/scenes are not pushed in v1.
 
 ## Config import (`query --import`)
 
@@ -31,9 +40,9 @@ Read-only snapshot into hdc-private via the HA REST API (long-lived access token
 - `integrations/<domain>.json` — one file per integration domain (config entry metadata; HA does not expose `data`/`options` over REST)
 - `automations/<id>.json`, `scripts/<id>.json`, `scenes/<id>.json` — UI-managed YAML configs
 
-Vault: `HDC_HOMEASSISTANT_TOKEN` (or `homeassistant.api.token_vault_key`). Create the token under **Settings → People → Long-lived access tokens**. The same token may be reused for the homepage HA widget (`HDC_HOMEPAGE_HA_TOKEN`) if you store it under both keys.
+Vault: `HDC_HOMEASSISTANT_TOKEN` (or `homeassistant.api.token_vault_key`). Create the token under **Settings → People → Long-lived access tokens**. The same token may be reused for the homepage HA widget (`HDC_HOMEPAGE_HA_TOKEN`) if you store it under both keys. Required for `query --import` and for `maintain` automation sync.
 
-**Limits:** Raw `packages/*.yaml` and integration options (hosts, API keys) are not available over REST. Import does not push changes back to HA.
+**Limits:** Raw `packages/*.yaml` and integration options (hosts, API keys) are not available over REST. Import does not push changes back to HA — use `managed: true` + `maintain` for that.
 
 ## USB passthrough
 
@@ -50,21 +59,23 @@ HAOS does not use Ubuntu cloud-init. After first boot, set the configured static
 When `homeassistant.public_url` is `https://…` and **nginx-waf** proxies to port `8123`, Home Assistant must trust the WAF nodes or proxied requests return **400 Bad Request** (not 502). nginx-waf sends `X-Forwarded-For` and `X-Forwarded-Proto`; add the WAF VM LAN IPs from inventory (`vm-nginx-waf-a`, `vm-nginx-waf-b`) to `configuration.yaml`:
 
 ```yaml
+# hdc: reverse-proxy begin
 http:
   use_x_forwarded_for: true
   trusted_proxies:
     - 192.0.2.40   # vm-nginx-waf-a
     - 192.0.2.41   # vm-nginx-waf-b
-
-homeassistant:
-  external_url: https://ha.example.invalid
-  internal_url: http://192.0.2.39:8123
+# hdc: reverse-proxy end
 ```
 
-**Automation:** `deploy` and `maintain` (default) write the block above to HAOS `configuration.yaml` via the Proxmox host when `public_url` starts with `https://`. WAF IPs resolve from inventory `vm-nginx-waf-a` / `vm-nginx-waf-b`, or set `homeassistant.trusted_proxies[]` in clump config. Skip with `--skip-reverse-proxy`. Manual fallback: **Terminal & SSH** add-on, or edit `supervisor/homeassistant/configuration.yaml` on HAOS data partition 8 while the VM is stopped.
+**Automation:** `deploy` and `maintain` (default) write **only** the `http:` / `trusted_proxies` block above to HAOS `configuration.yaml` via the Proxmox host when `public_url` starts with `https://`. WAF IPs resolve from inventory `vm-nginx-waf-a` / `vm-nginx-waf-b`, or set `homeassistant.trusted_proxies[]` in clump config. Skip with `--skip-reverse-proxy`.
+
+Do **not** put `homeassistant:` (external_url / internal_url / location) in `configuration.yaml` — that locks General settings in the UI. Set those under **Settings → System → Network** (URLs) and **Settings → System → General** (home location / timezone) instead.
+
+Manual fallback: **Terminal & SSH** add-on, or edit `supervisor/homeassistant/configuration.yaml` on HAOS data partition 8 while the VM is stopped.
 
 ## Common flags
 
-`--instance a`, `--system-id`, `--destroy-existing`, `--skip-provision`, `--usb-id`, `--no-wait-http`, `--reapply-usb`, `--skip-reverse-proxy`, `--no-report`.
+`--instance a`, `--system-id`, `--destroy-existing`, `--skip-provision`, `--usb-id`, `--no-wait-http`, `--reapply-usb`, `--skip-reverse-proxy`, `--skip-automations`, `--automation <id>`, `--no-report`.
 
-Vault: `HDC_HOMEASSISTANT_TOKEN` for `query --import`. Pair ZHA/Z-Wave in the Home Assistant UI after deploy.
+Vault: `HDC_HOMEASSISTANT_TOKEN` for `query --import` and managed automation sync. Pair ZHA/Z-Wave in the Home Assistant UI after deploy.

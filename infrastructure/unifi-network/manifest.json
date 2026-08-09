@@ -12,7 +12,7 @@
       "id": "network-snapshot",
       "title": "UniFi network snapshot",
       "verb": "query",
-      "summary": "Sites, clients, networks, firewall policies, port forwards (JSON on stdout)."
+      "summary": "Sites, clients, networks, firewall policies, port forwards (JSON on stdout); --export-inventory writes automated overlay."
     },
     {
       "id": "port-forward-sync",
@@ -35,6 +35,7 @@
   "operation_report": {
     "next_steps": [
       "Run `hdc run infrastructure unifi-network query --` to verify port forward diffs after maintain.",
+      "Export live automated inventory: `query -- --export-inventory --yes`.",
       "Bootstrap config from live: `query -- --import-port-forwards --yes`."
     ]
   },

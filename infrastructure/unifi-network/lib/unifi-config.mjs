@@ -198,6 +198,7 @@ export function configEntryToNormalized(entry) {
  * @param {NormalizedPortForward} live
  */
 export function portForwardsNeedUpdate(desired, live) {
+  const caseInsensitive = new Set(["name", "pfwd_interface", "proto", "src"]);
   const fields = /** @type {(keyof NormalizedPortForward)[]} */ ([
     "name",
     "enabled",
@@ -216,7 +217,17 @@ export function portForwardsNeedUpdate(desired, live) {
   for (const f of fields) {
     const d = desired[f] ?? "";
     const l = live[f] ?? "";
-    if (String(d) !== String(l)) return true;
+    if (f === "enabled" || f === "log") {
+      if (Boolean(d) !== Boolean(l)) return true;
+      continue;
+    }
+    const ds = String(d);
+    const ls = String(l);
+    if (caseInsensitive.has(f)) {
+      if (ds.toLowerCase() !== ls.toLowerCase()) return true;
+      continue;
+    }
+    if (ds !== ls) return true;
   }
   return false;
 }

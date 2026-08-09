@@ -69,5 +69,18 @@ export function createHaClient(opts) {
     get(path) {
       return request("GET", path);
     },
+    /**
+     * @param {string} path
+     * @param {unknown} body
+     */
+    post(path, body) {
+      return request("POST", path, body);
+    },
+    /**
+     * @param {string} path
+     */
+    delete(path) {
+      return request("DELETE", path);
+    },
   };
 }

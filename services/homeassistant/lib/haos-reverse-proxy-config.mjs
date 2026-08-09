@@ -28,8 +28,6 @@ export function proxmoxVolumeToDevPath(volumeRef) {
 /**
  * @param {object} opts
  * @param {string[]} opts.trustedProxies
- * @param {string} [opts.externalUrl]
- * @param {string} [opts.internalUrl]
  */
 export function buildReverseProxyConfigurationBlock(opts) {
   const proxies = Array.isArray(opts.trustedProxies)
@@ -39,21 +37,42 @@ export function buildReverseProxyConfigurationBlock(opts) {
     throw new Error("trusted_proxies requires at least one nginx-waf IP (inventory or homeassistant.trusted_proxies)");
   }
 
+  // Only manage http.trusted_proxies. Do not emit a homeassistant: key — that locks
+  // General settings (location, etc.) in the HA UI. Set external/internal URLs under
+  // Settings → System → Network instead.
   const lines = [HDC_REVERSE_PROXY_BEGIN, "http:", "  use_x_forwarded_for: true", "  trusted_proxies:"];
   for (const ip of proxies) {
     lines.push(`    - ${ip}`);
   }
 
-  const externalUrl = typeof opts.externalUrl === "string" ? opts.externalUrl.trim() : "";
-  const internalUrl = typeof opts.internalUrl === "string" ? opts.internalUrl.trim() : "";
-  if (externalUrl || internalUrl) {
-    lines.push("homeassistant:");
-    if (externalUrl) lines.push(`  external_url: ${externalUrl}`);
-    if (internalUrl) lines.push(`  internal_url: ${internalUrl}`);
-  }
-
   lines.push(HDC_REVERSE_PROXY_END);
   return `${lines.join("\n")}\n`;
+}
+
+/**
+ * Remove root-level homeassistant: blocks that only set external_url / internal_url
+ * (legacy hdc reverse-proxy fields). Leaves other homeassistant: keys alone.
+ * @param {string} content
+ */
+export function stripOrphanedHomeassistantUrlBlock(content) {
+  let text = String(content ?? "");
+  // Match a root homeassistant: mapping whose only keys are external_url and/or internal_url.
+  text = text.replace(
+    /(^|\n)homeassistant:\n(?:  (?:external_url|internal_url):[^\n]*\n)+/g,
+    (match, prefix) => {
+      const body = match.slice(prefix.length);
+      const lines = body
+        .split("\n")
+        .map((l) => l.trimEnd())
+        .filter((l) => l.length > 0);
+      // homeassistant: + only url keys
+      const keys = lines.slice(1).map((l) => l.match(/^ {2}([a-z_]+):/)?.[1] ?? "");
+      if (keys.length === 0) return match;
+      if (!keys.every((k) => k === "external_url" || k === "internal_url")) return match;
+      return prefix;
+    },
+  );
+  return text;
 }
 
 /**
@@ -73,6 +92,8 @@ export function stripManagedReverseProxyBlocks(content) {
     "\n",
   );
 
+  text = stripOrphanedHomeassistantUrlBlock(text);
+
   return text.replace(/\n{3,}/g, "\n\n").trimEnd();
 }
 
@@ -91,8 +112,6 @@ export function mergeHomeAssistantConfigurationYaml(content, block) {
  * @param {string} content
  * @param {object} desired
  * @param {string[]} desired.trustedProxies
- * @param {string} [desired.externalUrl]
- * @param {string} [desired.internalUrl]
  */
 export function reverseProxyConfigurationInSync(content, desired) {
   const expected = mergeHomeAssistantConfigurationYaml(
@@ -105,8 +124,6 @@ export function reverseProxyConfigurationInSync(content, desired) {
   for (const ip of desired.trustedProxies) {
     if (!content.includes(`- ${ip}`)) return false;
   }
-  if (desired.externalUrl && !content.includes(`external_url: ${desired.externalUrl}`)) return false;
-  if (desired.internalUrl && !content.includes(`internal_url: ${desired.internalUrl}`)) return false;
   return true;
 }
 
@@ -237,8 +254,6 @@ function runHaosConfigDiskRemote(opts) {
  * @param {string} opts.sshHost
  * @param {string} opts.ipHost Guest LAN IP without prefix
  * @param {string[]} opts.trustedProxies
- * @param {string} [opts.externalUrl]
- * @param {string} [opts.internalUrl]
  * @param {boolean} [opts.dryRun]
  * @param {(line: string) => void} [opts.log]
  */
@@ -246,8 +261,6 @@ export async function applyHaosReverseProxyConfig(opts) {
   const log = opts.log ?? (() => {});
   const desired = {
     trustedProxies: opts.trustedProxies,
-    externalUrl: opts.externalUrl,
-    internalUrl: opts.internalUrl ?? `http://${opts.ipHost}:8123`,
   };
 
   const config = await fetchQemuConfig({
@@ -268,8 +281,6 @@ export async function applyHaosReverseProxyConfig(opts) {
       changed: false,
       dry_run: true,
       trusted_proxies: desired.trustedProxies,
-      external_url: desired.externalUrl || null,
-      internal_url: desired.internalUrl,
       disk_dev: diskDev,
     };
   }
@@ -330,8 +341,6 @@ export async function applyHaosReverseProxyConfig(opts) {
     return {
       changed: false,
       trusted_proxies: desired.trustedProxies,
-      external_url: desired.externalUrl || null,
-      internal_url: desired.internalUrl,
       disk_dev: diskDev,
     };
   }
@@ -373,8 +382,6 @@ export async function applyHaosReverseProxyConfig(opts) {
   return {
     changed: true,
     trusted_proxies: desired.trustedProxies,
-    external_url: desired.externalUrl || null,
-    internal_url: desired.internalUrl,
     disk_dev: diskDev,
     http,
   };

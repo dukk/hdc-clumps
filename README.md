@@ -98,7 +98,7 @@ Applications and workloads on Proxmox guests, Synology, or configure-only SSH ta
 | [llama-cpp](services/llama-cpp/README.md) | `llama-cpp` | Llama.cpp llama-server | [config.example.json](services/llama-cpp/config.example.json) | `http://<guest-ip>:8080` (OpenAI-compatible API) |
 | [lms](services/lms/README.md) | `lms` | LM Studio (llmster) headless | [config.example.json](services/lms/config.example.json) | `http://<guest-ip>:1234` (OpenAI-compatible API) |
 | [mailcow](services/mailcow/README.md) | `mailcow` | Mailcow mail server stack | [config.example.json](services/mailcow/config.example.json) | `https://<mailcow-hostname>` admin; SMTP/IMAP mail ports |
-| [minecraft](services/minecraft/README.md) | `minecraft` | Minecraft server | optional `config.json` | Minecraft Java `:25565` on `<guest-ip>` (stub deploy) |
+| [minecraft](services/minecraft/README.md) | `minecraft` | Paper Minecraft (Java + Bedrock/Geyser + BlueMap) | [config.example.json](services/minecraft/config.example.json) | Java `:25565` + Bedrock UDP `:19132`; BlueMap `:8100` via nginx-waf |
 | [n8n](services/n8n/README.md) | `n8n` | n8n workflow automation | [config.example.json](services/n8n/config.example.json) | `http://<guest-ip>:5678` or HTTPS via nginx-waf |
 | [nagios](services/nagios/README.md) | `nagios` | Nagios monitoring | [config.example.json](services/nagios/config.example.json) | `http://<guest-ip>/nagios4` |
 | [nextcloud](services/nextcloud/README.md) | `nextcloud` | Nextcloud All-in-One | [config.example.json](services/nextcloud/config.example.json) | `https://<guest-ip>:8080` (AIO wizard; use IP not domain) |

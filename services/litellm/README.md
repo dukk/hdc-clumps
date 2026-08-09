@@ -54,7 +54,7 @@ hdc run service litellm maintain -- --reset-db --yes
 
 LiteLLM load-balances multiple `model_list[]` rows that share the same `model_name`. Use optional **`order`** (integer ≥ 1) on each deployment for capability priority — lower order is tried first; on failure the router escalates to the next order tier.
 
-**Routing groups** (`router_settings.routing_groups[]`) bind a `group_name`, `models[]`, and per-group `routing_strategy`. For a local-only alias such as `lan-best-available`, use `simple-shuffle` at the group level and drive selection with deployment `order`.
+**Routing groups** (`router_settings.routing_groups[]`) bind a `group_name`, `models[]`, and per-group `routing_strategy`. For a local-only alias such as `lan-best-available`, use `simple-shuffle` at the group level and drive selection with deployment `order`. Set `router_settings.enable_pre_call_checks: true` so LiteLLM honors `order` (otherwise shuffle ignores priority and may hang on unreachable Ollama hosts).
 
 Example: five local deployments under `lan-best-available` with orders 1–5 (best local model first), plus a routing group named `lan-best-available` targeting that alias.
 

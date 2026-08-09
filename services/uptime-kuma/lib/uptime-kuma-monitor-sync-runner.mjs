@@ -40,7 +40,13 @@ const CLUMP_CONFIG_EXAMPLE = "clumps/services/uptime-kuma/config.example.json";
 function isLocalApiUrl(apiUrl) {
   try {
     const u = new URL(apiUrl);
-    return /^127\.0\.0\.1|localhost$/i.test(u.hostname);
+    const host = u.hostname;
+    if (/^127\.0\.0\.1|localhost$/i.test(host)) return true;
+    // Plain HTTP to RFC1918 guests: websocket-first often fails from Windows.
+    if (/^10\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(host)) return true;
+    if (/^192\.168\.\d{1,3}\.\d{1,3}$/.test(host)) return true;
+    if (/^172\.(1[6-9]|2\d|3[0-1])\.\d{1,3}\.\d{1,3}$/.test(host)) return true;
+    return false;
   } catch {
     return false;
   }

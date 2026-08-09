@@ -7,6 +7,47 @@
       "token_vault_key": "HDC_HOMEASSISTANT_TOKEN"
     }
   },
+  "automations": [
+    {
+      "id": "example_porch_light",
+      "entity_id": "automation.example_porch_light",
+      "managed": true,
+      "config": {
+        "id": "example_porch_light",
+        "alias": "Example porch light (sun)",
+        "description": "Fictional example — on at sunset, off at sunrise (see automations/example-porch-light.json for split-layout form)",
+        "mode": "single",
+        "triggers": [
+          { "trigger": "sun", "event": "sunset", "id": "sunset" },
+          { "trigger": "sun", "event": "sunrise", "id": "sunrise" }
+        ],
+        "actions": [
+          {
+            "choose": [
+              {
+                "conditions": [{ "condition": "trigger", "id": "sunset" }],
+                "sequence": [
+                  {
+                    "action": "switch.turn_on",
+                    "target": { "entity_id": "switch.example_porch_light" }
+                  }
+                ]
+              },
+              {
+                "conditions": [{ "condition": "trigger", "id": "sunrise" }],
+                "sequence": [
+                  {
+                    "action": "switch.turn_off",
+                    "target": { "entity_id": "switch.example_porch_light" }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ],
   "defaults": {
     "mode": "proxmox-qemu-haos",
     "proxmox": {

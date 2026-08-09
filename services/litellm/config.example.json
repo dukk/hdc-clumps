@@ -80,6 +80,7 @@
       ],
       "router_settings": {
         "routing_strategy": "simple-shuffle",
+        "enable_pre_call_checks": true,
         "routing_groups": [
           {
             "group_name": "lan-best-available",
@@ -91,7 +92,8 @@
       },
       "litellm_settings": {
         "drop_params": true,
-        "num_retries": 2
+        "num_retries": 2,
+        "request_timeout": 30
       },
       "mail": {
         "enabled": true,

@@ -13,17 +13,18 @@ Same as **client-ubuntu**: SSH disk checks and `apt` maintenance for Pis (or any
 | Verb | Purpose |
 |------|---------|
 | `maintain` | `df`, apt dist-upgrade; `--reboot` to restart |
-| `query` | Disk + upgradable package count |
+| `query` | Disk + upgradable package count; `--import-hardware --yes` fills `hardware[]` on inventory sidecars via SSH |
 
 ```bash
-hdc run client raspberrypi query --
+hdc run client raspberrypi query -- --no-wol
+hdc run client raspberrypi query -- --import-hardware --yes --no-wol
 hdc run client raspberrypi maintain --
 hdc help run client raspberrypi
 ```
 
 ## Common flags
 
-`--host-id <id>`, `--dry-run`, `--skip-updates`, `--reboot`, `--no-report`, `--report <path>`.
+`--host-id <id>`, `--dry-run`, `--skip-updates`, `--reboot`, `--no-wol`, `--no-report`, `--report <path>`, `--import-hardware` (with `--yes`; ubuntu/raspberrypi only).
 
 ## After deploy / Using the service
 

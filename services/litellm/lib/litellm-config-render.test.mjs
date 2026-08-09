@@ -59,6 +59,7 @@ describe("litellm-config-render", () => {
       ],
       router_settings: {
         routing_strategy: "simple-shuffle",
+        enable_pre_call_checks: true,
         routing_groups: [
           {
             group_name: "lan-best-available",
@@ -78,6 +79,7 @@ describe("litellm-config-render", () => {
     expect(yaml).toContain("api_base: os.environ/OPENAI_API_BASE_VLLM_A");
     expect(yaml).toContain("order: 2");
     expect(yaml).toContain("routing_strategy: simple-shuffle");
+    expect(yaml).toContain("enable_pre_call_checks: true");
     expect(yaml).toContain("routing_groups:");
     expect(yaml).toContain("group_name: lan-best-available");
     expect(yaml).toContain("- lan-best-available");

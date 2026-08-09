@@ -149,12 +149,14 @@ function renderRouterSettingsYaml(routerSettings) {
   const hasRoutingStrategyArgs =
     isObject(routerSettings.routing_strategy_args) &&
     Object.keys(routerSettings.routing_strategy_args).length > 0;
+  const hasPreCallChecks = typeof routerSettings.enable_pre_call_checks === "boolean";
 
   if (
     fallbackLines.length === 0 &&
     routingGroupLines.length === 0 &&
     !hasRoutingStrategy &&
-    !hasRoutingStrategyArgs
+    !hasRoutingStrategyArgs &&
+    !hasPreCallChecks
   ) {
     return [];
   }
@@ -167,6 +169,9 @@ function renderRouterSettingsYaml(routerSettings) {
   if (hasRoutingStrategyArgs) {
     lines.push("  routing_strategy_args:");
     lines.push(...renderYamlObject(routerSettings.routing_strategy_args, 4));
+  }
+  if (hasPreCallChecks) {
+    lines.push(yamlLine("enable_pre_call_checks", routerSettings.enable_pre_call_checks, 2));
   }
   if (routingGroupLines.length > 0) {
     lines.push(...routingGroupLines);

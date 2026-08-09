@@ -1,10 +1,25 @@
 {
   "id": "minecraft",
-  "title": "Minecraft server",
+  "title": "Minecraft Paper server",
   "env_required": [],
   "inventory_docs": [
-    "operations/inventory/systems/vm-minecraft-a.json"
+    "operations/inventory/systems/virtual/vm-minecraft-a.json",
+    "operations/inventory/services/minecraft.json",
+    "clumps/services/minecraft/config.json (schema_version 2 deployments[]; proxmox-qemu)"
   ],
+  "operation_report": {
+    "next_steps": [
+      "Java clients: minecraft.dukk.org:25565 (after UniFi PF + gray-cloud DNS) or minecraft-a.hdc.dukk.org:25565 on LAN.",
+      "Bedrock / Windows Minecraft: same hostname UDP 19132 (Geyser + Floodgate).",
+      "BlueMap: https://minecraft.dukk.org (nginx-waf → guest :8100). Keep Cloudflare gray-cloud; do not orange-cloud.",
+      "Set access.nodes[0].ip / web_ui on operations/inventory/systems/virtual/vm-minecraft-a.json from query --live.",
+      "Optional: pin minecraft.paper.version after first deploy; run maintain without --skip-upgrade to refresh Paper/plugins."
+    ]
+  },
+  "health": {
+    "family": "qemu-native",
+    "port": 25565
+  },
   "verbs": {
     "deploy": {
       "script": "run.mjs"
@@ -16,6 +31,9 @@
       "script": "run.mjs"
     },
     "health": {
+      "script": "run.mjs"
+    },
+    "teardown": {
       "script": "run.mjs"
     }
   }

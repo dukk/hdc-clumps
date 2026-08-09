@@ -44,6 +44,9 @@ hdc run service meshcentral query -- --import --yes
 # Identity/IP only (no remote hardware collect)
 hdc run service meshcentral query -- --import --yes --skip-hardware
 
+# Offline agents: import still fills hardware[] from MeshCentral server-stored sysinfo (getsysinfo)
+# when the agent previously reported inventory — no runcommands required.
+
 # Disk for one device
 hdc run service meshcentral query -- --device lan-1
 

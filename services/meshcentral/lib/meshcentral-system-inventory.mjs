@@ -1,5 +1,5 @@
 /**
- * Upsert operations/inventory/systems/*.json from MeshCentral agents + hardware collect.
+ * Upsert operations/inventory/systems/{physical|virtual}/*.json from MeshCentral agents + hardware collect.
  */
 import { join } from "node:path";
 

@@ -79,16 +79,30 @@ export function hardwareCommand(platform) {
     "import json, os, re, glob, shutil, subprocess\n" +
     "def r(p):\n" +
     "  try:\n" +
-    "    return open(p).read().strip()\n" +
+    "    return open(p,'rb').read().decode('utf-8','ignore').strip('\\x00').strip()\n" +
     "  except Exception:\n" +
     "    return ''\n" +
     "manuf=r('/sys/class/dmi/id/sys_vendor') or r('/sys/devices/virtual/dmi/id/sys_vendor')\n" +
     "model=r('/sys/class/dmi/id/product_name') or r('/sys/devices/virtual/dmi/id/product_name')\n" +
     "serial=r('/sys/class/dmi/id/product_serial') or r('/sys/devices/virtual/dmi/id/product_serial')\n" +
+    "dt_model=r('/proc/device-tree/model')\n" +
+    "if dt_model:\n" +
+    "  if not model or model.lower() in ('','none','default string','to be filled by o.e.m.'):\n" +
+    "    model=dt_model\n" +
+    "  if not manuf:\n" +
+    "    manuf='Raspberry Pi' if 'raspberry' in dt_model.lower() else manuf\n" +
     "cpu_model=''\n" +
     "for line in open('/proc/cpuinfo'):\n" +
-    "  if line.startswith('model name') or line.startswith('Hardware'):\n" +
+    "  if line.startswith('model name'):\n" +
     "    cpu_model=line.split(':',1)[1].strip(); break\n" +
+    "if not cpu_model:\n" +
+    "  for line in open('/proc/cpuinfo'):\n" +
+    "    if line.startswith('Hardware'):\n" +
+    "      cpu_model=line.split(':',1)[1].strip(); break\n" +
+    "if not cpu_model:\n" +
+    "  for line in open('/proc/cpuinfo'):\n" +
+    "    if line.startswith('Model'):\n" +
+    "      cpu_model=line.split(':',1)[1].strip(); break\n" +
     "cores=0\n" +
     "try:\n" +
     "  cores=len(os.sched_getaffinity(0))\n" +
@@ -138,8 +152,7 @@ export function hardwareCommand(platform) {
     "oem_msdm=os.path.exists('/sys/firmware/acpi/tables/MSDM')\n" +
     "oem_slic=os.path.exists('/sys/firmware/acpi/tables/SLIC')\n" +
     "print(json.dumps({'manufacturer':manuf,'model':model,'serial':serial,'cpu_model':cpu_model," +
-    "'logical_cores':cores,'memory_gb':round(mem_kb/1048576,2),'mac':mac or None,'disks':disks,'gpus':gpus," +
-    "'oem_firmware_msdm':oem_msdm,'oem_firmware_slic':oem_slic}))\n" +
+    "'logical_cores':cores,'memory_gb':round(mem_kb/1048576,2),'mac':mac or None,'disks':disks,'gpus':gpus}))\n" +
     "PY"
   );
 }
@@ -214,9 +227,9 @@ export function parseHardwareOutput(output) {
   }
   /** @type {Record<string, unknown>[]} */
   const hardware = [];
-  const manufacturer = typeof payload.manufacturer === "string" ? payload.manufacturer.trim() : "";
-  const model = typeof payload.model === "string" ? payload.model.trim() : "";
-  const serial = typeof payload.serial === "string" ? payload.serial.trim() : "";
+  const manufacturer = typeof payload.manufacturer === "string" ? payload.manufacturer.trim().replace(/\0/g, "") : "";
+  const model = typeof payload.model === "string" ? payload.model.trim().replace(/\0/g, "") : "";
+  const serial = typeof payload.serial === "string" ? payload.serial.trim().replace(/\0/g, "") : "";
   if (manufacturer || model || serial) {
     /** @type {Record<string, unknown>} */
     const sys = { type: "system" };
@@ -225,7 +238,8 @@ export function parseHardwareOutput(output) {
     if (serial && !/^none$/i.test(serial) && !/^0+$/.test(serial)) sys.serial = serial;
     hardware.push(sys);
   }
-  const cpuModel = typeof payload.cpu_model === "string" ? payload.cpu_model.trim() : "";
+  const cpuModel =
+    typeof payload.cpu_model === "string" ? payload.cpu_model.trim().replace(/\0/g, "") : "";
   const coresRaw = payload.logical_cores;
   const cores =
     typeof coresRaw === "number"
@@ -310,6 +324,151 @@ export function parseHardwareOutput(output) {
     return { ok: false, message: "hardware JSON contained no usable fields" };
   }
   return { ok: true, hardware, mac: normalizeHardwareMac(payload.mac) };
+}
+
+/**
+ * Map MeshCentral `getsysinfo` payload (`hardware.identifiers` / windows.memory) to inventory hardware[].
+ * Available from the server DB even when the agent is offline.
+ * @param {unknown} sysinfoMsg getsysinfo response (may wrap hardware at top level)
+ * @returns {{ ok: true; hardware: Record<string, unknown>[]; mac: string | null } | { ok: false; message: string }}
+ */
+export function parseMeshSysinfoHardware(sysinfoMsg) {
+  if (!isObject(sysinfoMsg)) {
+    return { ok: false, message: "sysinfo payload is not an object" };
+  }
+  const hw = isObject(sysinfoMsg.hardware) ? sysinfoMsg.hardware : null;
+  if (!hw) {
+    return { ok: false, message: "sysinfo has no hardware block" };
+  }
+  const ident = isObject(hw.identifiers) ? hw.identifiers : {};
+  /** @type {Record<string, unknown>[]} */
+  const hardware = [];
+
+  const manufacturer =
+    typeof ident.chassis_manufacturer === "string" && ident.chassis_manufacturer.trim()
+      ? ident.chassis_manufacturer.trim()
+      : typeof ident.board_vendor === "string" && ident.board_vendor.trim()
+        ? ident.board_vendor.trim()
+        : "";
+  const model =
+    typeof ident.product_name === "string" && ident.product_name.trim()
+      ? ident.product_name.trim()
+      : typeof ident.board_name === "string" && ident.board_name.trim()
+        ? ident.board_name.trim()
+        : "";
+  const serialRaw =
+    typeof ident.chassis_serial === "string"
+      ? ident.chassis_serial.trim()
+      : typeof ident.bios_serial === "string"
+        ? ident.bios_serial.trim()
+        : typeof ident.board_serial === "string"
+          ? ident.board_serial.trim()
+          : "";
+  if (manufacturer || model || serialRaw) {
+    /** @type {Record<string, unknown>} */
+    const sys = { type: "system" };
+    if (manufacturer) sys.manufacturer = manufacturer;
+    if (model) sys.model = model;
+    if (
+      serialRaw &&
+      !/^none$/i.test(serialRaw) &&
+      !/^0+$/.test(serialRaw) &&
+      serialRaw !== "Default string"
+    ) {
+      sys.serial = serialRaw;
+    }
+    hardware.push(sys);
+  }
+
+  const cpuName = typeof ident.cpu_name === "string" ? ident.cpu_name.trim() : "";
+  if (cpuName) hardware.push({ type: "cpu", model: cpuName });
+
+  let totalBytes = 0;
+  const memSlots = Array.isArray(hw.windows?.memory)
+    ? hw.windows.memory
+    : Array.isArray(hw.linux?.memory)
+      ? hw.linux.memory
+      : [];
+  for (const m of memSlots) {
+    if (!isObject(m)) continue;
+    const cap = typeof m.Capacity === "number" ? m.Capacity : Number(m.Capacity);
+    if (Number.isFinite(cap) && cap > 0) totalBytes += cap;
+  }
+  if (totalBytes > 0) {
+    hardware.push({
+      type: "memory",
+      total_gb: Math.round((totalBytes / 1024 / 1024 / 1024) * 100) / 100,
+    });
+  }
+
+  const gpuRaw = ident.gpu_name;
+  const gpus = Array.isArray(gpuRaw) ? gpuRaw : typeof gpuRaw === "string" ? [gpuRaw] : [];
+  for (const g of gpus) {
+    const name = String(g || "").trim();
+    if (!name || /virtual|basic display|microsoft remote|meta virtual/i.test(name)) continue;
+    hardware.push({ type: "gpu", model: name });
+  }
+
+  const disks = Array.isArray(ident.storage_devices) ? ident.storage_devices : [];
+  for (const d of disks) {
+    if (!isObject(d)) continue;
+    const device =
+      typeof d.Caption === "string" && d.Caption.trim()
+        ? d.Caption.trim()
+        : typeof d.Model === "string" && d.Model.trim()
+          ? d.Model.trim()
+          : "";
+    if (!device) continue;
+    /** @type {Record<string, unknown>} */
+    const disk = { type: "disk", device };
+    const size = d.Size;
+    if (typeof size === "number" && Number.isFinite(size) && size > 0) {
+      disk.size_gb = Math.round((size / 1024 / 1024 / 1024) * 100) / 100;
+    } else if (typeof size === "string" && Number.isFinite(Number(size)) && Number(size) > 0) {
+      disk.size_gb = Math.round((Number(size) / 1024 / 1024 / 1024) * 100) / 100;
+    }
+    hardware.push(disk);
+  }
+
+  if (!hardware.length) {
+    return { ok: false, message: "sysinfo.hardware contained no usable fields" };
+  }
+  return { ok: true, hardware, mac: null };
+}
+
+/**
+ * Pull server-stored MeshCentral sysinfo (works offline).
+ * @param {import("./meshcentral-api.mjs").MeshcentralApiClient} client
+ * @param {Record<string, unknown>} device
+ * @param {{ log?: (line: string) => void }} [opts]
+ */
+export async function collectHardwareFromSysinfo(client, device, opts = {}) {
+  const log = opts.log ?? (() => {});
+  const nodeId = typeof device.node_id === "string" ? device.node_id : "";
+  if (!nodeId) return { ok: false, message: "missing node_id" };
+  if (typeof client.getSysInfo !== "function") {
+    return { ok: false, message: "MeshCentral client missing getSysInfo" };
+  }
+  log(`getsysinfo for ${device.id || device.name || nodeId} …`);
+  const res = await client.getSysInfo(nodeId);
+  if (!res.ok) {
+    return {
+      ok: false,
+      message: res.message || "getsysinfo failed",
+      platform: String(device.platform || "unknown"),
+    };
+  }
+  const parsed = parseMeshSysinfoHardware(res.raw);
+  if (!parsed.ok) {
+    return { ok: false, message: parsed.message, platform: String(device.platform || "unknown") };
+  }
+  return {
+    ok: true,
+    platform: String(device.platform || "unknown"),
+    hardware: parsed.hardware,
+    mac: parsed.mac,
+    source: "meshcentral-sysinfo",
+  };
 }
 
 /**

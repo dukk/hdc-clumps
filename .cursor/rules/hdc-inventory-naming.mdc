@@ -5,7 +5,7 @@ alwaysApply: true
 
 # HDC inventory naming (systems)
 
-Applies to **`kind: "system"`** `id` values in manual and automated inventory (`operations/inventory/systems/*.json`, `operations/automated/systems/*.json` in **hdc-private**). The `id` must match the filename stem (`<id>.json`).
+Applies to **`kind: "system"`** `id` values in manual and automated inventory (`operations/inventory/systems/{physical,virtual}/*.json`, `operations/automated/systems/*.json` in **hdc-private**). The `id` must match the filename stem (`<id>.json`). Manual sidecars live under a **`system_class` subdirectory** (`physical/` or `virtual/`) that must match the JSON `system_class` field.
 
 ## Class prefix in the id
 
@@ -49,3 +49,4 @@ Letter order is arbitrary but stable once assigned. After `z`, continue with `aa
 - [ ] VM → `vm-…`
 - [ ] Multi-instance → `-a`, `-b`, not `-1`, `-2`
 - [ ] `id` matches filename and `system_class` is set correctly (Proxmox over UniFi for class)
+- [ ] File path is `operations/inventory/systems/<system_class>/<id>.json`

@@ -2,11 +2,8 @@
  * Sync UniFi client aliases (name) to Proxmox guest inventory system ids.
  * Match by IP (primary) and MAC when present in inventory.
  */
-import { existsSync, readdirSync } from "node:fs";
-import { join } from "node:path";
-
-import { MANUAL_SYSTEMS, manualSidecarRel } from "hdc/cli/lib/inventory-paths.mjs";
-import { hdcPrivateRoot, readResolvedRepoJson, resolveRepoFile } from "hdc/cli/lib/private-repo.mjs";
+import { listManualSystemIds, resolveManualSystemSidecarFile } from "hdc/cli/lib/inventory-resolve.mjs";
+import { readResolvedRepoJson } from "hdc/cli/lib/private-repo.mjs";
 import { classicRestUsers, classicSetClientName, classicUserByMac, classicActiveStations } from "./unifi-api.mjs";
 
 /**
@@ -114,28 +111,7 @@ function nodesFromSystem(system) {
  * @param {NodeJS.ProcessEnv} [env]
  * @returns {string[]}
  */
-export function listManualSystemIds(publicRoot, env = process.env) {
-  /** @type {Set<string>} */
-  const ids = new Set();
-  const privateRoot = hdcPrivateRoot(publicRoot, env);
-  const dirs = [];
-  if (privateRoot) dirs.push(join(privateRoot, MANUAL_SYSTEMS));
-  dirs.push(join(publicRoot, MANUAL_SYSTEMS));
-  for (const dir of dirs) {
-    if (!existsSync(dir)) continue;
-    let names;
-    try {
-      names = readdirSync(dir);
-    } catch {
-      continue;
-    }
-    for (const name of names) {
-      if (!name.endsWith(".json") || name.startsWith("_")) continue;
-      ids.add(name.replace(/\.json$/i, ""));
-    }
-  }
-  return [...ids].sort();
-}
+export { listManualSystemIds };
 
 /**
  * Build desired guest maps from inventory (Proxmox guests only).
@@ -163,8 +139,8 @@ export function loadProxmoxGuestDesired(publicRoot, env = process.env) {
   const macOwners = new Map();
 
   for (const id of listManualSystemIds(publicRoot, env)) {
-    const resolved = resolveRepoFile(publicRoot, manualSidecarRel("systems", id), env);
-    if (!resolved.found) continue;
+    const resolved = resolveManualSystemSidecarFile(publicRoot, id, env);
+    if (!resolved?.found) continue;
     let data;
     try {
       data = readResolvedRepoJson(resolved);
