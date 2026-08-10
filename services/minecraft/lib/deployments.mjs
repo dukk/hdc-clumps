@@ -58,6 +58,10 @@ export function mergeMinecraftSettings(cfg, deployment) {
     typeof global.java_heap_min === "string" && global.java_heap_min.trim()
       ? global.java_heap_min.trim()
       : "2G";
+  const javaJvmArgs =
+    typeof global.java_jvm_args === "string" && global.java_jvm_args.trim()
+      ? global.java_jvm_args.trim()
+      : "";
   const installDir =
     typeof global.install_dir === "string" && global.install_dir.trim()
       ? global.install_dir.trim()
@@ -84,6 +88,7 @@ export function mergeMinecraftSettings(cfg, deployment) {
     eula: global.eula !== false,
     javaHeapMin: heapMin,
     javaHeap: heap,
+    javaJvmArgs,
     installDir,
     javaPort,
     bedrockPort,

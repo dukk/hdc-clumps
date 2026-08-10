@@ -4,6 +4,7 @@
     "eula": true,
     "java_heap_min": "2G",
     "java_heap": "5G",
+    "java_jvm_args": "",
     "install_dir": "/opt/minecraft",
     "java_port": 25565,
     "bedrock_port": 19132,
@@ -55,14 +56,17 @@
         "bypassesPlayerLimit": false
       }
     ],
+    "plugin_configs": {
+      "dir": "plugin-configs"
+    },
     "server_properties": {
       "enable-command-block": true,
       "gamemode": "survival",
       "difficulty": "easy",
       "pvp": true,
       "generate-structures": true,
-      "view-distance": 10,
-      "simulation-distance": 10,
+      "view-distance": 18,
+      "simulation-distance": 16,
       "allow-flight": false,
       "allow-nether": true,
       "enable-rcon": false,

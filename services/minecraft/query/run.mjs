@@ -1,9 +1,11 @@
 #!/usr/bin/env node
 /**
- * Query Minecraft deployments (config summary + optional live status).
+ * Query Minecraft deployments (config summary + optional live status / list import).
  *
  * Usage: hdc run service minecraft query -- [--instance a]
  *        hdc run service minecraft query -- --live
+ *        hdc run service minecraft query -- --import --yes
+ *          (whitelist/ops + plugin-configs/ tree from guest plugins/)
  */
 import { basename, dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -17,6 +19,8 @@ import {
   resolveMinecraftDeployments,
 } from "hdc/package/deployments.mjs";
 import { queryMinecraftLive } from "hdc/package/query-status.mjs";
+import { importMinecraftListsFromLive } from "hdc/package/minecraft-lists-import.mjs";
+import { importMinecraftPluginConfigsFromLive } from "hdc/package/minecraft-plugin-configs.mjs";
 import { tryLoadClumpConfigFromClumpRoot } from "hdc/package/clump-run-config.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -39,9 +43,11 @@ async function main() {
   const rel = loaded?.path
     ? relative(root, loaded.path).replace(/\\/g, "/")
     : CLUMP_CONFIG_EXAMPLE;
-  const cfg = loaded?.ok && isObject(loaded.data) ? loaded.data : null;
+  let cfg = loaded?.ok && isObject(loaded.data) ? loaded.data : null;
   const flags = parseArgvFlags(process.argv.slice(2));
   const live = flagGet(flags, "live") !== undefined;
+  const doImport = flagGet(flags, "import") !== undefined;
+  const yes = flagGet(flags, "yes") !== undefined;
 
   errout.write(`[hdc] ${target} ${verb}: config ${rel} ${loaded?.ok ? "loaded" : "not loaded"}.\n`);
 
@@ -50,6 +56,8 @@ async function main() {
   /** @type {string | null} */
   let configError = null;
   let schemaVersion = null;
+  /** @type {Record<string, unknown> | null} */
+  let importResult = null;
 
   if (cfg) {
     try {
@@ -58,6 +66,49 @@ async function main() {
       deployments = listMinecraftDeploymentSummaries(cfg);
     } catch (e) {
       configError = String(/** @type {Error} */ (e).message || e);
+    }
+  }
+
+  if (doImport) {
+    if (!yes) {
+      configError = configError ?? "query --import requires --yes";
+    } else if (!cfg || !loaded?.resolved?.found) {
+      configError = configError ?? "config required for --import";
+    } else if (!configError) {
+      try {
+        const selected = resolveMinecraftDeployments(cfg, flags);
+        if (selected.length !== 1) {
+          throw new Error("query --import requires exactly one deployment (--instance / --system-id)");
+        }
+        const lists = importMinecraftListsFromLive({
+          resolved: loaded.resolved,
+          cfg,
+          deployment: selected[0],
+          log: (line) => errout.write(`[hdc] ${target} ${verb}: ${line}\n`),
+          mergeWithConfig: true,
+        });
+        const pluginConfigs = importMinecraftPluginConfigsFromLive({
+          resolved: loaded.resolved,
+          cfg,
+          deployment: selected[0],
+          log: (line) => errout.write(`[hdc] ${target} ${verb}: ${line}\n`),
+        });
+        importResult = {
+          ok: lists.ok !== false && pluginConfigs.ok !== false,
+          lists,
+          plugin_configs: pluginConfigs,
+        };
+        const reloaded = tryLoadClumpConfigFromClumpRoot(clumpRoot, {
+          exampleRel: CLUMP_CONFIG_EXAMPLE,
+        });
+        if (reloaded?.ok && isObject(reloaded.data)) {
+          cfg = reloaded.data;
+          deployments = listMinecraftDeploymentSummaries(cfg);
+        }
+      } catch (e) {
+        configError = String(/** @type {Error} */ (e).message || e);
+        importResult = { ok: false, message: configError };
+      }
     }
   }
 
@@ -87,17 +138,18 @@ async function main() {
   }
 
   const payload = {
-    ok: !configError,
+    ok: !configError && (importResult == null || importResult.ok !== false),
     target,
     verb,
     config_path: rel,
     schema_version: schemaVersion,
     config_error: configError,
     deployments,
+    import: importResult ?? undefined,
     live: live ? liveResults : undefined,
   };
   process.stdout.write(`${JSON.stringify(payload, null, 2)}\n`);
-  process.exitCode = configError ? 1 : 0;
+  process.exitCode = payload.ok ? 0 : 1;
 }
 
 main().catch((e) => {

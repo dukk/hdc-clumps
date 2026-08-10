@@ -23,6 +23,7 @@ const mc = {
   eula: true,
   javaHeapMin: "2G",
   javaHeap: "5G",
+  javaJvmArgs: "",
   installDir: "/opt/minecraft",
   javaPort: 25565,
   bedrockPort: 19132,
@@ -105,8 +106,8 @@ describe("minecraft-install", () => {
             "enable-command-block": true,
             difficulty: "easy",
             "enable-query": false,
-            "view-distance": 22,
-            "simulation-distance": 20,
+            "view-distance": 18,
+            "simulation-distance": 16,
             "prevent-proxy-connections": false,
           },
           paper: { per_player_mob_spawns: false, keep_spawn_loaded_range: 10, anti_xray: false },
@@ -140,8 +141,8 @@ describe("minecraft-install", () => {
     expect(props).toContain("enable-command-block=true");
     expect(props).toContain("difficulty=easy");
     expect(props).toContain("enable-query=false");
-    expect(props).toContain("simulation-distance=20");
-    expect(props).toContain("view-distance=22");
+    expect(props).toContain("simulation-distance=16");
+    expect(props).toContain("view-distance=18");
     expect(props).toContain("prevent-proxy-connections=false");
     expect(renderWhitelistJson(merged.whitelist.players)).toContain("alice");
     expect(renderOpsJson(merged.ops)).toContain('"level": 4');
@@ -193,7 +194,16 @@ describe("minecraft-install", () => {
     expect(unit).toContain("Restart=on-failure");
     expect(unit).toContain("RestartSec=10");
     expect(unit).toContain("User=minecraft");
-    expect(unit).toContain("-Xms2G -Xmx5G -jar paper.jar nogui");
+    expect(unit).toContain("-Xms2G -Xmx5G");
+    expect(unit).toContain("-XX:+UseG1GC");
+    expect(unit).toContain("-Daikars.new.flags=true");
+    expect(unit).toContain("-jar paper.jar nogui");
+  });
+
+  it("renders systemd unit with custom java_jvm_args", () => {
+    const unit = renderSystemdUnit("minecraft", "/opt/minecraft", "12G", "12G", "-XX:+UseG1GC -XX:MaxGCPauseMillis=200");
+    expect(unit).toContain("-Xms12G -Xmx12G -XX:+UseG1GC -XX:MaxGCPauseMillis=200 -jar paper.jar nogui");
+    expect(unit).not.toContain("aikars.new.flags");
   });
 
   it("flattens Fill v3 version groups newest-first", () => {

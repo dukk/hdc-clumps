@@ -522,13 +522,21 @@ export function renderOpsJson(ops) {
   return `${JSON.stringify(ops, null, 2)}\n`;
 }
 
+/** Aikar G1GC flags for Paper heaps ≤12G (https://docs.papermc.io/paper/aikars-flags). */
+export const DEFAULT_PAPER_JVM_ARGS =
+  "-XX:+UseG1GC -XX:+ParallelRefProcEnabled -XX:MaxGCPauseMillis=200 -XX:+UnlockExperimentalVMOptions -XX:+DisableExplicitGC -XX:+AlwaysPreTouch -XX:G1NewSizePercent=30 -XX:G1MaxNewSizePercent=40 -XX:G1HeapRegionSize=8M -XX:G1ReservePercent=20 -XX:G1HeapWastePercent=5 -XX:G1MixedGCCountTarget=4 -XX:InitiatingHeapOccupancyPercent=15 -XX:G1MixedGCLiveThresholdPercent=90 -XX:G1RSetUpdatingPauseTimePercent=5 -XX:SurvivorRatio=32 -XX:+PerfDisableSharedMem -XX:MaxTenuringThreshold=1 -Dusing.aikars.flags=https://mcflags.emc.gs -Daikars.new.flags=true";
+
 /**
  * @param {string} linuxUser
  * @param {string} installDir
  * @param {string} heapMin
  * @param {string} heapMax
+ * @param {string} [jvmArgs] extra JVM flags between heap and -jar (default: Aikar)
  */
-export function renderSystemdUnit(linuxUser, installDir, heapMin, heapMax) {
+export function renderSystemdUnit(linuxUser, installDir, heapMin, heapMax, jvmArgs) {
+  const extra =
+    typeof jvmArgs === "string" && jvmArgs.trim() ? jvmArgs.trim() : DEFAULT_PAPER_JVM_ARGS;
+  const execStart = `/usr/bin/java -Xms${heapMin} -Xmx${heapMax} ${extra} -jar paper.jar nogui`;
   return `[Unit]
 Description=Paper Minecraft server
 Documentation=https://papermc.io/
@@ -540,7 +548,7 @@ Type=simple
 User=${linuxUser}
 Group=${linuxUser}
 WorkingDirectory=${installDir}
-ExecStart=/usr/bin/java -Xms${heapMin} -Xmx${heapMax} -jar paper.jar nogui
+ExecStart=${execStart}
 Restart=on-failure
 RestartSec=10
 TimeoutStopSec=90
@@ -588,7 +596,7 @@ export function buildInstallShellScript(opts) {
   const paper = opts.paper;
   const skipJars = opts.flags?.skipJarDownload === true;
   const installDir = mc.installDir;
-  const unit = renderSystemdUnit(linuxUser, installDir, mc.javaHeapMin, mc.javaHeap);
+  const unit = renderSystemdUnit(linuxUser, installDir, mc.javaHeapMin, mc.javaHeap, mc.javaJvmArgs);
   const props = renderServerProperties(mc);
   const geyser = mc.geyser !== false;
   const floodgate = mc.floodgate !== false;

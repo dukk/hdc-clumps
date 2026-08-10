@@ -1,11 +1,10 @@
-#!/usr/bin/env node
-import { resolveGuestSshUser } from "hdc/package/guest-ssh-resolve.mjs";
 /**
  * Maintain Minecraft: re-apply Paper/Geyser install, guest Linux baseline.
  *
  * Usage: hdc run service minecraft maintain -- [--instance a | --system-id vm-minecraft-a]
  *        [--skip-upgrade] [--dry-run] [--skip-clamav] [--skip-admin-user]
- *        [--skip-resources] [--no-reboot] [--reboot]
+ *        [--skip-resources] [--skip-disk-resize] [--skip-lists-import]
+ *        [--skip-plugin-configs] [--no-reboot] [--reboot]
  */
 import { basename, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -22,16 +21,20 @@ import {
   loadClumpConfigFromClumpRoot,
   tryLoadClumpConfigFromClumpRoot,
 } from "hdc/package/clump-run-config.mjs";
+import { syncQemuRootfsOnMaintain } from "hdc/package/qemu-rootfs-resize.mjs";
 import { createConfigureExec } from "../../postfix-relay/lib/postfix-relay-configure.mjs";
 import { resolveMinecraftDeployments } from "hdc/package/deployments.mjs";
 import { installMinecraftInQemu } from "hdc/package/minecraft-install.mjs";
+import { importMinecraftListsFromLive } from "hdc/package/minecraft-lists-import.mjs";
+import { applyMinecraftPluginConfigsToGuest } from "hdc/package/minecraft-plugin-configs.mjs";
+import { resolveGuestSshUser } from "hdc/package/guest-ssh-resolve.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const target = basename(dirname(here));
 const verb = basename(here);
 const clumpRoot = join(here, "..");
 const CLUMP_CONFIG_EXAMPLE = "clumps/services/minecraft/config.example.json";
-/** @type {{ data: Record<string, unknown>; path: string; source: string } | null} */
+/** @type {{ data: Record<string, unknown>; path: string; source: string; resolved?: import("hdc/cli/lib/private-repo.mjs").ResolvedRepoFile } | null} */
 let _pkgConfig = null;
 
 function ensurePackageConfig() {
@@ -48,6 +51,13 @@ const proxmoxRoot = join(root, "clumps", "infrastructure", "proxmox");
 
 function readCfg() {
   return ensurePackageConfig().data;
+}
+
+function reloadPackageConfig() {
+  _pkgConfig = loadClumpConfigFromClumpRoot(clumpRoot, {
+    exampleRel: CLUMP_CONFIG_EXAMPLE,
+  });
+  return _pkgConfig;
 }
 
 /**
@@ -81,6 +91,30 @@ async function maintainOne(deployment, flags, vaultAccess) {
   /** @type {Record<string, unknown>} */
   const result = { ok: true, system_id: systemId, mode };
 
+  errout.write(`[hdc] ${target} ${verb}: disk resize check on ${systemId} …\n`);
+  try {
+    const diskResize = await syncQemuRootfsOnMaintain({
+      proxmoxPackageRoot: proxmoxRoot,
+      deployment: {
+        mode,
+        hostname: deployment.hostname,
+        system_id: systemId,
+        proxmox,
+        configure,
+      },
+      flags,
+      log: (line) => errout.write(`[hdc] ${target} ${verb}: ${line}\n`),
+    });
+    result.disk_resize = diskResize;
+    if (diskResize.ok === false) {
+      return { ...result, ok: false, message: diskResize.message || "disk resize failed" };
+    }
+  } catch (e) {
+    const msg = String(/** @type {Error} */ (e).message || e);
+    errout.write(`[hdc] ${target} ${verb}: ${systemId} disk resize failed: ${msg}\n`);
+    return { ...result, ok: false, message: msg };
+  }
+
   const exec = createConfigureExec("ssh", { user: sshUser, host: sshHost });
 
   errout.write(`[hdc] ${target} ${verb}: re-applying Paper install on ${systemId} …\n`);
@@ -99,6 +133,35 @@ async function maintainOne(deployment, flags, vaultAccess) {
       system_id: systemId,
       message: String(/** @type {Error} */ (e).message || e),
     };
+  }
+
+  const skipPluginConfigs =
+    flagGet(flags, "skip-plugin-configs", "skip_plugin_configs") !== undefined;
+  const dryRun = flagGet(flags, "dry-run", "dry_run") !== undefined;
+  if (skipPluginConfigs) {
+    result.plugin_configs = { ok: true, skipped: true, message: "--skip-plugin-configs" };
+  } else {
+    errout.write(`[hdc] ${target} ${verb}: applying plugin-configs on ${systemId} …\n`);
+    try {
+      result.plugin_configs = applyMinecraftPluginConfigsToGuest({
+        resolved: ensurePackageConfig().resolved,
+        cfg: readCfg(),
+        deployment,
+        log: (line) => errout.write(`[hdc] ${target} ${verb}: ${line}\n`),
+        dryRun,
+      });
+      if (result.plugin_configs.ok === false) {
+        return {
+          ...result,
+          ok: false,
+          message: result.plugin_configs.message || "plugin-configs apply failed",
+        };
+      }
+    } catch (e) {
+      const msg = String(/** @type {Error} */ (e).message || e);
+      errout.write(`[hdc] ${target} ${verb}: ${systemId} plugin-configs failed: ${msg}\n`);
+      return { ...result, ok: false, message: msg, plugin_configs: { ok: false, message: msg } };
+    }
   }
 
   errout.write(`[hdc] ${target} ${verb}: guest baseline on ${systemId} …\n`);
@@ -141,10 +204,14 @@ async function main() {
   _pkgConfig = cfgLoad;
   errout.write(`[hdc] ${target} ${verb}: config ${cfgLoad.source}\n`);
 
-  const cfg = readCfg();
+  let cfg = readCfg();
   const flags = parseArgvFlags(process.argv.slice(2));
   const vaultAccess = createPackageVaultAccess();
   await vaultAccess.unlock({});
+
+  /** @type {Record<string, unknown>[]} */
+  const listImports = [];
+  const skipListsImport = flagGet(flags, "skip-lists-import", "skip_lists_import") !== undefined;
 
   let deployments;
   try {
@@ -156,6 +223,49 @@ async function main() {
     );
     process.exitCode = 1;
     return;
+  }
+
+  if (!skipListsImport) {
+    for (const deployment of deployments) {
+      errout.write(`[hdc] ${target} ${verb}: importing whitelist/ops from ${deployment.systemId} …\n`);
+      try {
+        const imported = importMinecraftListsFromLive({
+          resolved: ensurePackageConfig().resolved,
+          cfg,
+          deployment,
+          log: (line) => errout.write(`[hdc] ${target} ${verb}: ${line}\n`),
+          mergeWithConfig: true,
+        });
+        listImports.push({ system_id: deployment.systemId, ...imported });
+        if (imported.ok === false) {
+          process.stdout.write(
+            `${JSON.stringify({ ok: false, target, verb, list_imports: listImports, message: "lists import failed" }, null, 2)}\n`,
+          );
+          process.exitCode = 1;
+          return;
+        }
+      } catch (e) {
+        const msg = String(/** @type {Error} */ (e).message || e);
+        errout.write(`[hdc] ${target} ${verb}: lists import failed: ${msg}\n`);
+        process.stdout.write(
+          `${JSON.stringify({ ok: false, target, verb, message: msg }, null, 2)}\n`,
+        );
+        process.exitCode = 1;
+        return;
+      }
+    }
+    cfg = reloadPackageConfig().data;
+    try {
+      deployments = resolveMinecraftDeployments(cfg, flags);
+    } catch (e) {
+      const msg = String(/** @type {Error} */ (e).message || e);
+      errout.write(`[hdc] ${target} ${verb}: ${msg}\n`);
+      process.stdout.write(`${JSON.stringify({ ok: false, target, verb, message: msg }, null, 2)}\n`);
+      process.exitCode = 1;
+      return;
+    }
+  } else {
+    listImports.push({ ok: true, skipped: true, message: "--skip-lists-import" });
   }
 
   /** @type {Record<string, unknown>[]} */
@@ -171,7 +281,7 @@ async function main() {
   }
 
   const ok = results.every((r) => r.ok);
-  const payload = { ok, target, verb, count: results.length, results };
+  const payload = { ok, target, verb, count: results.length, list_imports: listImports, results };
   runOperationReportTail({
     clumpRoot,
     repoRoot: root,
