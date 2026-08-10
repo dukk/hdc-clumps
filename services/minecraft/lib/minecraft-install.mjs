@@ -478,6 +478,18 @@ function serverPropValue(v) {
   return String(v);
 }
 
+/** Guest-local RCON port (not published; used for stop warning + dumps). */
+export const MINECRAFT_RCON_PORT = 25575;
+/** Relative to install_dir; password never leaves the guest. */
+export const MINECRAFT_RCON_PASSWORD_REL = ".rcon.password";
+
+/**
+ * @param {ReturnType<typeof import("./deployments.mjs").mergeMinecraftSettings>} mc
+ */
+export function stopWarningEnabled(mc) {
+  return mc?.stopWarning?.enabled !== false;
+}
+
 /**
  * @param {ReturnType<typeof import("./deployments.mjs").mergeMinecraftSettings>} mc
  */
@@ -491,6 +503,8 @@ export function renderServerProperties(mc) {
   const extra = mc.serverProperties && typeof mc.serverProperties === "object" ? mc.serverProperties : {};
   for (const [key, val] of Object.entries(extra)) {
     if (!SERVER_PROP_KEY_RE.test(key) || val == null) continue;
+    // Password is injected on the guest from .rcon.password; never embed from config.
+    if (key === "rcon.password") continue;
     props[key] = serverPropValue(val);
   }
   if (mc.whitelist) {
@@ -502,6 +516,12 @@ export function renderServerProperties(mc) {
   props["max-players"] = String(mc.maxPlayers);
   props["online-mode"] = mc.onlineMode ? "true" : "false";
   props["query.port"] = String(mc.javaPort);
+  // Localhost RCON required for graceful stop + consistent world dumps.
+  if (stopWarningEnabled(mc) || mc?.backup?.enabled !== false) {
+    props["enable-rcon"] = "true";
+    props["rcon.port"] = String(MINECRAFT_RCON_PORT);
+    props["broadcast-rcon-to-ops"] = "false";
+  }
   return `${Object.entries(props)
     .map(([k, v]) => `${k}=${v}`)
     .join("\n")}\n`;
@@ -532,11 +552,19 @@ export const DEFAULT_PAPER_JVM_ARGS =
  * @param {string} heapMin
  * @param {string} heapMax
  * @param {string} [jvmArgs] extra JVM flags between heap and -jar (default: Aikar)
+ * @param {{ enabled?: boolean, seconds?: number } | null} [stopWarning]
  */
-export function renderSystemdUnit(linuxUser, installDir, heapMin, heapMax, jvmArgs) {
+export function renderSystemdUnit(linuxUser, installDir, heapMin, heapMax, jvmArgs, stopWarning) {
   const extra =
     typeof jvmArgs === "string" && jvmArgs.trim() ? jvmArgs.trim() : DEFAULT_PAPER_JVM_ARGS;
   const execStart = `/usr/bin/java -Xms${heapMin} -Xmx${heapMax} ${extra} -jar paper.jar nogui`;
+  const warnOn = stopWarning == null ? true : stopWarning.enabled !== false;
+  const warnSeconds =
+    stopWarning && Number.isFinite(Number(stopWarning.seconds))
+      ? Math.max(0, Math.trunc(Number(stopWarning.seconds)))
+      : 10;
+  const timeoutStopSec = warnOn ? Math.max(120, 90 + warnSeconds) : 90;
+  const execStop = warnOn ? "ExecStop=/usr/local/sbin/hdc-minecraft-graceful-stop\n" : "";
   return `[Unit]
 Description=Paper Minecraft server
 Documentation=https://papermc.io/
@@ -549,13 +577,125 @@ User=${linuxUser}
 Group=${linuxUser}
 WorkingDirectory=${installDir}
 ExecStart=${execStart}
-Restart=on-failure
+${execStop}Restart=on-failure
 RestartSec=10
-TimeoutStopSec=90
+TimeoutStopSec=${timeoutStopSec}
 SuccessExitStatus=0 143
 
 [Install]
 WantedBy=multi-user.target
+`;
+}
+
+/**
+ * Python3 Minecraft RCON client installed on the guest as hdc-minecraft-rcon.
+ * @returns {string}
+ */
+export function renderMinecraftRconHelperScript() {
+  return `#!/usr/bin/env python3
+"""hdc Minecraft RCON helper — reads password from install_dir/.rcon.password"""
+import os, socket, struct, sys
+
+INSTALL_DIR = os.environ.get("MINECRAFT_INSTALL_DIR", "/opt/minecraft")
+PORT = int(os.environ.get("MINECRAFT_RCON_PORT", "${MINECRAFT_RCON_PORT}"))
+HOST = os.environ.get("MINECRAFT_RCON_HOST", "127.0.0.1")
+PASS_FILE = os.path.join(INSTALL_DIR, "${MINECRAFT_RCON_PASSWORD_REL}")
+
+def _pkt(req_id, req_type, payload: str) -> bytes:
+    body = struct.pack("<ii", req_id, req_type) + payload.encode("utf-8") + b"\\x00\\x00"
+    return struct.pack("<i", len(body)) + body
+
+def _recv_pkt(sock: socket.socket):
+    hdr = b""
+    while len(hdr) < 4:
+        chunk = sock.recv(4 - len(hdr))
+        if not chunk:
+            raise ConnectionError("rcon closed")
+        hdr += chunk
+    (length,) = struct.unpack("<i", hdr)
+    data = b""
+    while len(data) < length:
+        chunk = sock.recv(length - len(data))
+        if not chunk:
+            raise ConnectionError("rcon closed")
+        data += chunk
+    req_id, req_type = struct.unpack("<ii", data[:8])
+    payload = data[8:-2].decode("utf-8", errors="replace")
+    return req_id, req_type, payload
+
+def main():
+    if len(sys.argv) < 2:
+        print("usage: hdc-minecraft-rcon <command…>", file=sys.stderr)
+        return 2
+    cmd = " ".join(sys.argv[1:])
+    with open(PASS_FILE, "r", encoding="utf-8") as f:
+        password = f.read().strip()
+    if not password:
+        print("empty rcon password", file=sys.stderr)
+        return 1
+    sock = socket.create_connection((HOST, PORT), timeout=5)
+    try:
+        sock.sendall(_pkt(1, 3, password))
+        rid, rtype, _ = _recv_pkt(sock)
+        if rid == -1 or rtype != 2:
+            print("rcon auth failed", file=sys.stderr)
+            return 1
+        sock.sendall(_pkt(2, 2, cmd))
+        _rid, _rtype, payload = _recv_pkt(sock)
+        if payload:
+            sys.stdout.write(payload)
+            if not payload.endswith("\\n"):
+                sys.stdout.write("\\n")
+        return 0
+    finally:
+        sock.close()
+
+if __name__ == "__main__":
+    raise SystemExit(main())
+`;
+}
+
+/**
+ * ExecStop helper: warn players, wait, save-all, stop via RCON.
+ * @param {{ installDir: string, seconds: number, message: string }} opts
+ * @returns {string}
+ */
+export function renderMinecraftGracefulStopScript(opts) {
+  const installDir = String(opts.installDir || "/opt/minecraft").replace(/'/g, "");
+  const seconds = Number.isFinite(Number(opts.seconds)) ? Math.max(0, Math.trunc(Number(opts.seconds))) : 10;
+  const message = String(opts.message || "Server shutting down in 10 seconds…")
+    .replace(/\r?\n/g, " ")
+    .replace(/'/g, "");
+  return `#!/bin/bash
+# hdc-generated — warn players then stop Paper via RCON
+set -u
+export MINECRAFT_INSTALL_DIR='${installDir}'
+export MINECRAFT_RCON_PORT='${MINECRAFT_RCON_PORT}'
+RCON=/usr/local/sbin/hdc-minecraft-rcon
+WARN_SECONDS=${seconds}
+WARN_MSG='${message}'
+
+if ! systemctl is-active --quiet minecraft 2>/dev/null; then
+  exit 0
+fi
+
+if "$RCON" "say $WARN_MSG" >/dev/null 2>&1; then
+  sleep "$WARN_SECONDS"
+  "$RCON" "save-all flush" >/dev/null 2>&1 || true
+  "$RCON" stop >/dev/null 2>&1 || true
+  if [ -n "\${MAINPID:-}" ]; then
+    i=0
+    while [ "$i" -lt 90 ]; do
+      if ! kill -0 "$MAINPID" 2>/dev/null; then
+        exit 0
+      fi
+      sleep 1
+      i=$((i + 1))
+    done
+  fi
+fi
+# RCON unavailable or still running — let systemd finish with SIGTERM (KillMode)
+exit 0
 `;
 }
 
@@ -596,8 +736,17 @@ export function buildInstallShellScript(opts) {
   const paper = opts.paper;
   const skipJars = opts.flags?.skipJarDownload === true;
   const installDir = mc.installDir;
-  const unit = renderSystemdUnit(linuxUser, installDir, mc.javaHeapMin, mc.javaHeap, mc.javaJvmArgs);
+  const stopWarn = mc.stopWarning || { enabled: true, seconds: 10, message: "Server shutting down in 10 seconds…" };
+  const unit = renderSystemdUnit(
+    linuxUser,
+    installDir,
+    mc.javaHeapMin,
+    mc.javaHeap,
+    mc.javaJvmArgs,
+    stopWarn,
+  );
   const props = renderServerProperties(mc);
+  const needRcon = stopWarningEnabled(mc) || mc?.backup?.enabled !== false;
   const geyser = mc.geyser !== false;
   const floodgate = mc.floodgate !== false;
   const bluemap = mc.bluemap === true;
@@ -620,7 +769,7 @@ export function buildInstallShellScript(opts) {
     "  resize2fs \"$(findmnt -n -o SOURCE /)\" 2>/dev/null || true",
     "fi",
     "apt-get update -qq",
-    "apt-get install -y -qq openjdk-25-jre-headless curl ca-certificates python3",
+    "apt-get install -y -qq openjdk-25-jre-headless curl ca-certificates python3 openssl",
     `LINUX_USER=${JSON.stringify(linuxUser)}`,
     `INSTALL_DIR=${JSON.stringify(installDir)}`,
     "if ! id \"$LINUX_USER\" >/dev/null 2>&1; then",
@@ -632,6 +781,63 @@ export function buildInstallShellScript(opts) {
     props.trimEnd(),
     "PROPS",
   ];
+
+  if (needRcon) {
+    lines.push(
+      `RCON_FILE="$INSTALL_DIR/${MINECRAFT_RCON_PASSWORD_REL}"`,
+      'if [ ! -s "$RCON_FILE" ]; then',
+      "  openssl rand -base64 32 | tr -d '\\n/+' | head -c 32 > \"$RCON_FILE\"",
+      "fi",
+      'chmod 600 "$RCON_FILE"',
+      'chown "$LINUX_USER:$LINUX_USER" "$RCON_FILE"',
+      'RCON_PASS=$(cat "$RCON_FILE")',
+      'python3 - "$INSTALL_DIR/server.properties" "$RCON_PASS" <<\'PY\'',
+      "import sys",
+      "from pathlib import Path",
+      "p = Path(sys.argv[1])",
+      "password = sys.argv[2]",
+      "lines = p.read_text(encoding='utf-8', errors='replace').splitlines()",
+      "out = []",
+      "seen = set()",
+      "updates = {",
+      "    'enable-rcon': 'true',",
+      `    'rcon.port': '${MINECRAFT_RCON_PORT}',`,
+      "    'rcon.password': password,",
+      "    'broadcast-rcon-to-ops': 'false',",
+      "}",
+      "for line in lines:",
+      "    if '=' not in line or line.lstrip().startswith('#'):",
+      "        out.append(line)",
+      "        continue",
+      "    key = line.split('=', 1)[0].strip()",
+      "    if key in updates:",
+      "        out.append(f'{key}={updates[key]}')",
+      "        seen.add(key)",
+      "        continue",
+      "    out.append(line)",
+      "for key, val in updates.items():",
+      "    if key not in seen:",
+      "        out.append(f'{key}={val}')",
+      "p.write_text('\\n'.join(out) + '\\n', encoding='utf-8')",
+      "PY",
+      "cat > /usr/local/sbin/hdc-minecraft-rcon <<'RCONEOF'",
+      renderMinecraftRconHelperScript().trimEnd(),
+      "RCONEOF",
+      "chmod 755 /usr/local/sbin/hdc-minecraft-rcon",
+    );
+    if (stopWarningEnabled(mc)) {
+      lines.push(
+        "cat > /usr/local/sbin/hdc-minecraft-graceful-stop <<'STOPEOF'",
+        renderMinecraftGracefulStopScript({
+          installDir,
+          seconds: stopWarn.seconds,
+          message: stopWarn.message,
+        }).trimEnd(),
+        "STOPEOF",
+        "chmod 755 /usr/local/sbin/hdc-minecraft-graceful-stop",
+      );
+    }
+  }
 
   if (mc.whitelist) {
     const prefix = typeof mc.floodgateUsernamePrefix === "string" ? mc.floodgateUsernamePrefix : ".";

@@ -77,11 +77,14 @@ describe("minecraft-install", () => {
     expect(resolveLinuxUser({})).toBe("minecraft");
   });
 
-  it("renders server.properties with java port and online-mode", () => {
+  it("renders server.properties with java port, online-mode, and forced RCON", () => {
     const props = renderServerProperties(mc);
     expect(props).toContain("server-port=25565");
     expect(props).toContain("online-mode=true");
     expect(props).toContain("motd=HDC Minecraft");
+    expect(props).toContain("enable-rcon=true");
+    expect(props).toContain("rcon.port=25575");
+    expect(props).not.toContain("rcon.password=");
   });
 
   it("merges whitelist, ops, and server.properties from config", () => {
@@ -189,7 +192,7 @@ describe("minecraft-install", () => {
     expect(renderWhitelistJson(bedrockMerged.whitelist.players)).not.toContain('"edition"');
   });
 
-  it("renders systemd unit with Restart=on-failure", () => {
+  it("renders systemd unit with Restart=on-failure and ExecStop warn", () => {
     const unit = renderSystemdUnit("minecraft", "/opt/minecraft", "2G", "5G");
     expect(unit).toContain("Restart=on-failure");
     expect(unit).toContain("RestartSec=10");
@@ -198,6 +201,17 @@ describe("minecraft-install", () => {
     expect(unit).toContain("-XX:+UseG1GC");
     expect(unit).toContain("-Daikars.new.flags=true");
     expect(unit).toContain("-jar paper.jar nogui");
+    expect(unit).toContain("ExecStop=/usr/local/sbin/hdc-minecraft-graceful-stop");
+    expect(unit).toContain("TimeoutStopSec=120");
+  });
+
+  it("omits ExecStop when stop_warning disabled", () => {
+    const unit = renderSystemdUnit("minecraft", "/opt/minecraft", "2G", "5G", "", {
+      enabled: false,
+      seconds: 10,
+    });
+    expect(unit).not.toContain("ExecStop=");
+    expect(unit).toContain("TimeoutStopSec=90");
   });
 
   it("renders systemd unit with custom java_jvm_args", () => {
@@ -415,6 +429,11 @@ describe("minecraft-install", () => {
     expect(full).toContain("accept-download");
     expect(full).toContain("NEED_BLUEMAP=1");
     expect(full).toContain("Restart=on-failure");
+    expect(full).toContain("ExecStop=/usr/local/sbin/hdc-minecraft-graceful-stop");
+    expect(full).toContain("hdc-minecraft-rcon");
+    expect(full).toContain("hdc-minecraft-graceful-stop");
+    expect(full).toContain(".rcon.password");
+    expect(full).toContain("enable-rcon=true");
 
     const withLists = buildInstallShellScript({
       install: { linux_user: "minecraft" },

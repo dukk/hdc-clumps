@@ -4,7 +4,7 @@
  * Usage: hdc run service minecraft maintain -- [--instance a | --system-id vm-minecraft-a]
  *        [--skip-upgrade] [--dry-run] [--skip-clamav] [--skip-admin-user]
  *        [--skip-resources] [--skip-disk-resize] [--skip-lists-import]
- *        [--skip-plugin-configs] [--no-reboot] [--reboot]
+ *        [--skip-plugin-configs] [--skip-app-dump] [--no-reboot] [--reboot]
  */
 import { basename, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -22,6 +22,12 @@ import {
   tryLoadClumpConfigFromClumpRoot,
 } from "hdc/package/clump-run-config.mjs";
 import { syncQemuRootfsOnMaintain } from "hdc/package/qemu-rootfs-resize.mjs";
+import {
+  ensureAppDumpSchedule,
+  minecraftAppDumpOnCalendar,
+  minecraftDumpCommands,
+  minecraftDumpPruneCommands,
+} from "hdc/package/app-dump-schedule.mjs";
 import { createConfigureExec } from "../../postfix-relay/lib/postfix-relay-configure.mjs";
 import { resolveMinecraftDeployments } from "hdc/package/deployments.mjs";
 import { installMinecraftInQemu } from "hdc/package/minecraft-install.mjs";
@@ -183,6 +189,31 @@ async function maintainOne(deployment, flags, vaultAccess) {
   Object.assign(result, guestBaselineResultFields(baseline));
   if (!baseline.ok) {
     return { ...result, ok: false, message: "guest baseline failed" };
+  }
+
+  const backup = minecraft.backup || { enabled: true, intervalHours: 6, retainDaily: 7 };
+  if (backup.enabled === false) {
+    result.app_dump = { ok: true, skipped: true, message: "minecraft.backup.enabled=false" };
+  } else {
+    errout.write(`[hdc] ${target} ${verb}: ensuring world dump timer on ${systemId} …\n`);
+    const appDump = ensureAppDumpSchedule({
+      exec,
+      log,
+      flags,
+      spec: {
+        systemId,
+        name: "minecraft",
+        dumpCommands: minecraftDumpCommands(minecraft.installDir),
+        pruneCommands: minecraftDumpPruneCommands(backup.retainDaily),
+        onCalendar: minecraftAppDumpOnCalendar(systemId, backup.intervalHours),
+        randomizedDelaySec: 300,
+        retainDays: backup.retainDaily,
+      },
+    });
+    result.app_dump = appDump;
+    if (!appDump.ok) {
+      return { ...result, ok: false, message: appDump.message || "app dump schedule failed" };
+    }
   }
 
   return result;

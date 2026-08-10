@@ -59,6 +59,16 @@
     "plugin_configs": {
       "dir": "plugin-configs"
     },
+    "stop_warning": {
+      "enabled": true,
+      "seconds": 10,
+      "message": "Server shutting down in 10 seconds…"
+    },
+    "backup": {
+      "enabled": true,
+      "interval_hours": 6,
+      "retain_daily": 7
+    },
     "server_properties": {
       "enable-command-block": true,
       "gamemode": "survival",
@@ -69,7 +79,6 @@
       "simulation-distance": 16,
       "allow-flight": false,
       "allow-nether": true,
-      "enable-rcon": false,
       "enable-query": false,
       "spawn-protection": 16,
       "prevent-proxy-connections": false,

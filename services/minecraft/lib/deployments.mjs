@@ -122,6 +122,58 @@ export function mergeMinecraftSettings(cfg, deployment) {
     ops: parseOps(global.ops),
     floodgateUsernamePrefix:
       typeof global.floodgate_username_prefix === "string" ? global.floodgate_username_prefix : ".",
+    stopWarning: parseStopWarning(global.stop_warning),
+    backup: parseBackup(global.backup),
+  };
+}
+
+const DEFAULT_STOP_WARNING_MESSAGE = "Server shutting down in 10 seconds…";
+
+/**
+ * @param {unknown} raw
+ * @returns {{ enabled: boolean, seconds: number, message: string }}
+ */
+function parseStopWarning(raw) {
+  const defaults = {
+    enabled: true,
+    seconds: 10,
+    message: DEFAULT_STOP_WARNING_MESSAGE,
+  };
+  if (raw === false) return { ...defaults, enabled: false };
+  if (!isObject(raw)) return defaults;
+  const secondsRaw = Number(raw.seconds);
+  const seconds = Number.isFinite(secondsRaw) ? Math.max(0, Math.trunc(secondsRaw)) : defaults.seconds;
+  const message =
+    typeof raw.message === "string" && raw.message.trim()
+      ? raw.message.trim().replace(/\r?\n/g, " ")
+      : defaults.message;
+  return {
+    enabled: raw.enabled !== false,
+    seconds,
+    message,
+  };
+}
+
+/**
+ * @param {unknown} raw
+ * @returns {{ enabled: boolean, intervalHours: number, retainDaily: number }}
+ */
+function parseBackup(raw) {
+  const defaults = { enabled: true, intervalHours: 6, retainDaily: 7 };
+  if (raw === false) return { ...defaults, enabled: false };
+  if (!isObject(raw)) return defaults;
+  const intervalRaw = Number(raw.interval_hours ?? raw.intervalHours);
+  const retainRaw = Number(raw.retain_daily ?? raw.retainDaily);
+  const intervalHours = Number.isFinite(intervalRaw)
+    ? Math.min(24, Math.max(1, Math.trunc(intervalRaw)))
+    : defaults.intervalHours;
+  const retainDaily = Number.isFinite(retainRaw)
+    ? Math.min(90, Math.max(1, Math.trunc(retainRaw)))
+    : defaults.retainDaily;
+  return {
+    enabled: raw.enabled !== false,
+    intervalHours,
+    retainDaily,
   };
 }
 

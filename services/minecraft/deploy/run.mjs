@@ -25,6 +25,12 @@ import { sshRemote } from "hdc/package/pve-pct-remote.mjs";
 import { resolveMinecraftDeployments } from "hdc/package/deployments.mjs";
 import { resolvePveSshForHost } from "../../ollama/lib/ollama-install.mjs";
 import { installMinecraftInQemu } from "hdc/package/minecraft-install.mjs";
+import {
+  ensureAppDumpSchedule,
+  minecraftAppDumpOnCalendar,
+  minecraftDumpCommands,
+  minecraftDumpPruneCommands,
+} from "hdc/package/app-dump-schedule.mjs";
 import { promptExistingGuestAction } from "../../ollama/lib/prompt-existing.mjs";
 import {
   applyQemuCloudInit,
@@ -374,6 +380,34 @@ async function deployOne(deployment, flags, log) {
 
     const exec = createConfigureExec("ssh", { user: sshUser, host: sshHost });
     installResult = await installMinecraftInQemu({ exec, log, install, minecraft });
+
+    const backup = minecraft.backup || { enabled: true, intervalHours: 6, retainDaily: 7 };
+    if (backup.enabled !== false && installResult?.ok !== false) {
+      errout.write(`[hdc] ${target} ${verb}: ensuring world dump timer on ${systemId} …\n`);
+      const appDump = ensureAppDumpSchedule({
+        exec,
+        log,
+        flags,
+        spec: {
+          systemId,
+          name: "minecraft",
+          dumpCommands: minecraftDumpCommands(minecraft.installDir),
+          pruneCommands: minecraftDumpPruneCommands(backup.retainDaily),
+          onCalendar: minecraftAppDumpOnCalendar(systemId, backup.intervalHours),
+          randomizedDelaySec: 300,
+          retainDays: backup.retainDaily,
+        },
+      });
+      installResult = { ...installResult, app_dump: appDump };
+      if (!appDump.ok) {
+        return {
+          ok: false,
+          system_id: systemId,
+          message: appDump.message || "app dump schedule failed",
+          install: installResult,
+        };
+      }
+    }
   } else {
     installResult = { ok: true, message: "skipped" };
     errout.write(`[hdc] ${target} ${verb}: install skipped for ${systemId}.\n`);
