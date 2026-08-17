@@ -78,6 +78,7 @@ export async function waitForCloneTaskAndEnableAgent(provisionResult, auth, vmid
       ...statusOpts,
       memoryMb: resourceOpts.memoryMb,
       cores: resourceOpts.cores,
+      cpu: resourceOpts.cpu,
       reboot: resourceOpts.reboot,
       log,
     });

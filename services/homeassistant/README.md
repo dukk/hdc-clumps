@@ -14,7 +14,7 @@ Deploy **Home Assistant OS** as a Proxmox QEMU VM with optional USB passthrough 
 | Verb | Purpose |
 |------|---------|
 | `deploy` | Import HAOS OVA qcow2, create VM, USB passthrough, start, wait for HTTP `:8123` |
-| `maintain` | Sync nginx-waf `trusted_proxies` when `public_url` is HTTPS; HTTP health probe; push **managed** UI automations; `--reapply-usb` to refresh USB mapping |
+| `maintain` | Strip leftover hdc `http:` YAML (HTTP lives in the HA UI); write marked `notify.apprise` when enabled; HTTP health probe; push **managed** UI automations; `--reapply-usb` to refresh USB mapping |
 | `query` | Config summary; `--live` for Proxmox guest + HTTP probe; `--import --yes` pulls integrations + UI automations/scripts/scenes into split sidecars |
 | `teardown` | Destroy QEMU guest (`--dry-run`, `--yes`) |
 
@@ -56,21 +56,26 @@ HAOS does not use Ubuntu cloud-init. After first boot, set the configured static
 
 ## nginx-waf / Cloudflare (public URL)
 
-When `homeassistant.public_url` is `https://…` and **nginx-waf** proxies to port `8123`, Home Assistant must trust the WAF nodes or proxied requests return **400 Bad Request** (not 502). nginx-waf sends `X-Forwarded-For` and `X-Forwarded-Proto`; add the WAF VM LAN IPs from inventory (`vm-nginx-waf-a`, `vm-nginx-waf-b`) to `configuration.yaml`:
+When `homeassistant.public_url` is `https://…` and **nginx-waf** proxies to port `8123`, Home Assistant must trust the WAF nodes or proxied requests return **400 Bad Request** (not 502). Latest HA moved HTTP (including `trusted_proxies`) to the UI.
 
-```yaml
-# hdc: reverse-proxy begin
-http:
-  use_x_forwarded_for: true
-  trusted_proxies:
-    - 192.0.2.40   # vm-nginx-waf-a
-    - 192.0.2.41   # vm-nginx-waf-b
-# hdc: reverse-proxy end
-```
-
-**Automation:** `deploy` and `maintain` (default) write **only** the `http:` / `trusted_proxies` block above to HAOS `configuration.yaml` via the Proxmox host when `public_url` starts with `https://`. WAF IPs resolve from inventory `vm-nginx-waf-a` / `vm-nginx-waf-b`, or set `homeassistant.trusted_proxies[]` in clump config. Skip with `--skip-reverse-proxy`.
+Set WAF LAN IPs (`vm-nginx-waf-a` / `vm-nginx-waf-b`, e.g. `192.0.2.40` / `192.0.2.41`) under **Settings → System → Network** (trusted proxies). hdc does **not** write `http:` / `trusted_proxies` to `configuration.yaml`. `deploy` / `maintain` **strip** any leftover `# hdc: reverse-proxy` block so the UI owns HTTP. `--skip-reverse-proxy` is a no-op.
 
 Do **not** put `homeassistant:` (external_url / internal_url / location) in `configuration.yaml` — that locks General settings in the UI. Set those under **Settings → System → Network** (URLs) and **Settings → System → General** (home location / timezone) instead.
+
+## Apprise notify
+
+hdc writes a marked YAML `notify:` platform (HA still requires YAML for this integration). Enable with `homeassistant.apprise` in clump config (`enabled`, `name`, `config_url`). Applied on `deploy` / `maintain` in the same VM stop as the HTTP strip:
+
+```yaml
+# hdc: apprise notify begin
+notify:
+  - name: apprise
+    platform: apprise
+    config: http://apprise-a.home.example.invalid:8000/get/ha
+# hdc: apprise notify end
+```
+
+If a non-hdc root `notify:` key already exists, hdc logs and skips the merge (does not corrupt YAML). Service is `notify.apprise`; `target` maps to Apprise tags on the `ha` key.
 
 Manual fallback: **Terminal & SSH** add-on, or edit `supervisor/homeassistant/configuration.yaml` on HAOS data partition 8 while the VM is stopped.
 

@@ -198,29 +198,30 @@ async function maintainOne(deployment, flags, cfg) {
     extra.usb = usbDevices.map((u) => u.id);
   }
 
-  if (flagGet(flags, "skip-reverse-proxy") === undefined) {
-    try {
-      const reverseProxy = await maybeApplyHaosReverseProxyConfig({
-        repoRoot: root,
-        deployment,
-        auth,
-        node: located.node,
-        sshUser: pveSsh.user,
-        sshHost: pveSsh.host,
-        dryRun: flagGet(flags, "dry-run") !== undefined,
-        log,
-      });
-      extra.reverse_proxy = reverseProxy;
-      if (reverseProxy.http && reverseProxy.http.ok === false) {
-        errout.write(
-          `[hdc] ${target} ${verb}: HTTP probe after reverse-proxy update failed — check HA logs.\n`,
-        );
-      }
-    } catch (e) {
-      const msg = String(/** @type {Error} */ (e).message || e);
-      errout.write(`[hdc] ${target} ${verb}: reverse-proxy config failed: ${msg}\n`);
-      return { ok: false, system_id: deployment.systemId, message: msg, ...extra };
+  if (flagGet(flags, "skip-reverse-proxy") !== undefined) {
+    log("--skip-reverse-proxy is a no-op (hdc no longer writes HA HTTP YAML)");
+  }
+  try {
+    const reverseProxy = await maybeApplyHaosReverseProxyConfig({
+      repoRoot: root,
+      deployment,
+      auth,
+      node: located.node,
+      sshUser: pveSsh.user,
+      sshHost: pveSsh.host,
+      dryRun: flagGet(flags, "dry-run") !== undefined,
+      log,
+    });
+    extra.reverse_proxy = reverseProxy;
+    if (reverseProxy.http && reverseProxy.http.ok === false) {
+      errout.write(
+        `[hdc] ${target} ${verb}: HTTP probe after HAOS YAML update failed — check HA logs.\n`,
+      );
     }
+  } catch (e) {
+    const msg = String(/** @type {Error} */ (e).message || e);
+    errout.write(`[hdc] ${target} ${verb}: HAOS configuration.yaml update failed: ${msg}\n`);
+    return { ok: false, system_id: deployment.systemId, message: msg, ...extra };
   }
 
   if (flagGet(flags, "skip-http") === undefined) {

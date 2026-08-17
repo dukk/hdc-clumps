@@ -117,6 +117,8 @@ export function mergeMinecraftSettings(cfg, deployment) {
     silkSpawners: global.silk_spawners === true,
     vanishNoPacket: global.vanish_no_packet === true,
     worldeditSui: global.worldedit_sui === true,
+    spark: global.spark === true,
+    clamavProfile: parseClamavProfile(global.clamav_profile),
     serverProperties: parseServerProperties(global.server_properties),
     whitelist: parseWhitelist(global.whitelist),
     ops: parseOps(global.ops),
@@ -152,6 +154,16 @@ function parseStopWarning(raw) {
     seconds,
     message,
   };
+}
+
+/**
+ * @param {unknown} raw
+ * @returns {"lean" | "standard" | "full" | undefined}
+ */
+function parseClamavProfile(raw) {
+  const s = typeof raw === "string" ? raw.trim().toLowerCase() : "";
+  if (s === "lean" || s === "standard" || s === "full") return s;
+  return undefined;
 }
 
 /**
@@ -386,6 +398,8 @@ export function listMinecraftDeploymentSummaries(cfg) {
       silk_spawners: mc.silkSpawners,
       vanish_no_packet: mc.vanishNoPacket,
       worldedit_sui: mc.worldeditSui,
+      spark: mc.spark,
+      clamav_profile: mc.clamavProfile ?? null,
       whitelist_enabled: mc.whitelist?.enabled ?? null,
       ops_count: Array.isArray(mc.ops) ? mc.ops.length : null,
     };

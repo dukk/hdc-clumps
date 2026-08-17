@@ -2,7 +2,7 @@
  * Maintain Minecraft: re-apply Paper/Geyser install, guest Linux baseline.
  *
  * Usage: hdc run service minecraft maintain -- [--instance a | --system-id vm-minecraft-a]
- *        [--skip-upgrade] [--dry-run] [--skip-clamav] [--skip-admin-user]
+ *        [--skip-upgrade] [--dry-run] [--skip-clamav] [--clamav-profile lean|standard|full]
  *        [--skip-resources] [--skip-disk-resize] [--skip-lists-import]
  *        [--skip-plugin-configs] [--skip-app-dump] [--no-reboot] [--reboot]
  */
@@ -125,6 +125,15 @@ async function maintainOne(deployment, flags, vaultAccess) {
 
   errout.write(`[hdc] ${target} ${verb}: re-applying Paper install on ${systemId} …\n`);
   try {
+    const say = exec.run(
+      "/usr/local/sbin/hdc-minecraft-rcon say Performance maintenance: brief restart shortly...",
+      { capture: true },
+    );
+    if (say.status !== 0) {
+      errout.write(
+        `[hdc] ${target} ${verb}: player warn skipped (${(say.stderr || say.stdout || "rcon failed").trim()})\n`,
+      );
+    }
     const installResult = await installMinecraftInQemu({
       exec,
       log,
@@ -141,40 +150,19 @@ async function maintainOne(deployment, flags, vaultAccess) {
     };
   }
 
-  const skipPluginConfigs =
-    flagGet(flags, "skip-plugin-configs", "skip_plugin_configs") !== undefined;
-  const dryRun = flagGet(flags, "dry-run", "dry_run") !== undefined;
-  if (skipPluginConfigs) {
-    result.plugin_configs = { ok: true, skipped: true, message: "--skip-plugin-configs" };
-  } else {
-    errout.write(`[hdc] ${target} ${verb}: applying plugin-configs on ${systemId} …\n`);
-    try {
-      result.plugin_configs = applyMinecraftPluginConfigsToGuest({
-        resolved: ensurePackageConfig().resolved,
-        cfg: readCfg(),
-        deployment,
-        log: (line) => errout.write(`[hdc] ${target} ${verb}: ${line}\n`),
-        dryRun,
-      });
-      if (result.plugin_configs.ok === false) {
-        return {
-          ...result,
-          ok: false,
-          message: result.plugin_configs.message || "plugin-configs apply failed",
-        };
-      }
-    } catch (e) {
-      const msg = String(/** @type {Error} */ (e).message || e);
-      errout.write(`[hdc] ${target} ${verb}: ${systemId} plugin-configs failed: ${msg}\n`);
-      return { ...result, ok: false, message: msg, plugin_configs: { ok: false, message: msg } };
-    }
-  }
-
   errout.write(`[hdc] ${target} ${verb}: guest baseline on ${systemId} …\n`);
+  /** @type {Record<string, string>} */
+  const baselineFlags = { ...flags };
+  if (minecraft.clamavProfile) {
+    baselineFlags["clamav-profile"] = minecraft.clamavProfile;
+    errout.write(
+      `[hdc] ${target} ${verb}: ClamAV profile override ${minecraft.clamavProfile} from config\n`,
+    );
+  }
   const baseline = await ensureGuestLinuxBaseline({
     exec,
     log,
-    flags,
+    flags: baselineFlags,
     vaultAccess,
     deployment: {
       systemId,
@@ -213,6 +201,36 @@ async function maintainOne(deployment, flags, vaultAccess) {
     result.app_dump = appDump;
     if (!appDump.ok) {
       return { ...result, ok: false, message: appDump.message || "app dump schedule failed" };
+    }
+  }
+
+  // After QEMU CPU/RAM stop-start: BlueMap rewrites plugin.conf on first boot.
+  const skipPluginConfigs =
+    flagGet(flags, "skip-plugin-configs", "skip_plugin_configs") !== undefined;
+  const dryRun = flagGet(flags, "dry-run", "dry_run") !== undefined;
+  if (skipPluginConfigs) {
+    result.plugin_configs = { ok: true, skipped: true, message: "--skip-plugin-configs" };
+  } else {
+    errout.write(`[hdc] ${target} ${verb}: applying plugin-configs on ${systemId} …\n`);
+    try {
+      result.plugin_configs = applyMinecraftPluginConfigsToGuest({
+        resolved: ensurePackageConfig().resolved,
+        cfg: readCfg(),
+        deployment,
+        log: (line) => errout.write(`[hdc] ${target} ${verb}: ${line}\n`),
+        dryRun,
+      });
+      if (result.plugin_configs.ok === false) {
+        return {
+          ...result,
+          ok: false,
+          message: result.plugin_configs.message || "plugin-configs apply failed",
+        };
+      }
+    } catch (e) {
+      const msg = String(/** @type {Error} */ (e).message || e);
+      errout.write(`[hdc] ${target} ${verb}: ${systemId} plugin-configs failed: ${msg}\n`);
+      return { ...result, ok: false, message: msg, plugin_configs: { ok: false, message: msg } };
     }
   }
 

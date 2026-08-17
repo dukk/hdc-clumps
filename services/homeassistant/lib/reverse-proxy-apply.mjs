@@ -1,8 +1,8 @@
 import { applyHaosReverseProxyConfig } from "./haos-reverse-proxy-config.mjs";
-import { resolveNginxWafTrustedProxies } from "./resolve-nginx-waf-proxies.mjs";
 
 /**
  * @param {string} publicUrl
+ * @deprecated HTTP trusted_proxies is UI-owned; kept for tests/compat.
  */
 export function publicUrlNeedsReverseProxy(publicUrl) {
   const url = String(publicUrl ?? "").trim();
@@ -10,6 +10,9 @@ export function publicUrlNeedsReverseProxy(publicUrl) {
 }
 
 /**
+ * Strip leftover hdc http/trusted_proxies YAML and optionally write notify.apprise.
+ * `--skip-reverse-proxy` is a no-op (HTTP YAML is no longer written).
+ *
  * @param {object} opts
  * @param {string} opts.repoRoot
  * @param {ReturnType<import("./deployments.mjs").expandDeployment>} deployment
@@ -22,19 +25,17 @@ export function publicUrlNeedsReverseProxy(publicUrl) {
  */
 export async function maybeApplyHaosReverseProxyConfig(opts) {
   const { deployment, log = () => {} } = opts;
-  const publicUrl = deployment.homeassistant.publicUrl;
-  if (!publicUrlNeedsReverseProxy(publicUrl)) {
-    return { skipped: true, reason: "no_https_public_url" };
-  }
+  const apprise = deployment.homeassistant?.apprise;
+  const appriseNotify =
+    apprise && apprise.enabled !== false && typeof apprise.configUrl === "string" && apprise.configUrl.trim()
+      ? { name: apprise.name || "apprise", configUrl: apprise.configUrl.trim() }
+      : null;
 
-  const trustedProxies = resolveNginxWafTrustedProxies(opts.repoRoot, {
-    overrideIps: deployment.homeassistant.trustedProxies,
-  });
-  if (!trustedProxies.length) {
-    log(
-      "no nginx-waf trusted_proxies resolved (inventory vm-nginx-waf-* or homeassistant.trusted_proxies) — skipping reverse-proxy config",
-    );
-    return { skipped: true, reason: "no_trusted_proxies" };
+  log(
+    "HA HTTP/trusted_proxies YAML is no longer written (set trusted proxies in the HA UI). hdc strips leftover reverse-proxy markers.",
+  );
+  if (appriseNotify) {
+    log(`will sync Apprise notify platform (${appriseNotify.configUrl})`);
   }
 
   const ipHost = deployment.proxmox.qemu.ip.split("/")[0];
@@ -42,7 +43,7 @@ export async function maybeApplyHaosReverseProxyConfig(opts) {
   const authorization = opts.auth.authorization;
   const rejectUnauthorized = opts.auth.rejectUnauthorized;
   if (!apiBase || !authorization) {
-    throw new Error("Proxmox API auth missing for reverse-proxy config");
+    throw new Error("Proxmox API auth missing for HAOS configuration.yaml update");
   }
 
   return applyHaosReverseProxyConfig({
@@ -55,7 +56,7 @@ export async function maybeApplyHaosReverseProxyConfig(opts) {
     sshUser: opts.sshUser,
     sshHost: opts.sshHost,
     ipHost,
-    trustedProxies,
+    appriseNotify,
     dryRun: opts.dryRun,
     log,
   });

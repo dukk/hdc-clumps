@@ -134,6 +134,25 @@ export function expandDeployment(d, normalized) {
     ? ha.trusted_proxies.map((v) => String(v).trim()).filter(Boolean)
     : [];
 
+  const rootHa = isObject(normalized.homeassistant) ? normalized.homeassistant : {};
+  const appriseRaw = isObject(ha.apprise)
+    ? ha.apprise
+    : isObject(rootHa.apprise)
+      ? rootHa.apprise
+      : null;
+  let apprise = null;
+  if (appriseRaw && appriseRaw.enabled !== false) {
+    const name =
+      typeof appriseRaw.name === "string" && appriseRaw.name.trim()
+        ? appriseRaw.name.trim()
+        : "apprise";
+    const configUrl =
+      typeof appriseRaw.config_url === "string" ? appriseRaw.config_url.trim() : "";
+    if (configUrl) {
+      apprise = { enabled: true, name, configUrl };
+    }
+  }
+
   const gateway =
     typeof net.gateway === "string" && net.gateway.trim()
       ? net.gateway.trim()
@@ -153,7 +172,7 @@ export function expandDeployment(d, normalized) {
     systemId,
     mode: "proxmox-qemu-haos",
     hostname,
-    homeassistant: { release, publicUrl, trustedProxies },
+    homeassistant: { release, publicUrl, trustedProxies, apprise },
     proxmox: {
       hostId: String(px.host_id).trim(),
       qemu: {

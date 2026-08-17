@@ -10,6 +10,8 @@ import { waitForHomeAssistantHttp } from "./query-status.mjs";
 
 export const HDC_REVERSE_PROXY_BEGIN = "# hdc: reverse-proxy begin";
 export const HDC_REVERSE_PROXY_END = "# hdc: reverse-proxy end";
+export const HDC_APPRISE_NOTIFY_BEGIN = "# hdc: apprise notify begin";
+export const HDC_APPRISE_NOTIFY_END = "# hdc: apprise notify end";
 export const HAOS_CONFIG_REL_PATH = "supervisor/homeassistant/configuration.yaml";
 export const HAOS_DATA_PARTITION = 8;
 
@@ -128,6 +130,81 @@ export function reverseProxyConfigurationInSync(content, desired) {
 }
 
 /**
+ * @param {string} content
+ */
+export function stripManagedAppriseNotifyBlocks(content) {
+  let text = String(content ?? "");
+  const begin = text.indexOf(HDC_APPRISE_NOTIFY_BEGIN);
+  const end = text.indexOf(HDC_APPRISE_NOTIFY_END);
+  if (begin !== -1 && end !== -1 && end > begin) {
+    text = `${text.slice(0, begin)}${text.slice(end + HDC_APPRISE_NOTIFY_END.length)}`;
+  }
+  return text.replace(/\n{3,}/g, "\n\n").trimEnd();
+}
+
+/**
+ * True when configuration.yaml has a root-level notify: key outside hdc markers.
+ * @param {string} content
+ */
+export function hasForeignNotifyKey(content) {
+  const stripped = stripManagedAppriseNotifyBlocks(content);
+  return /(^|\n)notify:/.test(stripped);
+}
+
+/**
+ * @param {object} opts
+ * @param {string} opts.name
+ * @param {string} opts.configUrl
+ */
+export function buildAppriseNotifyConfigurationBlock(opts) {
+  const name = typeof opts.name === "string" && opts.name.trim() ? opts.name.trim() : "apprise";
+  const configUrl = typeof opts.configUrl === "string" ? opts.configUrl.trim() : "";
+  if (!configUrl) throw new Error("apprise notify configUrl is required");
+  return [
+    HDC_APPRISE_NOTIFY_BEGIN,
+    "notify:",
+    `  - name: ${name}`,
+    "    platform: apprise",
+    `    config: ${configUrl}`,
+    HDC_APPRISE_NOTIFY_END,
+    "",
+  ].join("\n");
+}
+
+/**
+ * Desired HAOS YAML: no hdc http/trusted_proxies block (HTTP lives in the UI),
+ * plus optional marked notify.apprise.
+ *
+ * @param {string} content
+ * @param {{ appriseNotify?: { name: string; configUrl: string } | null }} [opts]
+ */
+export function mergeHaosManagedYaml(content, opts = {}) {
+  let text = stripManagedReverseProxyBlocks(content);
+  text = stripManagedAppriseNotifyBlocks(text);
+  const apprise = opts.appriseNotify;
+  if (apprise && apprise.configUrl) {
+    if (hasForeignNotifyKey(text)) {
+      return { yaml: `${text.trimEnd()}\n`, skippedApprise: true };
+    }
+    const block = buildAppriseNotifyConfigurationBlock(apprise).trimEnd();
+    const base = text.trimEnd();
+    text = base ? `${base}\n\n${block}\n` : `${block}\n`;
+    return { yaml: text, skippedApprise: false };
+  }
+  return { yaml: `${text.trimEnd()}\n`, skippedApprise: false };
+}
+
+/**
+ * @param {string} content
+ * @param {{ appriseNotify?: { name: string; configUrl: string } | null }} [opts]
+ */
+export function haosManagedYamlInSync(content, opts = {}) {
+  const { yaml } = mergeHaosManagedYaml(content, opts);
+  const norm = (s) => `${String(s ?? "").trimEnd()}\n`;
+  return norm(content) === norm(yaml);
+}
+
+/**
  * @param {object} opts
  * @param {string} opts.apiBase
  * @param {string} opts.node
@@ -241,7 +318,8 @@ function runHaosConfigDiskRemote(opts) {
 }
 
 /**
- * Apply or refresh nginx-waf reverse-proxy settings in HAOS configuration.yaml.
+ * Strip leftover hdc http/trusted_proxies YAML (HTTP lives in the HA UI) and
+ * optionally write a marked notify.apprise block.
  *
  * @param {object} opts
  * @param {string} opts.apiBase
@@ -253,15 +331,23 @@ function runHaosConfigDiskRemote(opts) {
  * @param {string} opts.sshUser
  * @param {string} opts.sshHost
  * @param {string} opts.ipHost Guest LAN IP without prefix
- * @param {string[]} opts.trustedProxies
+ * @param {{ name: string; configUrl: string } | null} [opts.appriseNotify]
  * @param {boolean} [opts.dryRun]
  * @param {(line: string) => void} [opts.log]
  */
 export async function applyHaosReverseProxyConfig(opts) {
   const log = opts.log ?? (() => {});
-  const desired = {
-    trustedProxies: opts.trustedProxies,
-  };
+  const appriseNotify =
+    opts.appriseNotify && typeof opts.appriseNotify.configUrl === "string" && opts.appriseNotify.configUrl.trim()
+      ? {
+          name:
+            typeof opts.appriseNotify.name === "string" && opts.appriseNotify.name.trim()
+              ? opts.appriseNotify.name.trim()
+              : "apprise",
+          configUrl: opts.appriseNotify.configUrl.trim(),
+        }
+      : null;
+  const mergeOpts = { appriseNotify };
 
   const config = await fetchQemuConfig({
     apiBase: opts.apiBase,
@@ -275,25 +361,18 @@ export async function applyHaosReverseProxyConfig(opts) {
 
   if (opts.dryRun) {
     log(
-      `dry-run: would sync reverse-proxy configuration on ${diskDev} (brief VM stop required when not dry-run)`,
+      `dry-run: would strip hdc http/trusted_proxies YAML on ${diskDev} and sync Apprise notify if enabled (brief VM stop when not dry-run)`,
     );
     return {
       changed: false,
       dry_run: true,
-      trusted_proxies: desired.trustedProxies,
+      stripped_http: true,
+      apprise_notify: appriseNotify,
       disk_dev: diskDev,
     };
   }
 
-  const wasRunning = await qemuGuestIsRunning({
-    apiBase: opts.apiBase,
-    node: opts.node,
-    vmid: opts.vmid,
-    authorization: opts.authorization,
-    rejectUnauthorized: opts.rejectUnauthorized,
-  });
-
-  log(`stopping VM ${opts.vmid} to update reverse-proxy configuration …`);
+  log(`stopping VM ${opts.vmid} to update HAOS configuration.yaml …`);
   await forceStopHaosQemuGuest({
     apiBase: opts.apiBase,
     authorization: opts.authorization,
@@ -327,9 +406,12 @@ export async function applyHaosReverseProxyConfig(opts) {
   }
 
   const current = read.stdout;
-  const block = buildReverseProxyConfigurationBlock(desired);
-  if (reverseProxyConfigurationInSync(current, desired)) {
-    log("reverse-proxy configuration already in sync — skipping write");
+  const { yaml: merged, skippedApprise } = mergeHaosManagedYaml(current, mergeOpts);
+  if (skippedApprise) {
+    log("skipped Apprise notify — configuration.yaml already has a non-hdc notify: key");
+  }
+  if (haosManagedYamlInSync(current, mergeOpts)) {
+    log("HAOS configuration.yaml already in sync — skipping write");
     await startQemuGuest({
       apiBase: opts.apiBase,
       authorization: opts.authorization,
@@ -340,12 +422,12 @@ export async function applyHaosReverseProxyConfig(opts) {
     });
     return {
       changed: false,
-      trusted_proxies: desired.trustedProxies,
+      stripped_http: !current.includes(HDC_REVERSE_PROXY_BEGIN),
+      skipped_apprise: skippedApprise,
+      apprise_notify: appriseNotify,
       disk_dev: diskDev,
     };
   }
-
-  const merged = mergeHomeAssistantConfigurationYaml(current, block);
 
   log(`writing configuration.yaml on ${diskDev} (partition ${HAOS_DATA_PARTITION}) …`);
   const write = runHaosConfigDiskRemote({
@@ -381,7 +463,9 @@ export async function applyHaosReverseProxyConfig(opts) {
 
   return {
     changed: true,
-    trusted_proxies: desired.trustedProxies,
+    stripped_http: true,
+    skipped_apprise: skippedApprise,
+    apprise_notify: appriseNotify,
     disk_dev: diskDev,
     http,
   };

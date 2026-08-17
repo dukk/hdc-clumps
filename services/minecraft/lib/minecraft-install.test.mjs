@@ -52,6 +52,7 @@ const mc = {
   silkSpawners: false,
   vanishNoPacket: false,
   worldeditSui: false,
+  spark: false,
   serverProperties: {},
   whitelist: null,
   ops: null,
@@ -374,6 +375,7 @@ describe("minecraft-install", () => {
     expect(off.chunky).toBe(false);
     expect(off.luckperms).toBe(false);
     expect(off.vanishNoPacket).toBe(false);
+    expect(off.spark).toBe(false);
     const on = mergeMinecraftSettings(
       {
         minecraft: {
@@ -388,6 +390,8 @@ describe("minecraft-install", () => {
           silk_spawners: true,
           vanish_no_packet: true,
           worldedit_sui: true,
+          spark: true,
+          clamav_profile: "lean",
         },
       },
       {},
@@ -403,6 +407,23 @@ describe("minecraft-install", () => {
     expect(on.silkSpawners).toBe(true);
     expect(on.vanishNoPacket).toBe(true);
     expect(on.worldeditSui).toBe(true);
+    expect(on.spark).toBe(true);
+    expect(on.clamavProfile).toBe("lean");
+  });
+
+  it("does not download a spark plugin jar (Paper 1.21+ bundles spark)", () => {
+    const script = buildInstallShellScript({
+      install: { linux_user: "minecraft" },
+      minecraft: { ...mc, spark: true },
+      paper: {
+        version: "1.21.8",
+        build: 10,
+        name: "paper-1.21.8-10.jar",
+        url: "https://example.invalid/paper.jar",
+      },
+      pluginJars,
+    });
+    expect(script).not.toContain("spark.jar");
   });
 
   it("install script downloads Paper, plugins, and patches BlueMap", () => {

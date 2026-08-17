@@ -272,33 +272,29 @@ async function deployOne(deployment, flags, log) {
     }
   }
 
-  if (flagGet(flags, "skip-reverse-proxy") === undefined && deployment.homeassistant.publicUrl) {
-    try {
-      const reverseProxy = await maybeApplyHaosReverseProxyConfig({
-        repoRoot: root,
-        deployment,
-        auth,
-        node,
-        sshUser: pveSsh.user,
-        sshHost: pveSsh.host,
-        log: logLine,
-      });
-      extra.reverse_proxy = reverseProxy;
-      if (reverseProxy.skipped && reverseProxy.reason === "no_trusted_proxies") {
-        errout.write(
-          `[hdc] ${target} ${verb}: skipped reverse-proxy config — add vm-nginx-waf-* inventory IPs or homeassistant.trusted_proxies in config.\n`,
-        );
-      }
-    } catch (e) {
-      const msg = String(/** @type {Error} */ (e).message || e);
-      errout.write(`[hdc] ${target} ${verb}: reverse-proxy config failed: ${msg}\n`);
-      return {
-        ok: false,
-        system_id: deployment.systemId,
-        message: msg,
-        ...extra,
-      };
-    }
+  if (flagGet(flags, "skip-reverse-proxy") !== undefined) {
+    logLine("--skip-reverse-proxy is a no-op (hdc no longer writes HA HTTP YAML)");
+  }
+  try {
+    const reverseProxy = await maybeApplyHaosReverseProxyConfig({
+      repoRoot: root,
+      deployment,
+      auth,
+      node,
+      sshUser: pveSsh.user,
+      sshHost: pveSsh.host,
+      log: logLine,
+    });
+    extra.reverse_proxy = reverseProxy;
+  } catch (e) {
+    const msg = String(/** @type {Error} */ (e).message || e);
+    errout.write(`[hdc] ${target} ${verb}: HAOS configuration.yaml update failed: ${msg}\n`);
+    return {
+      ok: false,
+      system_id: deployment.systemId,
+      message: msg,
+      ...extra,
+    };
   }
 
   return {

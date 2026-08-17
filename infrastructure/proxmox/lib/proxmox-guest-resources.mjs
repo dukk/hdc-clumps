@@ -6,6 +6,8 @@ import { pveData, pveFormBody, pveJsonRequest, waitForPveTask } from "./pve-http
 import { flagGet } from "hdc/package/parse-argv-flags.mjs";
 import { guestBootOptsFromBlock } from "./proxmox-guest-startup.mjs";
 
+const QEMU_CPU_RE = /^[A-Za-z0-9][A-Za-z0-9._+-]*$/;
+
 /**
  * @typedef {object} GuestResourceSizing
  * @property {number} memoryMb
@@ -20,6 +22,7 @@ import { guestBootOptsFromBlock } from "./proxmox-guest-startup.mjs";
  * @typedef {object} GuestResourceOpts
  * @property {number} memoryMb
  * @property {number} cores
+ * @property {string} [cpu] QEMU CPU type (e.g. host). Applied on clone/maintain when set.
  * @property {boolean} [reboot]
  * @property {boolean} [rebootOnChange]
  * @property {GuestBootOpts} [boot]
@@ -46,6 +49,30 @@ export function parseGuestResourceSizing(source) {
   const cores = asPositiveInt(o.cores);
   if (memoryMb === undefined || cores === undefined) return null;
   return { memoryMb, cores };
+}
+
+/**
+ * Optional QEMU CPU type from a proxmox.qemu block (`host`, `kvm64`, `x86-64-v2`, …).
+ * @param {unknown} source
+ * @returns {string | undefined}
+ */
+export function parseGuestCpuType(source) {
+  if (!source || typeof source !== "object" || Array.isArray(source)) return undefined;
+  const raw = /** @type {Record<string, unknown>} */ (source).cpu;
+  if (typeof raw !== "string") return undefined;
+  const cpu = raw.trim();
+  if (!cpu || !QEMU_CPU_RE.test(cpu)) return undefined;
+  return cpu;
+}
+
+/**
+ * @param {unknown} raw live Proxmox `cpu` field
+ * @returns {string}
+ */
+export function normalizeQemuCpuType(raw) {
+  const s = typeof raw === "string" ? raw.trim().toLowerCase() : "";
+  if (!s || s === "kvm64") return "kvm64";
+  return s;
 }
 
 /**
@@ -85,11 +112,13 @@ export function guestResourceOptsFromBlock(block, flags, proxmoxCfg, clumpId) {
   const sizing = parseGuestResourceSizing(block);
   if (!sizing) return undefined;
   const boot = guestBootOptsFromBlock(block, proxmoxCfg, clumpId);
+  const cpu = parseGuestCpuType(block);
   return {
     memoryMb: sizing.memoryMb,
     cores: sizing.cores,
     reboot: rebootRequestedFromFlags(flags),
-    boot: boot?.startup ? boot : undefined,
+    ...(boot?.startup ? { boot } : {}),
+    ...(cpu ? { cpu } : {}),
   };
 }
 
@@ -237,6 +266,71 @@ export async function rebootLxcGuest(opts) {
 }
 
 /**
+ * POST .../status/stop and wait for task (QEMU). CPU type changes need a QEMU
+ * process restart; ACPI reboot is not enough.
+ * @param {object} opts
+ */
+async function stopQemuGuest(opts) {
+  const { apiBase, authorization, rejectUnauthorized, node, vmid } = opts;
+  const log = opts.log ?? ((line) => errout.write(`${line}\n`));
+  const path = `/nodes/${encodeURIComponent(node)}/qemu/${encodeURIComponent(String(vmid))}/status/stop`;
+  log(`Stopping QEMU ${vmid} on ${node} …`);
+  const body = await pveJsonRequest(
+    "POST",
+    apiBase,
+    path,
+    authorization,
+    rejectUnauthorized,
+    pveFormBody({}),
+  );
+  const upid = extractPveUpid(pveData(body));
+  if (upid) {
+    await waitForPveTask({
+      apiBase,
+      node,
+      upid,
+      authorization,
+      rejectUnauthorized,
+      timeoutMs: 300_000,
+      log,
+    });
+  }
+  log(`QEMU ${vmid} stop finished on ${node}.`);
+}
+
+/**
+ * POST .../status/start and wait for task (QEMU).
+ * @param {object} opts
+ */
+async function startQemuGuest(opts) {
+  const { apiBase, authorization, rejectUnauthorized, node, vmid } = opts;
+  const log = opts.log ?? ((line) => errout.write(`${line}\n`));
+  const path = `/nodes/${encodeURIComponent(node)}/qemu/${encodeURIComponent(String(vmid))}/status/start`;
+  log(`Starting QEMU ${vmid} on ${node} …`);
+  const body = await pveJsonRequest(
+    "POST",
+    apiBase,
+    path,
+    authorization,
+    rejectUnauthorized,
+    pveFormBody({}),
+  );
+  const upid = extractPveUpid(pveData(body));
+  if (upid) {
+    await waitForPveTask({
+      apiBase,
+      node,
+      upid,
+      authorization,
+      rejectUnauthorized,
+      timeoutMs: 300_000,
+      log,
+    });
+  }
+  log(`QEMU ${vmid} start finished on ${node}.`);
+}
+
+/**
  * @param {object} opts
  * @param {string} opts.apiBase
  * @param {string} opts.authorization
@@ -245,6 +339,7 @@ export async function rebootLxcGuest(opts) {
  * @param {number} opts.vmid
  * @param {number} opts.memoryMb
  * @param {number} opts.cores
+ * @param {string} [opts.cpu]
  * @param {boolean} [opts.reboot]
  * @param {boolean} [opts.rebootOnChange]
  * @param {(line: string) => void} [opts.log]
@@ -253,24 +348,41 @@ export async function applyQemuGuestResources(opts) {
   const { apiBase, authorization, rejectUnauthorized, node, vmid, memoryMb, cores } = opts;
   const log = opts.log ?? ((line) => errout.write(`${line}\n`));
   const statusOpts = { apiBase, authorization, rejectUnauthorized, node, vmid };
+  const desiredCpu = typeof opts.cpu === "string" && opts.cpu.trim() ? opts.cpu.trim() : undefined;
 
   const beforeCfg = await getQemuConfig(statusOpts);
   const previous = readConfigMemoryCores(beforeCfg);
-  const needsChange = previous.memory !== memoryMb || previous.cores !== cores;
+  const previousCpu = normalizeQemuCpuType(beforeCfg.cpu);
+  const cpuChanged = Boolean(desiredCpu) && previousCpu !== normalizeQemuCpuType(desiredCpu);
+  const needsChange = previous.memory !== memoryMb || previous.cores !== cores || cpuChanged;
+
+  const applied = {
+    memory: memoryMb,
+    cores,
+    ...(desiredCpu ? { cpu: desiredCpu } : {}),
+  };
+  const previousOut = {
+    memory: previous.memory,
+    cores: previous.cores,
+    cpu: previousCpu,
+  };
 
   if (!needsChange) {
-    log(`QEMU ${vmid}: memory=${memoryMb} cores=${cores} already match config — skipping.`);
+    log(
+      `QEMU ${vmid}: memory=${memoryMb} cores=${cores}${desiredCpu ? ` cpu=${desiredCpu}` : ""} already match config — skipping.`,
+    );
     return {
       ok: true,
       changed: false,
-      previous: { memory: previous.memory, cores: previous.cores },
-      applied: { memory: memoryMb, cores },
+      previous: previousOut,
+      applied,
     };
   }
 
   const configPath = `/nodes/${encodeURIComponent(node)}/qemu/${encodeURIComponent(String(vmid))}/config`;
+  const putBody = { memory: memoryMb, cores, ...(desiredCpu ? { cpu: desiredCpu } : {}) };
   log(
-    `QEMU ${vmid}: setting memory=${memoryMb} cores=${cores} (was memory=${previous.memory ?? "?"} cores=${previous.cores ?? "?"}) …`,
+    `QEMU ${vmid}: setting memory=${memoryMb} cores=${cores}${desiredCpu ? ` cpu=${desiredCpu}` : ""} (was memory=${previous.memory ?? "?"} cores=${previous.cores ?? "?"}${desiredCpu ? ` cpu=${previousCpu}` : ""}) …`,
   );
   await pveJsonRequest(
     "PUT",
@@ -278,14 +390,22 @@ export async function applyQemuGuestResources(opts) {
     configPath,
     authorization,
     rejectUnauthorized,
-    pveFormBody({ memory: memoryMb, cores }),
+    pveFormBody(putBody),
   );
 
   const status = await getQemuRuntimeStatus(statusOpts);
-  const shouldReboot = Boolean(opts.reboot || opts.rebootOnChange);
-  if (shouldReboot && status === "running") {
+  const shouldRestart = Boolean(opts.reboot || opts.rebootOnChange);
+  if (cpuChanged && status === "running") {
+    if (shouldRestart) {
+      log(`QEMU ${vmid}: CPU type changed — stop/start required (ACPI reboot keeps kvm64).`);
+      await stopQemuGuest({ ...statusOpts, log });
+      await startQemuGuest({ ...statusOpts, log });
+    } else {
+      log(`QEMU ${vmid}: CPU type written; QEMU restart skipped (--no-reboot). New CPU applies on next start.`);
+    }
+  } else if (shouldRestart && status === "running") {
     await rebootQemuGuest({ ...statusOpts, log });
-  } else if (shouldReboot && status !== "running") {
+  } else if (shouldRestart && status !== "running") {
     log(`QEMU ${vmid}: reboot skipped (guest status: ${status || "stopped"}).`);
   } else if (status === "running") {
     log(`QEMU ${vmid}: running — guest OS may need a reboot for RAM changes to take effect.`);
@@ -294,8 +414,8 @@ export async function applyQemuGuestResources(opts) {
   return {
     ok: true,
     changed: true,
-    previous: { memory: previous.memory, cores: previous.cores },
-    applied: { memory: memoryMb, cores },
+    previous: previousOut,
+    applied,
   };
 }
 

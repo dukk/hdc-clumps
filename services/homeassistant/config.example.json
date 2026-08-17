@@ -5,6 +5,11 @@
     "public_url": "https://ha.example.invalid",
     "api": {
       "token_vault_key": "HDC_HOMEASSISTANT_TOKEN"
+    },
+    "apprise": {
+      "enabled": true,
+      "name": "apprise",
+      "config_url": "http://apprise-a.home.example.invalid:8000/get/ha"
     }
   },
   "automations": [

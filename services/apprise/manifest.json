@@ -1,0 +1,38 @@
+{
+  "id": "apprise",
+  "title": "Apprise notification API",
+  "env_required": [],
+  "inventory_docs": [
+    "operations/inventory/systems/apprise-a.json",
+    "operations/inventory/services/apprise.json"
+  ],
+  "operation_report": {
+    "next_steps": [
+      "Open https://apprise.hdc.dukk.org (or http://<ct-ip>:8000) and confirm GET /status returns OK.",
+      "Set access.nodes[0].ip on operations/inventory/systems/apprise-a.json from query --live upstream_url.",
+      "Stateful key ha is seeded on maintain (mailto via postfix-relay). Add more URLs in the Apprise UI as needed.",
+      "Home Assistant notify.apprise uses http://apprise-a.hdc.dukk.org:8000/get/ha — run homeassistant maintain after the guest is up."
+    ]
+  },
+  "verbs": {
+    "deploy": {
+      "script": "run.mjs"
+    },
+    "maintain": {
+      "script": "run.mjs"
+    },
+    "query": {
+      "script": "run.mjs"
+    },
+    "health": {
+      "script": "run.mjs"
+    },
+    "teardown": {
+      "script": "run.mjs"
+    }
+  },
+  "health": {
+    "path": "/status",
+    "port": 8000
+  }
+}

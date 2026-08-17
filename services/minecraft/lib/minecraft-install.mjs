@@ -429,6 +429,13 @@ export async function resolvePluginJars(mc) {
       url: await resolveHangarPluginUrl("kennytv", "WorldEditSUI"),
     });
   }
+  // Paper 1.21+ bundles spark (no bukkit jar on Modrinth). minecraft.spark is
+  // a query/docs flag; do not download a Fabric/Forge jar into plugins/.
+  if (mc.spark) {
+    errout.write(
+      "[hdc] minecraft install: spark=true — using Paper-bundled profiler (no plugin jar)\n",
+    );
+  }
   return jars;
 }
 
@@ -1154,6 +1161,8 @@ export async function installMinecraftInQemu(opts) {
     silk_spawners: minecraft.silkSpawners,
     vanish_no_packet: minecraft.vanishNoPacket,
     worldedit_sui: minecraft.worldeditSui,
+    spark: minecraft.spark,
+    spark_bundled: minecraft.spark === true,
     plugins_ensured: pluginJars.map((j) => j.dest),
     skipped_jar_download: skipUpgrade,
     message: skipUpgrade ? "config/unit re-applied; missing plugins ensured" : "installed",

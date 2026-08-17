@@ -23,6 +23,7 @@ import { lxcTemplateStorageFromConfig } from "./proxmox-provision-config.mjs";
 import { fetchPveStorageList } from "./proxmox-storage-maintain.mjs";
 import { pveFormBody, pveJsonRequest, pveDataArray } from "./pve-http.mjs";
 import { notificationsMaintainEnabledFromConfig } from "./proxmox-notifications-maintain.mjs";
+import { guestNameMatchesSystemId } from "./proxmox-guest-rootdisk-maintain.mjs";
 import {
   backupFrequencyTagForProfile,
   ensureGuestBackupFrequencyTag,
@@ -553,6 +554,25 @@ export function collectBackupTargetsFromPackages(root, cfg) {
 }
 
 /**
+ * True when the live Proxmox guest name matches the backup target's lookup name
+ * and/or system id (including optional `vm-` prefix normalization).
+ *
+ * @param {string} liveName
+ * @param {{ systemId?: string; lookupName?: string }} target
+ * @returns {boolean}
+ */
+export function liveGuestMatchesBackupTarget(liveName, target) {
+  const live = String(liveName ?? "").trim().toLowerCase();
+  if (!live) return false;
+  const lookup = typeof target.lookupName === "string" ? target.lookupName.trim() : "";
+  const systemId = typeof target.systemId === "string" ? target.systemId.trim() : "";
+  if (lookup && live === lookup.toLowerCase()) return true;
+  if (lookup && guestNameMatchesSystemId(live, lookup)) return true;
+  if (systemId && guestNameMatchesSystemId(live, systemId)) return true;
+  return false;
+}
+
+/**
  * @param {Record<string, unknown>[]} resources
  * @param {string} name
  * @returns {{ vmid: number; node: string; name: string; template: boolean; type: "lxc"|"qemu" } | null}
@@ -878,6 +898,7 @@ export async function runProxmoxBackupMaintain(opts) {
     const resolvedPackage = [];
 
     for (const target of clusterPackageTargets) {
+      const knownJobId = backupJobIdForSystem(target.systemId, jobIdPrefix);
       let vmid = target.vmid;
       let node = "";
       /** @type {"lxc"|"qemu"|null} */
@@ -885,10 +906,14 @@ export async function runProxmoxBackupMaintain(opts) {
       if (vmid === null) {
         const located = locateGuestByNameInCluster(resources, target.lookupName);
         if (!located) {
-          warn(`[${target.systemId}] guest ${JSON.stringify(target.lookupName)} not found in cluster — skip.`);
+          // Leave job id out of desiredJobIds so prune deletes the stale job.
+          warn(
+            `[${target.systemId}] guest ${JSON.stringify(target.lookupName)} not found in cluster — skip (job ${JSON.stringify(knownJobId)} eligible for prune).`,
+          );
           results.push({
             systemId: target.systemId,
             hostId: target.hostId,
+            id: knownJobId,
             profile: target.backup.profile,
             frequencyTag: target.backup.frequency_tag,
             schedule: target.backup.schedule,
@@ -905,6 +930,7 @@ export async function runProxmoxBackupMaintain(opts) {
           results.push({
             systemId: target.systemId,
             hostId: target.hostId,
+            id: knownJobId,
             profile: target.backup.profile,
             clusterKey,
             ok: false,
@@ -919,10 +945,13 @@ export async function runProxmoxBackupMaintain(opts) {
       } else {
         const located = locateGuestWithType(resources, vmid);
         if (!located) {
-          warn(`[${target.systemId}] vmid ${vmid} not found in cluster — skip.`);
+          warn(
+            `[${target.systemId}] vmid ${vmid} not found in cluster — skip (job ${JSON.stringify(knownJobId)} eligible for prune).`,
+          );
           results.push({
             systemId: target.systemId,
             hostId: target.hostId,
+            id: knownJobId,
             profile: target.backup.profile,
             vmid,
             clusterKey,
@@ -937,12 +966,31 @@ export async function runProxmoxBackupMaintain(opts) {
           results.push({
             systemId: target.systemId,
             hostId: target.hostId,
+            id: knownJobId,
             profile: target.backup.profile,
             vmid,
             clusterKey,
             ok: false,
             action: "skipped",
             error: "template guest",
+          });
+          continue;
+        }
+        if (!liveGuestMatchesBackupTarget(located.name, target)) {
+          warn(
+            `[${target.systemId}] vmid ${vmid} live name ${JSON.stringify(located.name)} does not match lookup ${JSON.stringify(target.lookupName)} / system ${JSON.stringify(target.systemId)} — skip (job ${JSON.stringify(knownJobId)} eligible for prune).`,
+          );
+          results.push({
+            systemId: target.systemId,
+            hostId: target.hostId,
+            id: knownJobId,
+            profile: target.backup.profile,
+            vmid,
+            clusterKey,
+            ok: false,
+            action: "skipped",
+            error: "vmid name mismatch",
+            liveName: located.name,
           });
           continue;
         }

@@ -41,6 +41,8 @@
     "silk_spawners": false,
     "vanish_no_packet": false,
     "worldedit_sui": false,
+    "spark": false,
+    "clamav_profile": "lean",
     "whitelist": {
       "enabled": true,
       "enforce": true,
@@ -75,8 +77,8 @@
       "difficulty": "easy",
       "pvp": true,
       "generate-structures": true,
-      "view-distance": 18,
-      "simulation-distance": 16,
+      "view-distance": 10,
+      "simulation-distance": 8,
       "allow-flight": false,
       "allow-nether": true,
       "enable-query": false,
@@ -105,7 +107,8 @@
         "full": 1,
         "cores": 4,
         "memory_mb": 8192,
-        "rootfs_gb": 32
+        "rootfs_gb": 32,
+        "cpu": "host"
       },
       "network": {
         "bridge": "vmbr0",
