@@ -4,7 +4,7 @@ import { pctExec } from "hdc/package/pve-pct-remote.mjs";
 import { waitForCt } from "../../ollama/lib/ollama-install.mjs";
 import { normalizeReleaseTag, resolveReleaseTarget } from "./postiz-release.mjs";
 import { appDir, resolveAccessUrl } from "./postiz-render.mjs";
-import { readCtPrimaryIp, readInstalledVersion } from "./postiz-install.mjs";
+import { readCtPrimaryIp, readInstalledVersion, buildEnvPushScript, injectDbPassword, buildRestartScript } from "./postiz-install.mjs";
 
 /**
  * Compare semver-like tags. Returns positive if a > b.
@@ -132,14 +132,27 @@ export async function maintainPostizUpgradeInCt(
 
   const targetTag = normalizeReleaseTag(targetRelease.tag);
   if (installed && compareVersionTags(targetTag, installed) <= 0) {
+    errout.write(`[hdc] postiz maintain: ${targetTag} already installed; sync env, postgres role, nginx …\n`);
+    const inner = injectDbPassword(buildRestartScript(dir, envContent), dbPassword);
+    const r = pctExec(user, pveHost, vmid, inner);
     const ip = readCtPrimaryIp(user, pveHost, vmid);
+    if (r.status !== 0) {
+      return {
+        ok: false,
+        upgraded: false,
+        installed_version: installed,
+        target_version: targetTag,
+        access_url: resolveAccessUrl(postiz, ip),
+        message: `restart after up-to-date check failed (exit ${r.status})`,
+      };
+    }
     return {
       ok: true,
       upgraded: false,
       installed_version: installed,
       target_version: targetTag,
       access_url: resolveAccessUrl(postiz, ip),
-      message: "already up to date",
+      message: "already up to date; env and nginx synced",
     };
   }
 
@@ -147,13 +160,7 @@ export async function maintainPostizUpgradeInCt(
     `[hdc] postiz maintain: upgrading CT ${vmid} ${installed ?? "unknown"} → ${targetTag} …\n`,
   );
 
-  const pushEnv = [
-    "set -euo pipefail",
-    `cat > '${dir.replace(/'/g, `'\\''`)}/.env' <<'HDCPOSTIZENV'`,
-    envContent.trimEnd(),
-    "HDCPOSTIZENV",
-  ].join("\n");
-  pctExec(user, pveHost, vmid, pushEnv);
+  pctExec(user, pveHost, vmid, injectDbPassword(buildEnvPushScript(dir, envContent), dbPassword));
 
   const inner = buildUpgradeScript(dir, targetTag, targetRelease.tarballUrl);
   const r = pctExec(user, pveHost, vmid, inner);

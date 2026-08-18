@@ -67,9 +67,7 @@ export function buildInstallScript(appDirPath, envContent, tag, tarballUrl) {
     "",
     "systemctl enable --now redis-server",
     "",
-    "export HDC_POSTIZ_DB_PASS='HDC_POSTIZ_DB_PLACEHOLDER'",
-    "sudo -u postgres psql -tc \"SELECT 1 FROM pg_roles WHERE rolname = 'postiz'\" | grep -q 1 || sudo -u postgres psql -c \"CREATE USER postiz WITH PASSWORD '$HDC_POSTIZ_DB_PASS'\"",
-    "sudo -u postgres psql -c \"ALTER USER postiz WITH PASSWORD '$HDC_POSTIZ_DB_PASS'\"",
+    postgresPasswordSyncBlock(),
     "sudo -u postgres psql -tc \"SELECT 1 FROM pg_database WHERE datname = 'postiz'\" | grep -q 1 || sudo -u postgres psql -c \"CREATE DATABASE postiz OWNER postiz\"",
     "",
     "command -v node >/dev/null 2>&1 || curl -fsSL https://deb.nodesource.com/setup_24.x | bash -",
@@ -119,7 +117,7 @@ export function buildInstallScript(appDirPath, envContent, tag, tarballUrl) {
     "PNPM_BIN=$(command -v pnpm)",
     _systemdUnitsBlock(),
     "",
-    _nginxSiteBlock(),
+    _nginxPushBlock(),
     "ln -sf /etc/nginx/sites-available/postiz /etc/nginx/sites-enabled/postiz",
     "rm -f /etc/nginx/sites-enabled/default",
     "nginx -t",
@@ -215,9 +213,28 @@ function _systemdPnpmUnitBlock(name, spec) {
   ].join("\n");
 }
 
-function _nginxSiteBlock() {
+/** Map so guest nginx keeps WAF HTTPS instead of overwriting with $scheme (always http). */
+export function postizForwardedProtoMapConf() {
   return [
-    "cat <<'EOF' >/etc/nginx/sites-available/postiz",
+    "map $http_x_forwarded_proto $postiz_fwd_proto {",
+    "  default $http_x_forwarded_proto;",
+    '  ""      $scheme;',
+    "}",
+    "",
+  ].join("\n");
+}
+
+export function postizNginxServerConf() {
+  const proxyHeaders = [
+    "    proxy_http_version 1.1;",
+    "    proxy_set_header Upgrade $http_upgrade;",
+    '    proxy_set_header Connection "upgrade";',
+    "    proxy_set_header Host $host;",
+    "    proxy_set_header X-Real-IP $remote_addr;",
+    "    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;",
+    "    proxy_set_header X-Forwarded-Proto $postiz_fwd_proto;",
+  ].join("\n");
+  return [
     "server {",
     "  listen 80 default_server;",
     "  server_name _;",
@@ -226,29 +243,50 @@ function _nginxSiteBlock() {
     "  gzip_types text/plain text/css application/json application/javascript text/xml application/xml application/xml+rss text/javascript;",
     "  location /api/ {",
     "    proxy_pass http://127.0.0.1:3000/;",
-    "    proxy_http_version 1.1;",
-    "    proxy_set_header Upgrade $http_upgrade;",
-    "    proxy_set_header Connection \"upgrade\";",
-    "    proxy_set_header Host $host;",
-    "    proxy_set_header X-Real-IP $remote_addr;",
-    "    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;",
-    "    proxy_set_header X-Forwarded-Proto $scheme;",
+    proxyHeaders,
     "  }",
     "  location /uploads/ {",
     "    alias /opt/postiz/uploads/;",
     "  }",
     "  location / {",
     "    proxy_pass http://127.0.0.1:4200/;",
-    "    proxy_http_version 1.1;",
-    "    proxy_set_header Upgrade $http_upgrade;",
-    "    proxy_set_header Connection \"upgrade\";",
-    "    proxy_set_header Host $host;",
-    "    proxy_set_header X-Real-IP $remote_addr;",
-    "    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;",
-    "    proxy_set_header X-Forwarded-Proto $scheme;",
+    proxyHeaders,
     "  }",
     "}",
+    "",
+  ].join("\n");
+}
+
+function _nginxPushBlock() {
+  return [
+    "cat <<'EOF' >/etc/nginx/conf.d/postiz-forwarded-proto.conf",
+    postizForwardedProtoMapConf().trimEnd(),
     "EOF",
+    "cat <<'EOF' >/etc/nginx/sites-available/postiz",
+    postizNginxServerConf().trimEnd(),
+    "EOF",
+  ].join("\n");
+}
+
+/**
+ * Re-push guest nginx (forwarded proto map + site) and reload.
+ */
+export function buildNginxPushScript() {
+  return [
+    "set -euo pipefail",
+    _nginxPushBlock(),
+    "ln -sf /etc/nginx/sites-available/postiz /etc/nginx/sites-enabled/postiz",
+    "rm -f /etc/nginx/sites-enabled/default",
+    "nginx -t",
+    "systemctl reload nginx || systemctl restart nginx",
+  ].join("\n");
+}
+
+function postgresPasswordSyncBlock() {
+  return [
+    "export HDC_POSTIZ_DB_PASS='HDC_POSTIZ_DB_PLACEHOLDER'",
+    "sudo -u postgres psql -tc \"SELECT 1 FROM pg_roles WHERE rolname = 'postiz'\" | grep -q 1 || sudo -u postgres psql -c \"CREATE USER postiz WITH PASSWORD '$HDC_POSTIZ_DB_PASS'\"",
+    "sudo -u postgres psql -c \"ALTER USER postiz WITH PASSWORD '$HDC_POSTIZ_DB_PASS'\"",
   ].join("\n");
 }
 
@@ -288,6 +326,11 @@ export function buildRestartScript(appDirPath, envContent) {
     `cat > '${dir}/.env' <<'HDCPOSTIZENV'`,
     envContent.trimEnd(),
     "HDCPOSTIZENV",
+    postgresPasswordSyncBlock(),
+    _nginxPushBlock(),
+    "ln -sf /etc/nginx/sites-available/postiz /etc/nginx/sites-enabled/postiz",
+    "rm -f /etc/nginx/sites-enabled/default",
+    "nginx -t",
     "systemctl restart postiz-temporal postiz-backend postiz-frontend postiz-orchestrator",
     "systemctl reload nginx || systemctl restart nginx",
   ].join("\n");
@@ -318,6 +361,12 @@ export function buildEnvPushScript(appDirPath, envContent) {
     `cat > '${dir}/.env' <<'HDCPOSTIZENV'`,
     envContent.trimEnd(),
     "HDCPOSTIZENV",
+    postgresPasswordSyncBlock(),
+    _nginxPushBlock(),
+    "ln -sf /etc/nginx/sites-available/postiz /etc/nginx/sites-enabled/postiz",
+    "rm -f /etc/nginx/sites-enabled/default",
+    "nginx -t",
+    "systemctl reload nginx || systemctl restart nginx",
   ].join("\n");
 }
 
@@ -325,7 +374,7 @@ export function buildEnvPushScript(appDirPath, envContent) {
  * @param {string} script
  * @param {string} dbPassword
  */
-function injectDbPassword(script, dbPassword) {
+export function injectDbPassword(script, dbPassword) {
   const escaped = dbPassword.replace(/'/g, `'\\''`);
   return script.replace(/HDC_POSTIZ_DB_PLACEHOLDER/g, escaped);
 }
@@ -435,7 +484,7 @@ export async function maintainPostizInCt(
 
   if (opts.rebuild) {
     errout.write(`[hdc] postiz maintain: rebuild (NEXT_PUBLIC_* / URL) on CT ${vmid} …\n`);
-    pctExec(user, pveHost, vmid, buildEnvPushScript(dir, envContent));
+    pctExec(user, pveHost, vmid, injectDbPassword(buildEnvPushScript(dir, envContent), dbPassword));
     const inner = buildRebuildScript(dir);
     const r = pctExec(user, pveHost, vmid, inner);
     if (r.status !== 0) {
@@ -451,7 +500,7 @@ export async function maintainPostizInCt(
 
   if (opts.skipUpgrade) {
     errout.write(`[hdc] postiz maintain: restart services on CT ${vmid} …\n`);
-    const inner = buildRestartScript(dir, envContent);
+    const inner = injectDbPassword(buildRestartScript(dir, envContent), dbPassword);
     const r = pctExec(user, pveHost, vmid, inner);
     if (r.status !== 0) {
       return { ok: false, message: `restart failed (exit ${r.status})` };

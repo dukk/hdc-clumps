@@ -20,13 +20,17 @@ hdc run service postiz teardown -- --yes
 
 ## URL and rebuild
 
-`NEXT_PUBLIC_*` variables are baked at **build** time. After changing `postiz.public_url` or social keys in `postiz.env_extra`, run:
+`NEXT_PUBLIC_*` variables are baked at **build** time. The frontend will keep calling the **old** API origin until you rebuild — a restart that only rewrites `.env` is not enough. After changing `postiz.public_url` or social keys in `postiz.env_extra`, run:
 
 ```bash
 hdc run service postiz maintain -- --rebuild
 ```
 
 Or on the guest: `postiz-rebuild`.
+
+Behind nginx-waf, guest nginx must pass `X-Forwarded-Proto` from the WAF (`$http_x_forwarded_proto`), not `$scheme` (the LXC is always HTTP). Maintain re-pushes that map.
+
+When `postiz.mail.enabled` is true, hdc writes Postiz `EMAIL_PROVIDER=nodemailer` plus `EMAIL_HOST` / `EMAIL_PORT` / `EMAIL_FROM_ADDRESS` (no empty SMTP auth). Do not use Vaultwarden-style `SMTP_*` keys.
 
 ## Status
 
