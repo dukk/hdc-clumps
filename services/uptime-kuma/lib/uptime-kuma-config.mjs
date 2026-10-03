@@ -8,12 +8,15 @@ export const DEFAULT_MONITOR_RETRY_INTERVAL = 60;
 export const DEFAULT_MONITOR_TIMEOUT = 48;
 export const DEFAULT_MONITOR_ACCEPTED_STATUS_CODES = ["200-299"];
 
+export const SUPPORTED_MONITOR_TYPES = ["http", "ping", "port"];
+
 /** @typedef {{
  *   id: string;
  *   name: string;
  *   type: string;
  *   url: string | null;
  *   hostname: string | null;
+ *   port: number | null;
  *   group: string | null;
  *   tags: string[];
  *   notifications: string[];
@@ -65,6 +68,17 @@ export function parseUptimeKumaId(value) {
   if (!s) return null;
   const n = Number(s);
   return Number.isFinite(n) && n > 0 ? n : null;
+}
+
+/**
+ * @param {unknown} value
+ * @returns {number | null}
+ */
+export function parseMonitorPort(value) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return null;
+  const p = Math.trunc(n);
+  return p >= 1 && p <= 65535 ? p : null;
 }
 
 /**
@@ -349,6 +363,7 @@ export function normalizeUptimeKumaMonitorConfig(raw) {
           type: String(m.type ?? "http").trim(),
           url: typeof m.url === "string" && m.url.trim() ? m.url.trim() : null,
           hostname: typeof m.hostname === "string" && m.hostname.trim() ? m.hostname.trim() : null,
+          port: parseMonitorPort(m.port),
           group: typeof m.group === "string" && m.group.trim() ? m.group.trim() : null,
           tags: Array.isArray(m.tags)
             ? m.tags.filter((t) => typeof t === "string" && t.trim()).map((t) => String(t).trim())
@@ -396,6 +411,7 @@ export function monitorHasDrift(cfg, live) {
   if (cfg.type !== live.type) return true;
   if ((cfg.url ?? null) !== (live.url ?? null)) return true;
   if ((cfg.hostname ?? null) !== (live.hostname ?? null)) return true;
+  if ((cfg.port ?? null) !== (live.port ?? null)) return true;
   if ((cfg.group ?? null) !== (live.group ?? null)) return true;
   if (!tagsEqual(cfg.tags, live.tags)) return true;
   if (cfg.interval !== live.interval) return true;
@@ -421,8 +437,8 @@ export function liveMonitorRowToConfig(row, existing = null, monitorById = new M
 
   const type = typeof row.type === "string" ? row.type.trim() : "http";
   if (type === "group") return null;
-  if (!["http", "ping"].includes(type)) {
-    log(`skip import monitor id=${uptime_kuma_id} type=${type} (only http and ping supported)`);
+  if (!SUPPORTED_MONITOR_TYPES.includes(type)) {
+    log(`skip import monitor id=${uptime_kuma_id} type=${type} (only ${SUPPORTED_MONITOR_TYPES.join(", ")} supported)`);
     return null;
   }
 
@@ -445,6 +461,7 @@ export function liveMonitorRowToConfig(row, existing = null, monitorById = new M
     type,
     url: typeof row.url === "string" && row.url.trim() ? row.url.trim() : null,
     hostname: typeof row.hostname === "string" && row.hostname.trim() ? row.hostname.trim() : null,
+    port: parseMonitorPort(row.port),
     group,
     tags,
     interval: Number(row.interval ?? 60) || 60,
@@ -559,6 +576,9 @@ export function monitorToSocketPayload(entry, forEdit = false, opts = {}) {
   } else if (entry.type === "ping") {
     payload.hostname = entry.hostname ?? "";
     payload.packetSize = 56;
+  } else if (entry.type === "port") {
+    payload.hostname = entry.hostname ?? "";
+    payload.port = entry.port ?? "";
   }
 
   return payload;
@@ -576,7 +596,15 @@ export function validateConfigMonitor(entry) {
   if (entry.type === "ping" && !entry.hostname) {
     throw new Error(`monitor ${entry.id}: hostname is required for type ping`);
   }
-  if (!["http", "ping"].includes(entry.type)) {
+  if (entry.type === "port") {
+    if (!entry.hostname) {
+      throw new Error(`monitor ${entry.id}: hostname is required for type port`);
+    }
+    if (entry.port == null) {
+      throw new Error(`monitor ${entry.id}: port is required for type port`);
+    }
+  }
+  if (!SUPPORTED_MONITOR_TYPES.includes(entry.type)) {
     throw new Error(`monitor ${entry.id}: unsupported type ${entry.type}`);
   }
 }

@@ -6,6 +6,8 @@ import {
   renderWhitelistJson,
   renderOpsJson,
   renderSystemdUnit,
+  resolvePaperJvmArgs,
+  escapeSystemdExecJvmArgs,
   resolveLinuxUser,
   buildInstallShellScript,
   flattenPaperVersions,
@@ -24,6 +26,7 @@ const mc = {
   javaHeapMin: "2G",
   javaHeap: "5G",
   javaJvmArgs: "",
+  javaJvmArgsExtra: "",
   installDir: "/opt/minecraft",
   javaPort: 25565,
   bedrockPort: 19132,
@@ -221,6 +224,18 @@ describe("minecraft-install", () => {
     expect(unit).not.toContain("aikars.new.flags");
   });
 
+  it("appends java_jvm_args_extra to Aikar defaults and escapes $ for systemd", () => {
+    const extra =
+      "-XX:CompileCommand=exclude,net.minecraft.server.level.ChunkMap$TrackedEntity::updatePlayer";
+    expect(resolvePaperJvmArgs("", extra)).toContain("-Daikars.new.flags=true");
+    expect(resolvePaperJvmArgs("", extra)).toContain(extra);
+    expect(escapeSystemdExecJvmArgs(extra)).toContain("ChunkMap$$TrackedEntity");
+    const unit = renderSystemdUnit("minecraft", "/opt/minecraft", "8G", "8G", "", null, extra);
+    expect(unit).toContain("-Daikars.new.flags=true");
+    expect(unit).toContain("ChunkMap$$TrackedEntity::updatePlayer");
+    expect(unit).not.toMatch(/ChunkMap\$(?!\$)TrackedEntity/);
+  });
+
   it("flattens Fill v3 version groups newest-first", () => {
     expect(
       flattenPaperVersions({
@@ -376,6 +391,12 @@ describe("minecraft-install", () => {
     expect(off.luckperms).toBe(false);
     expect(off.vanishNoPacket).toBe(false);
     expect(off.spark).toBe(false);
+    expect(off.javaJvmArgsExtra).toBe("");
+    const extraJvm = mergeMinecraftSettings(
+      { minecraft: { java_jvm_args_extra: "-XX:CompileCommand=exclude,net.minecraft.server.level.ChunkMap$TrackedEntity::updatePlayer" } },
+      {},
+    );
+    expect(extraJvm.javaJvmArgsExtra).toContain("ChunkMap$TrackedEntity");
     const on = mergeMinecraftSettings(
       {
         minecraft: {
@@ -409,6 +430,25 @@ describe("minecraft-install", () => {
     expect(on.worldeditSui).toBe(true);
     expect(on.spark).toBe(true);
     expect(on.clamavProfile).toBe("lean");
+  });
+
+  it("removes the legacy SilkSpawners jar when Hangar v2 is enabled", () => {
+    const silkOn = buildInstallShellScript({
+      install: { linux_user: "minecraft" },
+      minecraft: { ...mc, silkSpawners: true },
+      paper: {
+        version: "1.21.8",
+        build: 10,
+        name: "paper-1.21.8-10.jar",
+        url: "https://example.invalid/paper.jar",
+      },
+      pluginJars: [...pluginJars, { dest: "SilkSpawners_v2.jar", url: "https://example.invalid/ssv2.jar" }],
+    });
+    expect(silkOn).toContain("SilkSpawners_v2.jar");
+    expect(silkOn).toContain('rm -f "$INSTALL_DIR/plugins/SilkSpawners.jar"');
+    expect(silkOn).not.toContain(
+      'rm -f "$INSTALL_DIR/plugins/SilkSpawners.jar" "$INSTALL_DIR/plugins/SilkSpawners_v2.jar"',
+    );
   });
 
   it("does not download a spark plugin jar (Paper 1.21+ bundles spark)", () => {
@@ -455,6 +495,7 @@ describe("minecraft-install", () => {
     expect(full).toContain("hdc-minecraft-graceful-stop");
     expect(full).toContain(".rcon.password");
     expect(full).toContain("enable-rcon=true");
+    expect(full).toContain('rm -f "$INSTALL_DIR/plugins/SilkSpawners.jar" "$INSTALL_DIR/plugins/SilkSpawners_v2.jar"');
 
     const withLists = buildInstallShellScript({
       install: { linux_user: "minecraft" },

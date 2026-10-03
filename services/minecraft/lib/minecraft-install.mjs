@@ -413,8 +413,8 @@ export async function resolvePluginJars(mc) {
   }
   if (mc.silkSpawners) {
     jars.push({
-      dest: "SilkSpawners.jar",
-      url: await resolveGithubReleaseAsset("timbru31/SilkSpawners", /SilkSpawners.*\.jar$/i),
+      dest: "SilkSpawners_v2.jar",
+      url: await resolveHangarPluginUrl("SilkSpawners", "SilkSpawners"),
     });
   }
   if (mc.vanishNoPacket) {
@@ -554,16 +554,32 @@ export const DEFAULT_PAPER_JVM_ARGS =
   "-XX:+UseG1GC -XX:+ParallelRefProcEnabled -XX:MaxGCPauseMillis=200 -XX:+UnlockExperimentalVMOptions -XX:+DisableExplicitGC -XX:+AlwaysPreTouch -XX:G1NewSizePercent=30 -XX:G1MaxNewSizePercent=40 -XX:G1HeapRegionSize=8M -XX:G1ReservePercent=20 -XX:G1HeapWastePercent=5 -XX:G1MixedGCCountTarget=4 -XX:InitiatingHeapOccupancyPercent=15 -XX:G1MixedGCLiveThresholdPercent=90 -XX:G1RSetUpdatingPauseTimePercent=5 -XX:SurvivorRatio=32 -XX:+PerfDisableSharedMem -XX:MaxTenuringThreshold=1 -Dusing.aikars.flags=https://mcflags.emc.gs -Daikars.new.flags=true";
 
 /**
+ * Combine Aikar defaults (or a full java_jvm_args replacement) with optional extras.
+ * @param {string} [jvmArgs]
+ * @param {string} [jvmArgsExtra]
+ */
+export function resolvePaperJvmArgs(jvmArgs, jvmArgsExtra) {
+  const base = typeof jvmArgs === "string" && jvmArgs.trim() ? jvmArgs.trim() : DEFAULT_PAPER_JVM_ARGS;
+  const extra = typeof jvmArgsExtra === "string" && jvmArgsExtra.trim() ? jvmArgsExtra.trim() : "";
+  return extra ? `${base} ${extra}` : base;
+}
+
+/** systemd ExecStart expands `$VAR`; inner-class CompileCommand needs `$$`. */
+export function escapeSystemdExecJvmArgs(jvmArgs) {
+  return String(jvmArgs ?? "").replaceAll("$", () => "$$");
+}
+
+/**
  * @param {string} linuxUser
  * @param {string} installDir
  * @param {string} heapMin
  * @param {string} heapMax
- * @param {string} [jvmArgs] extra JVM flags between heap and -jar (default: Aikar)
+ * @param {string} [jvmArgs] replacement flag set (empty keeps Aikar defaults)
  * @param {{ enabled?: boolean, seconds?: number } | null} [stopWarning]
+ * @param {string} [jvmArgsExtra] appended after the flag set
  */
-export function renderSystemdUnit(linuxUser, installDir, heapMin, heapMax, jvmArgs, stopWarning) {
-  const extra =
-    typeof jvmArgs === "string" && jvmArgs.trim() ? jvmArgs.trim() : DEFAULT_PAPER_JVM_ARGS;
+export function renderSystemdUnit(linuxUser, installDir, heapMin, heapMax, jvmArgs, stopWarning, jvmArgsExtra) {
+  const extra = escapeSystemdExecJvmArgs(resolvePaperJvmArgs(jvmArgs, jvmArgsExtra));
   const execStart = `/usr/bin/java -Xms${heapMin} -Xmx${heapMax} ${extra} -jar paper.jar nogui`;
   const warnOn = stopWarning == null ? true : stopWarning.enabled !== false;
   const warnSeconds =
@@ -751,6 +767,7 @@ export function buildInstallShellScript(opts) {
     mc.javaHeap,
     mc.javaJvmArgs,
     stopWarn,
+    mc.javaJvmArgsExtra,
   );
   const props = renderServerProperties(mc);
   const needRcon = stopWarningEnabled(mc) || mc?.backup?.enabled !== false;
@@ -874,6 +891,14 @@ export function buildInstallShellScript(opts) {
     lines.push('test -f "$INSTALL_DIR/paper.jar"');
   }
   lines.push(...renderPluginDownloadLines(pluginJars, skipJars));
+  // timbru31 SilkSpawners.jar (v8) disables itself on Paper 26.x; keep only Hangar SilkSpawners_v2.
+  if (mc.silkSpawners) {
+    lines.push('rm -f "$INSTALL_DIR/plugins/SilkSpawners.jar"');
+  } else {
+    lines.push(
+      'rm -f "$INSTALL_DIR/plugins/SilkSpawners.jar" "$INSTALL_DIR/plugins/SilkSpawners_v2.jar"',
+    );
+  }
 
   lines.push(
     `cat > /etc/systemd/system/minecraft.service <<'UNIT'`,

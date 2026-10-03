@@ -21,6 +21,16 @@
       "hostname": "bind-a.home.example.invalid",
       "group": "DNS",
       "managed": true
+    },
+    {
+      "id": "minecraft-java",
+      "name": "Minecraft Java",
+      "type": "port",
+      "hostname": "minecraft-a.home.example.invalid",
+      "port": 25565,
+      "group": "Personal",
+      "interval": 20,
+      "managed": true
     }
   ],
   "tags": [

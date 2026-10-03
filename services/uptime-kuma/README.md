@@ -41,7 +41,7 @@ hdc run service uptime-kuma query -- --live
    hdc run service uptime-kuma query -- --import-from-homepage --yes
    ```
 
-2. Review/edit monitors in hdc-private `config.json` (`managed: true` on hdc-owned entries). Use `$hdc.include` for split files under `monitors/` or `monitors-public/`.
+2. Review/edit monitors in hdc-private `config.json` (`managed: true` on hdc-owned entries). Use `$hdc.include` for split files under `monitors/` or `monitors-public/`. Monitor types: `http`, `ping`, and `port` (`hostname` + `port`, e.g. Minecraft Java TCP 25565).
 
 3. Apply to live Uptime Kuma:
 
