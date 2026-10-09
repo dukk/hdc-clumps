@@ -224,6 +224,48 @@ export function backupIncludeClusterOrphansFromConfig(cfg) {
 }
 
 /**
+ * Cluster orphan guests that should not get an HDC backup job.
+ * Reads `provision.backups.exclude_vmids` (numbers) and `exclude_names` (guest names, case-insensitive).
+ * Only applies to orphans; package deployments opt out with `backup.enabled: false`.
+ * @param {unknown} cfg
+ * @returns {{ vmids: Set<number>; names: Set<string> }}
+ */
+export function backupOrphanExcludesFromConfig(cfg) {
+  /** @type {Set<number>} */
+  const vmids = new Set();
+  /** @type {Set<string>} */
+  const names = new Set();
+  if (!isProxmoxConfigObject(cfg)) return { vmids, names };
+  const provision = cfg.provision;
+  if (!isObject(provision)) return { vmids, names };
+  const backups = provision.backups;
+  if (!isObject(backups)) return { vmids, names };
+  if (Array.isArray(backups.exclude_vmids)) {
+    for (const v of backups.exclude_vmids) {
+      const n =
+        typeof v === "number" ? v : typeof v === "string" && /^\d+$/.test(v.trim()) ? Number(v.trim()) : NaN;
+      if (Number.isInteger(n) && n > 0) vmids.add(n);
+    }
+  }
+  if (Array.isArray(backups.exclude_names)) {
+    for (const v of backups.exclude_names) {
+      if (typeof v === "string" && v.trim()) names.add(v.trim().toLowerCase());
+    }
+  }
+  return { vmids, names };
+}
+
+/**
+ * @param {Record<string, unknown>} resource cluster resource row
+ * @param {{ vmids: Set<number>; names: Set<string> }} excludes
+ */
+export function isOrphanBackupExcluded(resource, excludes) {
+  if (typeof resource.vmid === "number" && excludes.vmids.has(resource.vmid)) return true;
+  const name = typeof resource.name === "string" ? resource.name.trim().toLowerCase() : "";
+  return Boolean(name) && excludes.names.has(name);
+}
+
+/**
  * @param {unknown} cfg
  * @returns {Record<string, BackupProfileSpec>}
  */
@@ -607,10 +649,12 @@ export function locateGuestByNameInCluster(resources, name) {
  * @param {Set<number>} opts.coveredVmids
  * @param {unknown} opts.cfg
  * @param {string} opts.hostId Fallback host id for cluster membership
+ * @param {Array<{ vmid: number; name: string; node: string; guestType: "lxc"|"qemu" }>} [opts.excluded] Receives orphans skipped by `provision.backups.exclude_*`
  * @returns {Array<{ systemId: string; hostId: string; vmid: number; lookupName: string; backup: ReturnType<typeof resolveBackupSpec>; orphan: true; guestType: "lxc"|"qemu"; node: string }>}
  */
 export function collectClusterOrphanBackupTargets(opts) {
-  const { resources, coveredVmids, cfg, hostId } = opts;
+  const { resources, coveredVmids, cfg, hostId, excluded } = opts;
+  const excludes = backupOrphanExcludesFromConfig(cfg);
   /** @type {Array<{ systemId: string; hostId: string; vmid: number; lookupName: string; backup: ReturnType<typeof resolveBackupSpec>; orphan: true; guestType: "lxc"|"qemu"; node: string }>} */
   const orphans = [];
   for (const r of resources) {
@@ -623,6 +667,10 @@ export function collectClusterOrphanBackupTargets(opts) {
     if (!node) continue;
     const name =
       typeof r.name === "string" && r.name.trim() ? r.name.trim() : `vmid-${r.vmid}`;
+    if (isOrphanBackupExcluded(r, excludes)) {
+      if (Array.isArray(excluded)) excluded.push({ vmid: r.vmid, name, node, guestType: type });
+      continue;
+    }
     orphans.push({
       systemId: name,
       hostId,
@@ -1003,12 +1051,15 @@ export async function runProxmoxBackupMaintain(opts) {
 
     /** @type {ReturnType<typeof collectClusterOrphanBackupTargets>} */
     let orphans = [];
+    /** @type {Array<{ vmid: number; name: string; node: string; guestType: "lxc"|"qemu" }>} */
+    const excludedOrphans = [];
     if (includeOrphans) {
       orphans = collectClusterOrphanBackupTargets({
         resources,
         coveredVmids,
         cfg,
         hostId: lead.id,
+        excluded: excludedOrphans,
       });
     }
 
@@ -1251,6 +1302,55 @@ export async function runProxmoxBackupMaintain(opts) {
       row.liveTag = liveTag;
       row.scheduleValidation = scheduleValidation;
       if (!row.ok) ok = false;
+      results.push(row);
+    }
+
+    for (const ex of excludedOrphans) {
+      const jobId = backupJobIdForSystem(ex.name, jobIdPrefix);
+      const live = liveById.get(jobId);
+      /** @type {Record<string, unknown>} */
+      const row = { id: jobId, systemId: ex.name, vmid: ex.vmid, clusterKey, orphan: true, excluded: true, ok: true };
+      if (!live) {
+        log(`[${ex.name}] vmid ${ex.vmid} excluded from orphan backups - no job.`);
+        row.action = "excluded";
+        results.push(row);
+        continue;
+      }
+      if (prune) {
+        log(`[${ex.name}] vmid ${ex.vmid} excluded from orphan backups - job ${JSON.stringify(jobId)} will be pruned (existing backup files are kept).`);
+        row.action = "excluded";
+        results.push(row);
+        continue;
+      }
+      const en = live.enabled;
+      if (en === 0 || en === false || en === "0") {
+        log(`[${ex.name}] vmid ${ex.vmid} excluded from orphan backups - job ${JSON.stringify(jobId)} already disabled.`);
+        row.action = "excluded";
+        results.push(row);
+        continue;
+      }
+      log(`[${ex.name}] vmid ${ex.vmid} excluded from orphan backups - will disable job ${JSON.stringify(jobId)}${dryRun ? " [dry-run]" : ""}.`);
+      row.action = "disable";
+      if (!dryRun) {
+        try {
+          const digest = typeof live.digest === "string" ? live.digest : undefined;
+          await pveJsonRequest(
+            "PUT",
+            auth.host.apiBase,
+            `/cluster/backup/${encodeURIComponent(jobId)}`,
+            auth.authorization,
+            auth.rejectUnauthorized,
+            pveFormBody({ enabled: 0, ...(digest ? { digest } : {}) }),
+          );
+          log(`backup job ${JSON.stringify(jobId)} disabled.`);
+        } catch (e) {
+          ok = false;
+          const err = /** @type {Error} */ (e).message || String(e);
+          warn(`backup job ${JSON.stringify(jobId)} disable failed: ${err}`);
+          row.ok = false;
+          row.error = err;
+        }
+      }
       results.push(row);
     }
 

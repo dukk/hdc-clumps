@@ -49,6 +49,8 @@ Maintain `verify-templates` writes a report under `clumps/infrastructure/proxmox
 
 `proxmox maintain` ensures Proxmox **Datacenter → Backup** jobs for managed guests when `provision.backups.enabled` is true (default). Targets come from service `deployments[]` / `deployment_groups[].deployments[]` (plus legacy `deploy`+`proxmox` layouts). Non-template cluster guests not covered by packages get a **weekly** job when `include_cluster_orphans` is true (default).
 
+To skip specific orphan guests, list them in `provision.backups.exclude_vmids` (numbers) and/or `provision.backups.exclude_names` (guest names, case-insensitive). Maintain then creates no job for them. With prune (the default), an existing `hdc-backup-<name>` job is deleted; with `--no-prune` it is disabled instead. Existing backup archives on storage are never touched. These lists only apply to orphans; package deployments opt out with `backup.enabled: false`.
+
 ### Profiles and retention
 
 | Profile | Tag | Schedule | Prune |

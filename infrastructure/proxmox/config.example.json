@@ -85,6 +85,8 @@
       "default_profile": "weekly",
       "manage_from_deployments": true,
       "include_cluster_orphans": true,
+      "exclude_vmids": [],
+      "exclude_names": [],
       "job_id_prefix": "hdc-backup",
       "profiles": {
         "weekly": {
