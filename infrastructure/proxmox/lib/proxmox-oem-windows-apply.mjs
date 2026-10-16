@@ -66,10 +66,10 @@ if command -v dmidecode >/dev/null 2>&1; then
     case "$line" in
       *UUID:*) echo "SMBIOS_UUID=$(printf '%s' "$line" | sed 's/^[^:]*:[[:space:]]*//')" ;;
       *Manufacturer:*) echo "SMBIOS_MANUFACTURER=$(printf '%s' "$line" | sed 's/^[^:]*:[[:space:]]*//')" ;;
-      *Product\ Name:*) echo "SMBIOS_PRODUCT=$(printf '%s' "$line" | sed 's/^[^:]*:[[:space:]]*//')" ;;
+      *"Product Name:"*) echo "SMBIOS_PRODUCT=$(printf '%s' "$line" | sed 's/^[^:]*:[[:space:]]*//')" ;;
       *Version:*) echo "SMBIOS_VERSION=$(printf '%s' "$line" | sed 's/^[^:]*:[[:space:]]*//')" ;;
-      *Serial\ Number:*) echo "SMBIOS_SERIAL=$(printf '%s' "$line" | sed 's/^[^:]*:[[:space:]]*//')" ;;
-      *SKU\ Number:*) echo "SMBIOS_SKU=$(printf '%s' "$line" | sed 's/^[^:]*:[[:space:]]*//')" ;;
+      *"Serial Number:"*) echo "SMBIOS_SERIAL=$(printf '%s' "$line" | sed 's/^[^:]*:[[:space:]]*//')" ;;
+      *"SKU Number:"*) echo "SMBIOS_SKU=$(printf '%s' "$line" | sed 's/^[^:]*:[[:space:]]*//')" ;;
       *Family:*) echo "SMBIOS_FAMILY=$(printf '%s' "$line" | sed 's/^[^:]*:[[:space:]]*//')" ;;
     esac
   done
@@ -98,12 +98,23 @@ function escapeSmbiosValue(value) {
 export function formatSmbios1Param(fields) {
   const parts = [];
   if (fields.uuid) parts.push(`uuid=${escapeSmbiosValue(fields.uuid)}`);
-  if (fields.manufacturer) parts.push(`manufacturer=${escapeSmbiosValue(fields.manufacturer)}`);
-  if (fields.product) parts.push(`product=${escapeSmbiosValue(fields.product)}`);
-  if (fields.version) parts.push(`version=${escapeSmbiosValue(fields.version)}`);
-  if (fields.serial) parts.push(`serial=${escapeSmbiosValue(fields.serial)}`);
-  if (fields.sku) parts.push(`sku=${escapeSmbiosValue(fields.sku)}`);
-  if (fields.family) parts.push(`family=${escapeSmbiosValue(fields.family)}`);
+  /** @type {[string, string | undefined][]} */
+  const textFields = [
+    ["manufacturer", fields.manufacturer],
+    ["product", fields.product],
+    ["version", fields.version],
+    ["serial", fields.serial],
+    ["sku", fields.sku],
+    ["family", fields.family],
+  ];
+  const present = textFields.filter(([, v]) => typeof v === "string" && v.trim());
+  // PVE rejects spaces/parentheses etc. in plain smbios1 strings; use base64=1 (all text fields encoded).
+  const needsBase64 = present.some(([, v]) => !/^[A-Za-z0-9._-]+$/.test(String(v).trim()));
+  for (const [k, v] of present) {
+    const val = String(v).trim();
+    parts.push(`${k}=${needsBase64 ? Buffer.from(val, "utf8").toString("base64") : escapeSmbiosValue(val)}`);
+  }
+  if (needsBase64) parts.push("base64=1");
   return parts.join(",");
 }
 
@@ -306,6 +317,7 @@ export async function applyOemLicenseToVmConfig(opts) {
     tablePaths,
     smbios,
     exclusiveVmid,
+    setArgs,
     log = () => {},
   } = opts;
 
@@ -318,7 +330,13 @@ export async function applyOemLicenseToVmConfig(opts) {
   /** @type {Record<string, string>} */
   const fields = {};
   const args = buildAcpitableArgs(tablePaths);
-  if (args) fields.args = args;
+  // PVE only lets root@pam set `args`; API tokens get HTTP 500. Callers with SSH pass setArgs.
+  if (args && typeof setArgs === "function") {
+    log(`Setting OEM ACPI args on vmid ${vmid} via qm set …`);
+    await setArgs(args);
+  } else if (args) {
+    fields.args = args;
+  }
   const smbios1 = formatSmbios1Param(smbios);
   if (smbios1) fields.smbios1 = smbios1;
 
@@ -393,6 +411,18 @@ export async function ensureOemLicenseForVm(opts) {
     rejectUnauthorized: opts.rejectUnauthorized,
     tablePaths: prepared.tablePaths,
     smbios: prepared.smbios,
+    setArgs: async (args) => {
+      const r = sshBashLc(opts.sshTarget, `qm set ${Number(opts.vmid)} --args ${shellSingleQuote(args)}`, {
+        spawnSync: opts.spawnSync,
+        env: opts.env,
+        mode: "pubkey",
+        identities: discoverLocalSshMaterial().identities,
+        timeoutMs: 60_000,
+      });
+      if (r.status !== 0) {
+        throw new Error(`qm set --args failed: ${`${r.stderr ?? ""}${r.stdout ?? ""}`.trim()}`);
+      }
+    },
     log: opts.log,
   });
 

@@ -15,9 +15,12 @@ import {
 import { resolveDiskFormat } from "./disk-format.mjs";
 import { adminUsername, localeId, resolveTemplateConfig } from "./deployments.mjs";
 import { verifyIsoVolidsOnNode } from "./iso-preflight.mjs";
+import { ensureOemLicenseForVm } from "./oem-apply.mjs";
+import { sshRemote } from "hdc/package/pve-pct-remote.mjs";
 import {
   createWindows11QemuVm,
   detachInstallIsos,
+  pressKeyToBootFromCd,
   runWindowsSysprep,
   startQemuGuest,
   waitForQemuGuestAgent,
@@ -176,6 +179,29 @@ export async function buildWindowsTemplate(opts) {
     log,
   });
 
+  // Retail multi-edition ISOs stop at the product-key / edition page without a key. Pass the
+  // host MSDM through to the builder so Setup picks the OEM edition automatically; the ACPI
+  // args are removed again before template conversion (instances get OEM on clone).
+  const oem = px.oem ?? {};
+  const oemOnBuilder =
+    opts.flags["skip-oem"] === undefined && oem.enabled !== false && oem.enabled !== 0 && oem.builder !== false;
+  if (oemOnBuilder) {
+    await ensureOemLicenseForVm({
+      sshTarget,
+      pveNode: node,
+      apiBase: auth.host.apiBase,
+      node,
+      vmid: templateVmid,
+      authorization: auth.authorization,
+      rejectUnauthorized: auth.rejectUnauthorized,
+      spawnSync: deps.spawnSync,
+      env: deps.env,
+      requireFirmware: oem.require_firmware !== false && oem.require_firmware !== 0,
+      log,
+      warn: (line) => log(`WARN ${line}`),
+    });
+  }
+
   if (opts.flags["skip-install"] !== undefined) {
     log("Template VM created but not started (--skip-install).");
     return {
@@ -196,28 +222,27 @@ export async function buildWindowsTemplate(opts) {
     vmid: templateVmid,
     log,
   });
+  await pressKeyToBootFromCd({ sshUser: pveSsh.user, sshHost: pveSsh.host, vmid: templateVmid, log });
 
   const installMinutes = installTimeoutMinutes;
-  const installWait = await waitForWindowsInstallWindow({
-    apiBase: auth.host.apiBase,
-    node,
-    vmid: templateVmid,
-    authorization: auth.authorization,
-    rejectUnauthorized: auth.rejectUnauthorized,
-    timeoutMs: installMinutes * 60_000,
-    log,
-  });
+  /** @type {Record<string, unknown>} */
+  let installWait = { ok: true, completed: false };
 
   if (opts.flags["skip-sysprep"] === undefined) {
+    // The builder never powers off on its own: setup → OOBE → autologon → FirstLogonCommands install
+    // the guest agent. Wait for the agent (whole install) rather than for a stop.
     await waitForQemuGuestAgent({
       apiBase: auth.host.apiBase,
       node,
       vmid: templateVmid,
       authorization: auth.authorization,
       rejectUnauthorized: auth.rejectUnauthorized,
-      timeoutMs: 30 * 60_000,
+      timeoutMs: installMinutes * 60_000,
       log,
     });
+    installWait = { ok: true, completed: true, via: "guest-agent" };
+    // Let FirstLogonCommands (RDP enable, network profile) finish.
+    await new Promise((r) => setTimeout(r, 90_000));
     runWindowsSysprep({
       sshUser: pveSsh.user,
       sshHost: pveSsh.host,
@@ -234,6 +259,15 @@ export async function buildWindowsTemplate(opts) {
       log,
     });
   } else {
+    installWait = await waitForWindowsInstallWindow({
+      apiBase: auth.host.apiBase,
+      node,
+      vmid: templateVmid,
+      authorization: auth.authorization,
+      rejectUnauthorized: auth.rejectUnauthorized,
+      timeoutMs: installMinutes * 60_000,
+      log,
+    });
     log("Sysprep skipped (--skip-sysprep) — shut down and convert manually before cloning.");
   }
 
@@ -245,6 +279,14 @@ export async function buildWindowsTemplate(opts) {
     rejectUnauthorized: auth.rejectUnauthorized,
     log,
   });
+
+  if (oemOnBuilder) {
+    log(`Removing OEM ACPI args from builder ${templateVmid} before template conversion …`);
+    const del = sshRemote(pveSsh.user, pveSsh.host, `qm set ${templateVmid} --delete args`, { capture: true });
+    if (del.status !== 0) {
+      throw new Error(`qm set --delete args failed: ${`${del.stderr}${del.stdout}`.trim()}`);
+    }
+  }
 
   log(`Converting VM ${templateVmid} to Proxmox template …`);
   await convertQemuVmToTemplate(

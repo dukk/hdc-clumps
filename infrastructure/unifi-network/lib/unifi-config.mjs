@@ -1,5 +1,6 @@
 import { automatedInventoryIdFromName } from "hdc/package/automated-ids.mjs";
 import { baseUrlFromString } from "./unifi-api.mjs";
+import { normalizeDhcpReservationsConfig } from "./unifi-dhcp-reservations.mjs";
 
 /** @typedef {import('./unifi-config.mjs').ConfigPortForward} ConfigPortForward */
 /** @typedef {import('./unifi-config.mjs').NormalizedPortForward} NormalizedPortForward */
@@ -412,6 +413,7 @@ export function normalizeUnifiConfig(cfg) {
     managedPortForwards: portForwards.filter((p) => p.managed !== false),
     ipBlock: normalizeIpBlockConfig(cfg.ip_block),
     clientAliases: normalizeClientAliasesConfig(cfg.client_aliases),
+    dhcpReservations: normalizeDhcpReservationsConfig(cfg.dhcp_reservations),
   };
 }
 

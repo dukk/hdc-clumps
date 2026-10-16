@@ -1,0 +1,47 @@
+{
+  "schema_version": 2,
+  "defaults": {
+    "mode": "proxmox-lxc",
+    "proxmox": {
+      "lxc": {
+        "ostemplate": "local:vztmpl/ubuntu-22.04-standard_22.04-1_amd64.tar.zst",
+        "storage": "local-lvm",
+        "rootfs_gb": 8,
+        "memory_mb": 6144,
+        "cores": 2,
+        "bridge": "vmbr0",
+        "ip_config": "dhcp",
+        "unprivileged": 1,
+        "features": "nesting=1",
+        "cpuset": "0-1",
+        "onboot": 1
+      }
+    },
+    "install": {
+      "enabled": true,
+      "repo": "feder-cr/jev",
+      "release": "jevos-v4",
+      "binary_asset": "jev-linux-x64.tar.gz",
+      "model_asset": "jevos-v4-openvino-int8.zip"
+    },
+    "server": {
+      "host": "0.0.0.0",
+      "port": 8017,
+      "api_key_vault_key": "HDC_JEVOS_API_KEY",
+      "allow_cidrs": ["10.0.0.0/8"]
+    }
+  },
+  "deployments": [
+    {
+      "system_id": "jevos-a",
+      "proxmox": {
+        "host_id": "hypervisor-c",
+        "lxc": {
+          "vmid": 423,
+          "ip_config": "192.0.2.23/24,gw=192.0.2.1",
+          "nameserver": "192.0.2.2"
+        }
+      }
+    }
+  ]
+}

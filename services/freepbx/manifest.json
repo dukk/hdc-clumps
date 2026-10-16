@@ -1,0 +1,29 @@
+{
+  "id": "freepbx",
+  "title": "FreePBX 17 (Debian QEMU)",
+  "env_required": [
+    "HDC_FREEPBX_ADMIN_PASSWORD",
+    "HDC_TWILIO_SIP_USERNAME",
+    "HDC_TWILIO_SIP_PASSWORD"
+  ],
+  "inventory_docs": [
+    "operations/inventory/systems/vm-freepbx-a.json",
+    "operations/inventory/services/freepbx.json",
+    "clumps/services/freepbx/config.json (copy config.example.json)"
+  ],
+  "operation_report": {
+    "next_steps": [
+      "Open the FreePBX admin UI on the guest HTTPS port (LAN only) and add extensions.",
+      "Inbound calls have no destination until an extension exists.",
+      "Confirm Twilio origination still targets the existing WAN address.",
+      "Run: hdc run service freepbx query -- --live"
+    ]
+  },
+  "verbs": {
+    "deploy": { "script": "run.mjs" },
+    "maintain": { "script": "run.mjs" },
+    "query": { "script": "run.mjs" },
+    "health": { "script": "run.mjs" },
+    "teardown": { "script": "run.mjs" }
+  }
+}

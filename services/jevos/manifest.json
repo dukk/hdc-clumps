@@ -1,0 +1,18 @@
+{
+  "id": "jevos",
+  "title": "jevos (jev serve) yes/no decision API",
+  "env_required": [],
+  "inventory_docs": [
+    "operations/inventory/systems/virtual/jevos-{a,b,...}.json (optional per instance)",
+    "clumps/services/jevos/config.json (schema_version 2 deployments[]; deploy all if no --instance)",
+    "hdc run service jevos deploy - Proxmox LXC + jev binary and OpenVINO INT8 model from GitHub releases (feder-cr/jev)",
+    "hdc run service jevos teardown - destroy guests; --dry-run, --yes, --instance <letter>",
+    "vault: HDC_JEVOS_API_KEY (generated on first deploy when missing; written to /etc/jevos/jevos.env)"
+  ],
+  "verbs": {
+    "deploy": { "script": "run.mjs" },
+    "query": { "script": "run.mjs" },
+    "health": { "script": "run.mjs" },
+    "teardown": { "script": "run.mjs" }
+  }
+}

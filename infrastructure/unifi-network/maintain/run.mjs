@@ -12,6 +12,7 @@
  * Operator one-time: create a UniFi WAN_IN DROP firewall policy whose source
  * matches the hdc-auto-block address group (hdc creates/updates the group).
  */
+import { applyDhcpReservations } from "../lib/unifi-dhcp-reservations.mjs";
 import { basename, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { stderr as errout } from "node:process";
@@ -84,6 +85,7 @@ async function main() {
   const unblockIp = flagGet(flags, "unblock");
   const pruneExpired = flags["prune-expired"] === "1";
   const skipClientAliases = flags["skip-client-aliases"] === "1";
+  const skipDhcpReservations = flags["skip-dhcp-reservations"] === "1";
   const skipPortForwards = flags["skip-port-forwards"] === "1";
   const reason = flagGet(flags, "reason") ?? undefined;
   const daysFlag = parseDays(flags);
@@ -343,6 +345,27 @@ async function main() {
     );
   } else if (!aliasesEnabled) {
     log("Client alias sync disabled (set client_aliases.enabled in config.json)");
+  }
+
+  // DHCP reservations (client fixed IPs) from config dhcp_reservations[]; full maintain only.
+  const reservations = ctx.config.dhcpReservations ?? [];
+  if (reservations.length && !skipDhcpReservations && !ipBlockMode && !selectivePortForward) {
+    log(`Applying ${reservations.length} DHCP reservation(s) from config …`);
+    const dhcpResult = await applyDhcpReservations(ctx, reservations, { dryRun: reportCtx.dryRun, log });
+    recordStep(reportCtx, {
+      id: "dhcp-reservations",
+      title: "Apply DHCP reservations (fixed IPs)",
+      ran: true,
+      ok: dhcpResult.ok,
+      notes: dhcpResult.results.map((r) => `${r.mac} ${r.ip}: ${r.action}${r.error ? ` (${r.error})` : ""}`),
+    });
+    if (!dhcpResult.ok) {
+      overallOk = false;
+      pushWarning(reportCtx, "One or more DHCP reservations failed");
+    }
+    stdoutPayload.dhcp_reservations = dhcpResult.results;
+  } else if (reservations.length) {
+    log("Skipping DHCP reservations (--skip-dhcp-reservations or selective maintain)");
   }
 
   setOutcome(reportCtx, {

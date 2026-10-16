@@ -7,6 +7,7 @@ import {
 } from "../../../infrastructure/proxmox/lib/proxmox-host-provisioner.mjs";
 import { discoverLocalSshMaterial } from "hdc/cli/lib/ssh-host-access.mjs";
 import { createNodeCliDeps } from "hdc/cli/lib/node-cli-deps.mjs";
+import { pveFormBody, pveJsonRequest } from "../../../infrastructure/proxmox/lib/pve-http.mjs";
 import { deployTargetInventory, logDeployInventoryStatus } from "hdc/package/deploy-inventory.mjs";
 import { resolvePveSshForHost } from "../../ollama/lib/ollama-install.mjs";
 import {
@@ -31,7 +32,7 @@ import {
   attachAutounattendIso,
   detachInstallIsos,
   startQemuGuest,
-  waitForWindowsInstallWindow,
+  waitForQemuGuestAgent,
 } from "./proxmox-windows-vm.mjs";
 import {
   assertNoProductKeyInUnattend,
@@ -155,7 +156,8 @@ export async function deployWindowsCloneInstance(opts) {
   });
 
   const cloneResult = await cloneQemuGuest({
-    log,
+    // provisioner.createVm expects a ProvisionLog ({ info, warn, error }), not a line logger.
+    log: { info: log, warn: (m) => log(`WARN ${m}`), error: (m) => log(`ERROR ${m}`) },
     provisioner,
     name: deployment.hostname,
     vmid,
@@ -171,6 +173,17 @@ export async function deployWindowsCloneInstance(opts) {
   }
 
   await waitForCloneTaskAndEnableAgent(cloneResult, auth, vmid, log);
+
+  // Clones do not inherit a start-on-boot flag from the template; desktops should come back after host reboots.
+  log(`QEMU ${vmid}: setting onboot=1 ?`);
+  await pveJsonRequest(
+    "PUT",
+    auth.host.apiBase,
+    `/nodes/${encodeURIComponent(node)}/qemu/${encodeURIComponent(String(vmid))}/config`,
+    auth.authorization,
+    auth.rejectUnauthorized,
+    pveFormBody({ onboot: 1 }),
+  );
 
   const deps = createNodeCliDeps();
   const pveSsh = resolvePveSshForHost(proxmoxRoot, hostId);
@@ -251,7 +264,9 @@ export async function deployWindowsCloneInstance(opts) {
     });
 
     if (flags["wait-install"] !== undefined) {
-      extra.install_wait = await waitForWindowsInstallWindow({
+      // Clones never power off after specialize/OOBE; the template's guest agent answering
+      // means OOBE finished (autologon ran FirstLogonCommands).
+      await waitForQemuGuestAgent({
         apiBase: auth.host.apiBase,
         node,
         vmid,
@@ -260,6 +275,7 @@ export async function deployWindowsCloneInstance(opts) {
         timeoutMs: installTimeoutMinutes * 60_000,
         log,
       });
+      extra.install_wait = { ok: true, completed: true, via: "guest-agent" };
     }
 
     await detachInstallIsos({

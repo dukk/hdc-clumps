@@ -36,7 +36,10 @@ export async function buildAndUploadAutounattendIso(opts) {
   const { storage, filename } = parseIsoVolid(volid);
   const remoteDir = `/var/lib/vz/template/iso`;
   const remoteIso = `${remoteDir}/${basename}`;
-  const remoteXml = `/tmp/${basename}.xml`;
+  const remoteStageDir = `/tmp/${basename}.d`;
+  // Windows Setup only picks up a file named autounattend.xml at the media root.
+  const remoteXml = `${remoteStageDir}/autounattend.xml`;
+  const remoteStageDirQ = shellSingleQuote(remoteStageDir);
   const remoteDirQ = shellSingleQuote(remoteDir);
   const remoteIsoQ = shellSingleQuote(remoteIso);
   const remoteXmlQ = shellSingleQuote(remoteXml);
@@ -44,18 +47,20 @@ export async function buildAndUploadAutounattendIso(opts) {
   const writeScript = `
 set -e
 mkdir -p ${remoteDirQ}
+rm -rf ${remoteStageDirQ}
+mkdir -p ${remoteStageDirQ}
 cat > ${remoteXmlQ} <<'HDC_UNATTEND_EOF'
-${xml.replace(/\\/g, "\\\\").replace(/\$/g, "\\$")}
+${xml}
 HDC_UNATTEND_EOF
 if command -v genisoimage >/dev/null 2>&1; then
-  genisoimage -quiet -o ${remoteIsoQ} -J -r ${remoteXmlQ}
+  genisoimage -quiet -o ${remoteIsoQ} -J -r ${remoteStageDirQ}
 elif command -v mkisofs >/dev/null 2>&1; then
-  mkisofs -quiet -o ${remoteIsoQ} -J -r ${remoteXmlQ}
+  mkisofs -quiet -o ${remoteIsoQ} -J -r ${remoteStageDirQ}
 else
   echo "HDC_ERROR=no_iso_tool" >&2
   exit 1
 fi
-rm -f ${remoteXmlQ}
+rm -rf ${remoteStageDirQ}
 echo HDC_ISO_VOLID=${storage}:iso/${filename}
 `.trim();
 

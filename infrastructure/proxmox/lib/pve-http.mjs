@@ -224,7 +224,9 @@ export async function waitForPveTask(opts) {
   const taskNode = pveUpidNode(upid) ?? node;
   const path = `/nodes/${encodeURIComponent(taskNode)}/tasks/${encodeURIComponent(upid)}/status`;
   const started = Date.now();
-  while (Date.now() - started < timeoutMs) {
+  // timeoutMs <= 0 means no limit (callers such as llama-cpp task wait pass 0).
+  const limitMs = Number(timeoutMs) > 0 ? Number(timeoutMs) : Number.POSITIVE_INFINITY;
+  while (Date.now() - started < limitMs) {
     const body = await pveJsonRequest(
       "GET",
       apiBase,

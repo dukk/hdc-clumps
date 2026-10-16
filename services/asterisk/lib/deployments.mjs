@@ -59,8 +59,16 @@ export function normalizeAsteriskConfig(cfg) {
     throw new Error("asterisk config must be a JSON object");
   }
   const version = typeof cfg.schema_version === "number" ? cfg.schema_version : 1;
-  if (!Array.isArray(cfg.deployments) || cfg.deployments.length === 0) {
-    throw new Error("asterisk config needs deployments[] with at least one entry");
+  if (!Array.isArray(cfg.deployments)) {
+    throw new Error("asterisk config needs deployments[]");
+  }
+  if (cfg.deployments.length === 0) {
+    return {
+      schemaVersion: version >= 2 ? 2 : version,
+      defaults: isObject(cfg.defaults) ? structuredClone(cfg.defaults) : {},
+      asterisk: isObject(cfg.asterisk) ? structuredClone(cfg.asterisk) : {},
+      deployments: [],
+    };
   }
   const defaults = isObject(cfg.defaults) ? structuredClone(cfg.defaults) : {};
   const globalAsterisk = isObject(cfg.asterisk) ? structuredClone(cfg.asterisk) : {};
@@ -220,6 +228,7 @@ export function instanceFlagToSystemId(instance, deployments) {
  */
 export function resolveAsteriskDeployments(cfg, flags, opts = {}) {
   const normalized = normalizeAsteriskConfig(cfg);
+  if (normalized.deployments.length === 0) return [];
   const skipInstallCli = flags["skip-install"] !== undefined;
 
   let selectedId = flagGet(flags, "system-id", "system_id");

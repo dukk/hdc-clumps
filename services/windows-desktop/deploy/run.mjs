@@ -110,6 +110,7 @@ async function main() {
       for (const deployment of deployments) {
         try {
           const common = {
+            normalized,
             deployment,
             adminPassword,
             flags,

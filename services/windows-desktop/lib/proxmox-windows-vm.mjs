@@ -89,7 +89,6 @@ export async function createWindows11QemuVm(opts) {
     ide0: ideMediaFromVolid(windowsIsoVolid),
     ide1: ideMediaFromVolid(virtioIsoVolid),
     ide2: ideMediaFromVolid(autounattendIsoVolid),
-    boot: "order=ide0;scsi0",
     agent: 1,
     efidisk0: `${storage}:1,efitype=4m,pre-enrolled-keys=1,size=4M`,
     tpmstate0: `${storage}:1,size=4M,version=${tpmVersion}`,
@@ -103,6 +102,17 @@ export async function createWindows11QemuVm(opts) {
     authorization,
     rejectUnauthorized,
     pveFormBody(fields),
+  );
+
+  // Set boot order in its own PUT: when sent together with the new devices PVE keeps its
+  // default (net0 first) order and the VM PXE-boots instead of the Windows ISO.
+  await pveJsonRequest(
+    "PUT",
+    apiBase,
+    configPath,
+    authorization,
+    rejectUnauthorized,
+    pveFormBody({ boot: "order=ide0;scsi0" }),
   );
 
   await enableQemuAgentInConfig({
@@ -243,6 +253,54 @@ export async function waitForQemuGuestAgent(opts) {
 }
 
 /**
+ * OVMF shows "Press any key to boot from CD or DVD" for Windows ISOs; tap Enter so unattended
+ * installs do not fall through to an empty disk / PXE.
+ * @param {object} opts
+ * @param {string} opts.sshUser
+ * @param {string} opts.sshHost
+ * @param {number} opts.vmid
+ * @param {number} [opts.presses]
+ * @param {number} [opts.intervalMs]
+ * @param {(line: string) => void} [opts.log]
+ */
+export async function pressKeyToBootFromCd(opts) {
+  const { sshUser, sshHost, vmid, presses = 60, intervalMs = 500 } = opts;
+  const log = opts.log ?? ((line) => errout.write(`${line}\n`));
+  log(`Sending Enter to VM ${vmid} for the boot-from-CD prompt …`);
+  // The prompt is only shown for a few seconds; loop on the host so SSH latency does not miss it.
+  sshRemote(sshUser, sshHost, pressKeyToBootFromCdCommand(vmid, presses, intervalMs), { capture: true });
+}
+
+/**
+ * @param {number} vmid
+ * @param {number} presses
+ * @param {number} intervalMs
+ */
+export function pressKeyToBootFromCdCommand(vmid, presses, intervalMs) {
+  const sec = (Math.max(0, intervalMs) / 1000).toFixed(2);
+  return `for i in $(seq 1 ${Math.max(1, Math.floor(presses))}); do qm sendkey ${Math.floor(vmid)} ret >/dev/null 2>&1; sleep ${sec}; done`;
+}
+
+/**
+ * Remote command removing setup's cached answer files so a sysprepped template does not
+ * re-apply the builder's unattend (computer name, no static IP) on clones.
+ * @param {number} vmid
+ */
+export function removeCachedUnattendCommand(vmid) {
+  // Forward slashes: backslashes do not survive the ssh/bash/qm quoting layers, and a stale
+  // C:/Windows/Panther/unattend.xml wins over the clone's autounattend ISO.
+  const files = [
+    "C:/Windows/Panther/unattend.xml",
+    "C:/Windows/Panther/unattend-original.xml",
+    "C:/Windows/Panther/Unattend/unattend.xml",
+  ].join(",");
+  return (
+    `qm guest exec ${Math.floor(vmid)} -- powershell.exe -NoProfile -Command ` +
+    `"Remove-Item -Force -ErrorAction SilentlyContinue ${files}; exit 0"`
+  );
+}
+
+/**
  * Run Sysprep inside a Windows guest via hypervisor `qm guest exec`.
  * @param {object} opts
  * @param {string} opts.sshUser
@@ -256,6 +314,7 @@ export function runWindowsSysprep(opts) {
   const sysprep =
     "C:\\\\Windows\\\\System32\\\\Sysprep\\\\Sysprep.exe /generalize /oobe /shutdown /quiet";
   log(`Running Sysprep on VM ${vmid} …`);
+  sshRemote(sshUser, sshHost, removeCachedUnattendCommand(vmid), { capture: true });
   const remote = `qm guest exec ${vmid} -- ${sysprep}`;
   const r = sshRemote(sshUser, sshHost, remote, { capture: true });
   if (r.status !== 0) {
