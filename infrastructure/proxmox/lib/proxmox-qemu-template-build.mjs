@@ -163,7 +163,9 @@ export async function buildQemuCloudTemplate(opts) {
       ide2: `${storage}:cloudinit`,
       boot: "order=scsi0",
       serial0: "socket",
-      vga: "serial0",
+      // HDC default: SPICE qxl display + host CPU (clones inherit; override per deployment).
+      vga: "qxl",
+      cpu: "host",
       agent: "1",
     }),
   );

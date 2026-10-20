@@ -279,7 +279,7 @@ async function deployQemuOne(deployment, flags, log, secrets) {
       log: (line) => errout.write(`[hdc] ${target} ${verb}: ${line}\n`),
     });
 
-    // Ubuntu cloud templates use serial0+vga=serial0; that stalls first boot. Prefer std VGA.
+    // Ubuntu cloud templates use serial0+vga=serial0; that stalls first boot. Prefer qxl (SPICE) VGA.
     // Also regenerate cloud-init via SSH (API POST /cloudinit is often 501) and verify ISO9660 —
     // a full thin pool yields a corrupt drive and the guest never gets a static IP.
     const consoleFix = repairUbuntuQemuConsole({

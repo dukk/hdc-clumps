@@ -12,7 +12,7 @@ import { haosOvaDownloadUrl, haosOvaFilename, haosQcow2Filename } from "./haos-i
 
 /** Proxmox QEMU console fields for HAOS (avoid Ubuntu serial0/socket hang). */
 export const HAOS_QEMU_CONSOLE_FIELDS = {
-  vga: "std",
+  vga: "qxl",
   tablet: 0,
 };
 
@@ -214,7 +214,7 @@ export async function repairHaosSerialConsole(opts) {
   }
 
   log(
-    `Repairing HAOS console on vmid ${vmid}: removing serial0 (was ${previousSerial0 ?? "unset"}) and vga=${previousVga ?? "default"} → vga=std …`,
+    `Repairing HAOS console on vmid ${vmid}: removing serial0 (was ${previousSerial0 ?? "unset"}) and vga=${previousVga ?? "default"} → vga=qxl …`,
   );
   await pveJsonRequest(
     "PUT",
