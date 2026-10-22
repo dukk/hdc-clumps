@@ -222,4 +222,37 @@ describe("litellm-config-render", () => {
     expect(yaml).toContain("repos=hdc-clumps");
     expect(yaml).toContain("delegatable_by=hdc-sre-engineer");
   });
+  it("renders ollama_chat host deployments with timeouts and router cooldown", () => {
+    const yaml = renderLitellmConfigYaml({
+      ollama_backends: backends.ollama,
+      model_list: [
+        {
+          model_name: "lan-1/gemma3:4b",
+          provider: "ollama_chat",
+          model: "gemma3:4b",
+          ollama_backend_id: "ollama-b",
+          timeout: 20,
+          stream_timeout: 15,
+        },
+      ],
+      router_settings: { routing_strategy: "simple-shuffle", allowed_fails: 1, cooldown_time: 120 },
+    });
+    expect(yaml).toContain("model_name: lan-1/gemma3:4b");
+    expect(yaml).toContain("model: ollama_chat/gemma3:4b");
+    expect(yaml).toContain("api_base: os.environ/OLLAMA_API_BASE_OLLAMA_B");
+    expect(yaml).toContain("      timeout: 20");
+    expect(yaml).toContain("      stream_timeout: 15");
+    expect(yaml).toContain("  allowed_fails: 1");
+    expect(yaml).toContain("  cooldown_time: 120");
+  });
+
+  it("rejects non-positive per-deployment timeouts", () => {
+    expect(() =>
+      normalizeModelList(
+        [{ model_name: "x", provider: "ollama_chat", model: "m", ollama_backend_id: "ollama-a", timeout: 0 }],
+        backends,
+      ),
+    ).toThrow(/timeout must be a number of seconds > 0/);
+  });
 });
+

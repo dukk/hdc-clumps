@@ -102,7 +102,7 @@ export function openaiBackendEnvVar(backendId) {
 /**
  * @param {unknown} modelList
  * @param {{ ollama: { id: string; url: string }[]; openai: { id: string; url: string }[] }} backends
- * @returns {{ model_name: string; provider: string; model: string; ollama_backend_id?: string; openai_backend_id?: string; order?: number; weight?: number; complexity_router_config?: Record<string, unknown>; complexity_router_default_model?: string }[]}
+ * @returns {{ model_name: string; provider: string; model: string; ollama_backend_id?: string; openai_backend_id?: string; order?: number; weight?: number; timeout?: number; stream_timeout?: number; complexity_router_config?: Record<string, unknown>; complexity_router_default_model?: string }[]}
  */
 export function normalizeModelList(modelList, backends) {
   if (!Array.isArray(modelList) || modelList.length === 0) {
@@ -110,7 +110,7 @@ export function normalizeModelList(modelList, backends) {
   }
   const ollamaIds = new Set(backends.ollama.map((b) => b.id));
   const openaiIds = new Set(backends.openai.map((b) => b.id));
-  /** @type {{ model_name: string; provider: string; model: string; ollama_backend_id?: string; openai_backend_id?: string; order?: number; weight?: number; complexity_router_config?: Record<string, unknown>; complexity_router_default_model?: string }[]} */
+  /** @type {{ model_name: string; provider: string; model: string; ollama_backend_id?: string; openai_backend_id?: string; order?: number; weight?: number; timeout?: number; stream_timeout?: number; complexity_router_config?: Record<string, unknown>; complexity_router_default_model?: string }[]} */
   const out = [];
   for (const raw of modelList) {
     if (!isObject(raw)) continue;
@@ -122,15 +122,16 @@ export function normalizeModelList(modelList, backends) {
     }
     if (
       provider !== "ollama" &&
+      provider !== "ollama_chat" &&
       provider !== "openrouter" &&
       provider !== "openai" &&
       provider !== "auto_router"
     ) {
       throw new Error(
-        `model_list ${JSON.stringify(modelName)}: provider must be ollama, openai, openrouter, or auto_router`,
+        `model_list ${JSON.stringify(modelName)}: provider must be ollama, ollama_chat, openai, openrouter, or auto_router`,
       );
     }
-    /** @type {{ model_name: string; provider: string; model: string; ollama_backend_id?: string; openai_backend_id?: string; order?: number; weight?: number; complexity_router_config?: Record<string, unknown>; complexity_router_default_model?: string }} */
+    /** @type {{ model_name: string; provider: string; model: string; ollama_backend_id?: string; openai_backend_id?: string; order?: number; weight?: number; timeout?: number; stream_timeout?: number; complexity_router_config?: Record<string, unknown>; complexity_router_default_model?: string }} */
     const entry = { model_name: modelName, provider, model };
     if (raw.order !== undefined && raw.order !== null) {
       const order = typeof raw.order === "number" ? raw.order : Number(raw.order);
@@ -146,7 +147,15 @@ export function normalizeModelList(modelList, backends) {
       }
       entry.weight = weight;
     }
-    if (provider === "ollama") {
+    for (const key of /** @type {const} */ (["timeout", "stream_timeout"])) {
+      if (raw[key] === undefined || raw[key] === null) continue;
+      const seconds = typeof raw[key] === "number" ? raw[key] : Number(raw[key]);
+      if (!Number.isFinite(seconds) || seconds <= 0) {
+        throw new Error(`model_list ${JSON.stringify(modelName)}: ${key} must be a number of seconds > 0`);
+      }
+      entry[key] = seconds;
+    }
+    if (provider === "ollama" || provider === "ollama_chat") {
       const backendId =
         typeof raw.ollama_backend_id === "string"
           ? raw.ollama_backend_id.trim()

@@ -150,13 +150,19 @@ function renderRouterSettingsYaml(routerSettings) {
     isObject(routerSettings.routing_strategy_args) &&
     Object.keys(routerSettings.routing_strategy_args).length > 0;
   const hasPreCallChecks = typeof routerSettings.enable_pre_call_checks === "boolean";
+  /** Cooldown knobs so a sleeping/offline LAN host is skipped quickly instead of retried. */
+  const cooldownKeys = /** @type {const} */ (["allowed_fails", "cooldown_time"]);
+  const cooldownEntries = cooldownKeys
+    .map((key) => /** @type {const} */ ([key, routerSettings[key]]))
+    .filter(([, v]) => typeof v === "number" && Number.isFinite(v) && v >= 0);
 
   if (
     fallbackLines.length === 0 &&
     routingGroupLines.length === 0 &&
     !hasRoutingStrategy &&
     !hasRoutingStrategyArgs &&
-    !hasPreCallChecks
+    !hasPreCallChecks &&
+    cooldownEntries.length === 0
   ) {
     return [];
   }
@@ -172,6 +178,9 @@ function renderRouterSettingsYaml(routerSettings) {
   }
   if (hasPreCallChecks) {
     lines.push(yamlLine("enable_pre_call_checks", routerSettings.enable_pre_call_checks, 2));
+  }
+  for (const [key, value] of cooldownEntries) {
+    lines.push(yamlLine(key, value, 2));
   }
   if (routingGroupLines.length > 0) {
     lines.push(...routingGroupLines);
@@ -233,8 +242,8 @@ export function renderLitellmConfigYaml(litellm) {
     lines.push("  -");
     lines.push(yamlLine("model_name", entry.model_name, 4));
     lines.push("    litellm_params:");
-    if (entry.provider === "ollama") {
-      lines.push(yamlLine("model", `ollama/${entry.model}`, 6));
+    if (entry.provider === "ollama" || entry.provider === "ollama_chat") {
+      lines.push(yamlLine("model", `${entry.provider}/${entry.model}`, 6));
       const backendId = entry.ollama_backend_id ?? backends.ollama[0]?.id;
       if (backendId) {
         lines.push(yamlLine("api_base", `os.environ/${ollamaBackendEnvVar(backendId)}`, 6));
@@ -265,6 +274,12 @@ export function renderLitellmConfigYaml(litellm) {
     }
     if (entry.weight !== undefined) {
       lines.push(yamlLine("weight", entry.weight, 6));
+    }
+    if (entry.timeout !== undefined) {
+      lines.push(yamlLine("timeout", entry.timeout, 6));
+    }
+    if (entry.stream_timeout !== undefined) {
+      lines.push(yamlLine("stream_timeout", entry.stream_timeout, 6));
     }
   }
 
