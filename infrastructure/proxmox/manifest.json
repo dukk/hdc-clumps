@@ -42,6 +42,12 @@
       "summary": "Query hypervisors and guests from config.json; JSON systems[] on stdout. Flags: --guest, --find-template, --host-capacity."
     },
     {
+      "id": "thin-overmap",
+      "title": "Reclaim over-mapped thin LVs",
+      "verb": "maintain",
+      "summary": "--thin-overmap: report thin LVs that map more than their size (read-only). Add --apply --vmid N [--node n] [--temp-storage nas-1] to reclaim via a move-disk round trip."
+    },
+    {
       "id": "guest-destroy",
       "title": "Destroy guest by VMID",
       "verb": "teardown",

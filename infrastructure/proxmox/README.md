@@ -273,6 +273,23 @@ The **homepage** service references `id: homepage` and pushes widget credentials
 
 Flags: `--skip-service-accounts`, `--regenerate-service-token <id>`, `--regenerate-service-password <id>`.
 
+## Over-mapped thin LVs (`--thin-overmap`)
+
+A thin LV can map more pool blocks than its size (LVM warns `Thin volume pve/vm-N-disk-0 maps X while the size is only Y`), e.g. after a disk shrink. The extra blocks are unreachable by the guest but waste pool space and can break thin snapshots.
+
+```bash
+# Report only (default): every node, or filter with --node / --vmid / --disk
+hdc run infrastructure proxmox maintain -- --thin-overmap
+# Reclaim one guest disk: move-disk round trip via temp storage (default nas-1)
+hdc run infrastructure proxmox maintain -- --thin-overmap --apply --node pve-c --vmid 101 [--disk scsi0] [--temp-storage nas-1]
+```
+
+- Threshold: over-map > `--min-overmap-pct` (10) of LV size **and** > `--min-overmap-gib` (1). Inactive LVs report no usage and are not evaluated.
+- `--apply` requires `--vmid`. Steps: check temp storage (active, content type, free space >= 1.1x disk size), `move_disk storage=<temp> delete=1`, verify config, move back to the original storage with `delete=1`, verify config, re-run `lvs` on the new LV. Stops on the first failure and leaves the current state in place.
+- QEMU guests may stay running. LXC `move_volume` needs the CT stopped: skipped unless `--allow-ct` and already stopped. Guests with snapshots, templates and cloud-init volumes are skipped.
+- Disk options (e.g. `replicate=1`), HA and replication settings carry over; the volume name may change (e.g. `vm-101-disk-0` -> `vm-101-disk-1`).
+- SSH for `lvs`: pubkey, then vault `HDC_PROXMOX_SSH_PASSWORD_<HOST>`, then a hop through another cluster node.
+
 ## After deploy / Using the service
 
 This package manages **hypervisors**, not end-user apps.
