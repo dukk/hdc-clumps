@@ -48,6 +48,12 @@
       "summary": "--thin-overmap: report thin LVs that map more than their size (read-only). Add --apply --vmid N [--node n] [--temp-storage nas-1] to reclaim via a move-disk round trip."
     },
     {
+      "id": "backups",
+      "title": "Backup check and fix",
+      "verb": "maintain",
+      "summary": "--backups: report failing vzdump guests with causes, job storage reachability/free space, stale locks, stranded disks, and job targets (missing/template/retired/duplicate). --apply clears stale backup locks and re-enables/activates job storage; --backup-now --vmid N runs a manual snapshot backup."
+    },
+    {
       "id": "guest-destroy",
       "title": "Destroy guest by VMID",
       "verb": "teardown",

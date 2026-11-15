@@ -54,6 +54,9 @@
  *   --regen-cloudinit --vmid N [--ipconfig0 …]  Recreate cloud-init drive (early exit)
  *   --thin-overmap [--node <n>] [--vmid N] [--disk scsi0]  Report thin LVs mapping more than their size (early exit, read-only)
  *   --thin-overmap --apply --vmid N [--node <n>] [--temp-storage nas-1]  Reclaim via move-disk round trip (lib/proxmox-thin-overmap-reclaim.mjs)
+ *   --backups [--node <n>] [--vmid N[,M]] [--since-days 7]  Backup check: failing vzdump guests + causes, storage, locks, stranded disks, job targets (early exit, read-only)
+ *   --backups --apply      Also clear stale 'backup' locks and re-enable/activate job storage (lib/proxmox-backup-check.mjs)
+ *   --backups --backup-now --vmid N[,M]  Manual vzdump (snapshot, keep-all) to the guest's job storage, one at a time
  */
 import { dirname, join } from "node:path";
 import { loadClumpConfigFromClumpRoot } from "hdc/package/clump-run-config.mjs";
@@ -197,6 +200,21 @@ async function main() {
     }
   } catch (e) {
     errout.write(`[proxmox] maintain thin-overmap failed: ${/** @type {Error} */ (e).stack || e}\n`);
+    process.exitCode = 1;
+    return;
+  }
+  try {
+    const { maybeRunProxmoxBackupCheck } = await import("../lib/proxmox-backup-check.mjs");
+    const backups = await maybeRunProxmoxBackupCheck(argv, clumpRoot);
+    if (backups.handled) {
+      const payload = { target: "proxmox", verb: "maintain", ...(backups.result ?? {}) };
+      if (backups.ok === false) process.exitCode = 1;
+      errout.write(`[proxmox] maintain: backups finished (${backups.ok ? "ok" : "issues found"}).\n`);
+      process.stdout.write(`${JSON.stringify(payload, null, 2)}\n`);
+      return;
+    }
+  } catch (e) {
+    errout.write(`[proxmox] maintain backups failed: ${/** @type {Error} */ (e).stack || e}\n`);
     process.exitCode = 1;
     return;
   }

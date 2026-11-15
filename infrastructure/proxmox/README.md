@@ -290,6 +290,30 @@ hdc run infrastructure proxmox maintain -- --thin-overmap --apply --node pve-c -
 - Disk options (e.g. `replicate=1`), HA and replication settings carry over; the volume name may change (e.g. `vm-101-disk-0` -> `vm-101-disk-1`).
 - SSH for `lvs`: pubkey, then vault `HDC_PROXMOX_SSH_PASSWORD_<HOST>`, then a hop through another cluster node.
 
+## Backup check and fix (`--backups`)
+
+Finds why scheduled vzdump jobs fail and fixes the safe, reversible causes. API only (SSH is used only as a fallback to clear a lock).
+
+```bash
+# Report only (default): every node, or filter with --node / --vmid
+hdc run infrastructure proxmox maintain -- --backups [--since-days 7] [--min-free-pct 10]
+# Apply safe fixes: stale backup locks, disabled/inactive job storage
+hdc run infrastructure proxmox maintain -- --backups --apply
+# Manual backup of fixed guests (one at a time, snapshot mode, keep-all so nothing is pruned)
+hdc run infrastructure proxmox maintain -- --backups --backup-now --vmid 101,112 [--storage nas-1]
+```
+
+Checks:
+
+- **Recent results:** vzdump tasks per guest in the last `--since-days` (7), with the failure reason from the task log and a cause (`missing-disk`, `locked`, `start-failed`, `storage`, `other`). A guest whose latest run succeeded shows as `recovered`.
+- **Storage:** every storage an enabled job targets is configured, enabled, allowed on each node that has guests backing up to it, active on each online node, and above `--min-free-pct` free.
+- **Stranded guests:** each backed-up disk (QEMU disks without `backup=0`; LXC rootfs and `backup=1` mount points) exists on the node that holds the guest config. If the volume lives on another node, that node is named and a config move is proposed.
+- **Locks:** a `backup` lock with no vzdump running on that node is stale. Other locks (`snapshot`, `migrate`, ...) are reported with the guest's snapshots.
+- **Passthrough:** stopped VMs with `hostpci*` in a job (stop-mode backup has to start QEMU with the device).
+- **Job targets:** jobs that reference missing guests, templates, or guests tagged/named retired; guests sharing a hostname with another guest (old copy vs restored copy) and which one the job covers; guests with a `backup-*` tag that no enabled job covers.
+
+`--apply` only clears stale `backup` locks, re-enables a disabled job storage, and activates an inactive one. Everything else (removing or retargeting a guest in a job, moving a guest config, clearing a non-backup lock, deleting snapshots, volumes or backups, stopping guests) is listed under `proposed` with its exact effect and needs a human decision.
+
 ## After deploy / Using the service
 
 This package manages **hypervisors**, not end-user apps.
