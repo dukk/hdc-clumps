@@ -134,3 +134,24 @@ Legacy `waf` / `access` fields still work for one release via normalize-time mig
 
 - [AGENTS.md — Nginx WAF](../../../AGENTS.md)
 - Schema: [`apps/hdc-cli/schema/nginx-waf.config.schema.json`](../../../apps/hdc-cli/schema/nginx-waf.config.schema.json)
+
+## ACME challenge forwarding (HTTP-01, multi-node)
+
+Certbot runs only on the group's `cert-primary`; certificates reach the `peer` via the cert-sync hook.
+Cloudflare load-balances between both WAF origins, so Let's Encrypt (multi-perspective validation) can hit the peer.
+On HTTP-01 groups, `maintain` therefore renders every port-80 server block on **peer** nodes (each site and the
+default catch-all) with:
+
+```nginx
+location ^~ /.well-known/acme-challenge/ {
+    proxy_pass http://<cert-primary-ip>;   # proxmox.qemu.ip of the cert-primary, else configure.ssh.host
+    proxy_set_header Host $host;
+    ...
+}
+```
+
+The cert-primary keeps serving its certbot webroot (`acme.webroot`), including on the default catch-all, so
+challenges for hosts without a vhost yet also validate. Nothing to configure: the primary IP comes from
+`deployments[]`. The forwarding is applied by `maintain` (site push); re-run maintain after `deploy`.
+
+On HTTP-01 groups maintain also pushes the peer (with forwarding) right before certbot runs. To verify forwarding without spending Let's Encrypt attempts, push sites only: `hdc run service nginx-waf maintain -- --group public --site <id> --skip-certs`, drop a test file in the primary's webroot and fetch it through each node.

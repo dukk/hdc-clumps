@@ -2,7 +2,7 @@
 /**
  * Maintain nginx WAF: push site configs, optional cert renew/sync.
  *
- * Usage: hdc run service nginx-waf maintain -- [--sync-certs] [--renew-certs] [--site <id>] [--group <id>] [--skip-clamav] [--skip-guest-agent] [--skip-wazuh-log-collection] [--skip-disk-resize] [--dry-run]
+ * Usage: hdc run service nginx-waf maintain -- [--sync-certs] [--renew-certs] [--skip-certs] [--site <id>] [--group <id>] [--skip-clamav] [--skip-guest-agent] [--skip-wazuh-log-collection] [--skip-disk-resize] [--dry-run]
  */
 import { basename, dirname, join } from "node:path";
 import { existsSync, readFileSync } from "node:fs";
@@ -14,6 +14,7 @@ import { resolveBindTsigForAcme } from "hdc/package/bind-tsig-for-acme.mjs";
 import { provisionLogFromConsole } from "hdc/package/host-provisioner.mjs";
 import { createNginxWafVaultAccess } from "hdc/package/vault-deps.mjs";
 import {
+  acmeChallengeProxyFor,
   findCertPrimaryDeployment,
   findPeerDeployment,
   loadAcmeRootCaContent,
@@ -114,6 +115,8 @@ async function main() {
   await vaultAccess.unlock({});
   const syncCerts = flagGet(flags, "sync-certs") !== undefined;
   const renewCerts = flagGet(flags, "renew-certs") !== undefined;
+  // --skip-certs: push sites only; never run certbot obtain/expand (e.g. verify ACME forwarding first).
+  const skipCerts = flagGet(flags, "skip-certs") !== undefined;
   const siteFilter = flagGet(flags, "site");
 
   let groupContexts;
@@ -233,7 +236,8 @@ async function main() {
         ? await loadGroupSecrets(global, vault)
         : { email: global.email, tsigSecret: "" };
 
-      const needsCertEnsure = Boolean(email) && anyCertNeedsEnsureOnHost(certPrimaryExec, certSites, global);
+      const needsCertEnsure =
+        !skipCerts && Boolean(email) && anyCertNeedsEnsureOnHost(certPrimaryExec, certSites, global);
       if (needsCertEnsure) {
         errout.write(
           `[hdc] ${target} ${verb}: group ${ctx.groupId}: ensuring certificate(s) (obtain/expand) on ${certPrimary.systemId} …\n`,
@@ -268,6 +272,22 @@ async function main() {
             pruneStaleSites: !partialSiteUpdate,
             wafNodeId: certPrimary.systemId,
           });
+          if (certPeer) {
+            // Peer must forward :80 ACME challenges to the primary before certbot runs (Cloudflare may pick either origin).
+            errout.write(
+              `[hdc] ${target} ${verb}: group ${ctx.groupId}: ACME forwarding on ${certPeer.systemId} -> ${certPrimary.systemId} …\n`,
+            );
+            configureNginxWafSites({
+              exec: configureExecFromDeployment(certPeer),
+              log,
+              global,
+              sites: allSites,
+              allSites,
+              pruneStaleSites: !partialSiteUpdate,
+              wafNodeId: certPeer.systemId,
+              acmeChallengeProxy: acmeChallengeProxyFor(certPeer, certPrimary, global),
+            });
+          }
           obtainMissingCertificates({
             exec: certPrimaryExec,
             log,
@@ -308,6 +328,7 @@ async function main() {
             allSites,
             pruneStaleSites: !partialSiteUpdate,
             wafNodeId: deployment.systemId,
+            acmeChallengeProxy: acmeChallengeProxyFor(deployment, certPrimary, global),
           });
           const existing = results.find((r) => r.system_id === deployment.systemId);
           const entry = {

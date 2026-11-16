@@ -771,3 +771,21 @@ export function loadAcmeRootCaContent(acme, options = {}) {
 export function serverNames(site) {
   return hostNames(site);
 }
+
+/**
+ * Peer nodes proxy :80 ACME HTTP-01 challenges to the cert-primary (certbot runs only there).
+ * Uses the primary's proxmox.qemu.ip, else configure.ssh.host. Empty for the primary itself or non-HTTP-01.
+ * @param {ReturnType<typeof finalizeDeployment>} deployment
+ * @param {ReturnType<typeof finalizeDeployment>} certPrimary
+ * @param {{ challenge?: string }} global
+ * @returns {string} e.g. "http://10.0.0.40" or ""
+ */
+export function acmeChallengeProxyFor(deployment, certPrimary, global) {
+  if (!global || global.challenge !== "http-01") return "";
+  if (!deployment || !certPrimary || deployment.systemId === certPrimary.systemId) return "";
+  const prox = isObject(certPrimary.proxmox) ? certPrimary.proxmox : {};
+  const qemu = isObject(prox.qemu) ? prox.qemu : {};
+  let host = typeof qemu.ip === "string" && qemu.ip.trim() ? qemu.ip.trim().split("/")[0] : "";
+  if (!host) host = sshTargetFromDeployment(certPrimary).host;
+  return host ? `http://${host}` : "";
+}

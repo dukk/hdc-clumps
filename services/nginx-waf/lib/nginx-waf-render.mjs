@@ -563,17 +563,53 @@ export function renderHdcNginxInclude(opts) {
 }
 
 /**
+ * ACME HTTP-01 challenge location for a port-80 server block.
+ * Cert-primary: serve the certbot webroot. Peer: proxy to the cert-primary over the LAN
+ * (plain HTTP, original Host) so validation succeeds whichever WAF node Cloudflare picks.
+ * @param {object} opts
+ * @param {string} [opts.webroot] certbot webroot (primary)
+ * @param {string} [opts.acmeChallengeProxy] e.g. "http://10.0.0.40" (peer); wins over webroot
+ * @returns {string} location block (leading newline) or ""
+ */
+export function renderAcmeChallengeLocation(opts = {}) {
+  const proxy = typeof opts.acmeChallengeProxy === "string" ? opts.acmeChallengeProxy.trim().replace(/\/+$/, "") : "";
+  if (proxy) {
+    if (!/^http:\/\/[A-Za-z0-9.\-:\[\]]+$/.test(proxy)) {
+      throw new Error(`acmeChallengeProxy must be http://<host>[:port] (got ${JSON.stringify(proxy)})`);
+    }
+    return `
+    location ^~ /.well-known/acme-challenge/ {
+        proxy_pass ${proxy};
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_connect_timeout 10s;
+        proxy_read_timeout 30s;
+    }`;
+  }
+  const webroot = typeof opts.webroot === "string" ? opts.webroot.trim() : "";
+  if (!webroot) return "";
+  return `
+    location ^~ /.well-known/acme-challenge/ {
+        root ${webroot};
+        default_type "text/plain";
+    }`;
+}
+
+/**
  * @param {object} [opts]
- * @param {string} [opts.webroot]
+ * @param {string} [opts.webroot] static root for the 404 page
+ * @param {string} [opts.acmeWebroot] certbot webroot served on :80 (cert-primary, HTTP-01)
+ * @param {string} [opts.acmeChallengeProxy] proxy ACME challenges on :80 to the cert-primary (peer)
  */
 export function renderDefaultCatchAllVhost(opts = {}) {
   const webroot = opts.webroot ?? DEFAULT_SITE_ROOT;
+  const acme = renderAcmeChallengeLocation({ webroot: opts.acmeWebroot, acmeChallengeProxy: opts.acmeChallengeProxy });
   return `# hdc default catch-all (unmatched host)
 server {
     listen 80 default_server;
     listen [::]:80 default_server;
     server_name _;
-    modsecurity off;
+    modsecurity off;${acme}
     location / {
         root ${webroot};
         try_files /index.html =404;
@@ -635,6 +671,7 @@ export function renderSiteUploadDirectives(site) {
  * @param {"remote_addr" | "cloudflare"} [opts.clientIp]
  * @param {boolean} [opts.cloudflareIpv4]
  * @param {string} [opts.wafNodeId]
+ * @param {string} [opts.acmeChallengeProxy] peer only: proxy :80 ACME challenges to the cert-primary
  * @param {Record<string, Record<string, unknown>>} opts.policyCatalog
  */
 export function renderSiteVhost(opts) {
@@ -647,6 +684,7 @@ export function renderSiteVhost(opts) {
     clientIp = "remote_addr",
     cloudflareIpv4 = true,
     wafNodeId,
+    acmeChallengeProxy = "",
     policyCatalog,
   } = opts;
   const id = siteId(site);
@@ -752,14 +790,7 @@ export function renderSiteVhost(opts) {
   const blocks = [];
 
   if (listen.includes(80)) {
-    const acme =
-      http01Acme && webroot
-        ? `
-    location ^~ /.well-known/acme-challenge/ {
-        root ${webroot};
-        default_type "text/plain";
-    }`
-        : "";
+    const acme = http01Acme ? renderAcmeChallengeLocation({ webroot, acmeChallengeProxy }) : "";
     const locBlocksHttp =
       locations.length > 0
         ? locations.map((loc, i) => renderLoc(loc, i))
