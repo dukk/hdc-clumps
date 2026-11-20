@@ -20,7 +20,7 @@ import { fileURLToPath } from "node:url";
 import { resolveRepoFile } from "hdc/cli/lib/private-repo.mjs";
 import { repoRoot } from "hdc/cli/paths.mjs";
 import { sshTargetFromDeployment } from "./deployments.mjs";
-import { ensureAcmeDnsCredentials } from "./letsencrypt.mjs";
+import { ensureAllAcmeDnsCredentials } from "./letsencrypt.mjs";
 import { CERT_SYNC_HOOK_PATH, CERT_SYNC_SCRIPT_PATH } from "./cert-sync.mjs";
 
 const libDir = dirname(fileURLToPath(import.meta.url));
@@ -230,15 +230,35 @@ function runChecked(exec, cmd, log, label) {
   return r;
 }
 
-/** Upload content atomically; never echoes content into logs. */
+/** Max base64 chars per remote command (Windows CreateProcess caps a command line at 32767 chars). */
+const UPLOAD_CHUNK = 8000;
+
+/** Upload content atomically (chunked for large files); never echoes content into logs. */
 function uploadFile(exec, remotePath, content, log, mode = "644") {
   const b64 = Buffer.from(content, "utf8").toString("base64");
   const tmp = `${remotePath}.hdc-tmp`;
+  const tmpB64 = `${tmp}.b64`;
+  const label = `write ${remotePath} (${mode})`;
+  if (b64.length <= UPLOAD_CHUNK) {
+    runChecked(
+      exec,
+      `umask 077 && echo ${shellQuote(b64)} | base64 -d > ${shellQuote(tmp)} && chmod ${mode} ${shellQuote(tmp)} && mv -f ${shellQuote(tmp)} ${shellQuote(remotePath)}`,
+      log,
+      label,
+    );
+    return;
+  }
+  runChecked(exec, `umask 077 && : > ${shellQuote(tmpB64)}`, log, `${label} [start]`);
+  for (let i = 0; i < b64.length; i += UPLOAD_CHUNK) {
+    const part = b64.slice(i, i + UPLOAD_CHUNK);
+    const r = exec.run(`printf %s ${shellQuote(part)} >> ${shellQuote(tmpB64)}`, { capture: true });
+    if (r.status !== 0) throw new Error(`${label}: chunk ${i / UPLOAD_CHUNK} failed: ${`${r.stderr}${r.stdout}`.trim().slice(0, 300)}`);
+  }
   runChecked(
     exec,
-    `umask 077 && echo ${shellQuote(b64)} | base64 -d > ${shellQuote(tmp)} && chmod ${mode} ${shellQuote(tmp)} && mv -f ${shellQuote(tmp)} ${shellQuote(remotePath)}`,
+    `umask 077 && base64 -d ${shellQuote(tmpB64)} > ${shellQuote(tmp)} && rm -f ${shellQuote(tmpB64)} && chmod ${mode} ${shellQuote(tmp)} && mv -f ${shellQuote(tmp)} ${shellQuote(remotePath)}`,
     log,
-    `write ${remotePath} (${mode})`,
+    `${label} [${Math.ceil(b64.length / UPLOAD_CHUNK)} chunks]`,
   );
 }
 
@@ -287,9 +307,9 @@ export function installCertHaOnNode(opts) {
   }
   if (trustRoots.length) runChecked(exec, "update-ca-certificates >/dev/null", log);
 
-  // 1b. DNS-01 (RFC2136/TSIG) credentials on every node so any node can renew dns-rfc2136 lineages
+  // 1b. DNS-01 (RFC2136/TSIG) credentials on every node, one file per zone, so any node can renew
   if (global && tsigSecret && global.dnsZone && global.dnsNameservers?.length) {
-    ensureAcmeDnsCredentials({ exec, log, acme: { ...global, challenge: "dns-01" }, tsigSecret });
+    ensureAllAcmeDnsCredentials({ exec, log, global, tsigSecret });
   }
 
   // 2. tool, config, key

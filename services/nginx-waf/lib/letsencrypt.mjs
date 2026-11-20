@@ -201,8 +201,24 @@ function acmeCaBundlePrefix(acme) {
  * @param {ReturnType<typeof import("./deployments.mjs").parseAcmeSettings>} opts.acme
  * @param {string} [opts.tsigSecret]
  */
+/**
+ * Path of the RFC2136 credentials file for a zone. The group default zone keeps the historic
+ * path (`CERTBOT_DNS_CREDENTIALS`) so existing renewal confs keep working; any other zone gets
+ * `/etc/letsencrypt/hdc-dns-rfc2136-<zone>.ini`.
+ * @param {string} zone
+ * @param {string} [defaultZone]
+ */
+export function certbotDnsCredentialsPath(zone, defaultZone) {
+  const z = String(zone || "").trim().toLowerCase().replace(/\.$/, "");
+  const d = String(defaultZone || "").trim().toLowerCase().replace(/\.$/, "");
+  if (!z) return CERTBOT_DNS_CREDENTIALS;
+  if (!d || z === d) return CERTBOT_DNS_CREDENTIALS;
+  if (!/^[a-z0-9.-]+$/.test(z)) throw new Error(`invalid dns zone ${JSON.stringify(zone)}`);
+  return `/etc/letsencrypt/hdc-dns-rfc2136-${z}.ini`;
+}
+
 export function ensureAcmeDnsCredentials(opts) {
-  const { exec, log, acme, tsigSecret } = opts;
+  const { exec, log, acme, tsigSecret, defaultDnsZone } = opts;
   if (acme.challenge !== "dns-01") return;
   if (!acme.dnsZone || !acme.dnsNameservers.length) {
     throw new Error("dns-01 requires acme.dns.zone and dns.nameservers");
@@ -214,8 +230,59 @@ export function ensureAcmeDnsCredentials(opts) {
     keyName: acme.dnsKeyName,
     tsigSecret,
   });
-  uploadFile(exec, CERTBOT_DNS_CREDENTIALS, creds, log);
-  runChecked(exec, `chmod 600 ${shellQuote(CERTBOT_DNS_CREDENTIALS)}`, log);
+  const path = certbotDnsCredentialsPath(acme.dnsZone, defaultDnsZone ?? acme.dnsZone);
+  uploadFile(exec, path, creds, log);
+  runChecked(exec, `chmod 600 ${shellQuote(path)}`, log);
+  return path;
+}
+
+/**
+ * Write RFC2136 credential files for every zone used by the group's sites (and the group default),
+ * then point existing dns-rfc2136 renewal confs at the file for that lineage's zone.
+ * @param {object} opts
+ * @param {import("../../postfix-relay/lib/postfix-relay-configure.mjs").ConfigureExec} opts.exec
+ * @param {{ info: Function }} opts.log
+ * @param {ReturnType<typeof import("./deployments.mjs").nginxWafGroupSettings>} opts.global
+ * @param {string} opts.tsigSecret
+ */
+export function ensureAllAcmeDnsCredentials(opts) {
+  const { exec, log, global, tsigSecret } = opts;
+  if (!tsigSecret || !global?.dnsZone || !global.dnsNameservers?.length) return { zones: [], retargeted: [] };
+  const plans = tlsCertObtainPlans(global.sites || [], global);
+  /** @type {Map<string, string>} certName -> zone */
+  const certZone = new Map();
+  const zones = new Set([global.dnsZone]);
+  for (const plan of plans) {
+    if (plan.acme.challenge !== "dns-01" || !plan.acme.dnsZone) continue;
+    zones.add(plan.acme.dnsZone);
+    certZone.set(plan.certName, plan.acme.dnsZone);
+    for (const n of plan.sans) certZone.set(n, plan.acme.dnsZone);
+  }
+  for (const zone of zones) {
+    ensureAcmeDnsCredentials({
+      exec,
+      log,
+      acme: { ...global.acme, challenge: "dns-01", dnsZone: zone, dnsNameservers: global.dnsNameservers, dnsKeyName: global.dnsKeyName },
+      tsigSecret,
+      defaultDnsZone: global.dnsZone,
+    });
+  }
+  /** @type {string[]} */
+  const retargeted = [];
+  for (const [certName, zone] of certZone) {
+    const path = certbotDnsCredentialsPath(zone, global.dnsZone);
+    if (path === CERTBOT_DNS_CREDENTIALS) continue;
+    const conf = `/etc/letsencrypt/renewal/${certName}.conf`;
+    const r = exec.run(
+      `test -f ${shellQuote(conf)} && grep -q '^authenticator = dns-rfc2136' ${shellQuote(conf)} && ` +
+        `grep -q '^dns_rfc2136_credentials = ' ${shellQuote(conf)} && ` +
+        `sed -i ${shellQuote(`s|^dns_rfc2136_credentials = .*|dns_rfc2136_credentials = ${path}|`)} ${shellQuote(conf)}`,
+      { capture: true },
+    );
+    if (r.status === 0) retargeted.push(certName);
+  }
+  if (retargeted.length) log.info(`retargeted dns-rfc2136 credentials for ${retargeted.join(", ")}`);
+  return { zones: [...zones], retargeted };
 }
 
 /** @deprecated Use ensureAcmeDnsCredentials */
@@ -242,15 +309,17 @@ export function ensureLetsencryptDnsCredentials(opts) {
  * @param {string[]} opts.sans
  */
 export function buildCertonlyCommand(opts) {
-  const { acme, email, certName, sans } = opts;
+  const { acme, email, certName, sans, replaceLineage = false, defaultDnsZone } = opts;
   const agree = " --agree-tos --non-interactive";
   const domainFlags = (sans.length ? sans : [certName]).map((n) => `-d ${n}`).join(" ");
-  const certFlags = ` --cert-name ${shellQuote(certName)} --expand`;
+  // --expand adds names; omitting it and passing --force-renewal replaces the lineage's exact SAN set.
+  const certFlags = ` --cert-name ${shellQuote(certName)}` + (replaceLineage ? " --force-renewal" : " --expand");
   const serverFlag = acmeServerFlag(acme);
   const caBundle = acmeCaBundlePrefix(acme);
   if (acme.challenge === "dns-01") {
+    const creds = certbotDnsCredentialsPath(acme.dnsZone, defaultDnsZone ?? acme.dnsZone);
     return (
-      `${caBundle}certbot certonly --dns-rfc2136 --dns-rfc2136-credentials ${shellQuote(CERTBOT_DNS_CREDENTIALS)} ` +
+      `${caBundle}certbot certonly --dns-rfc2136 --dns-rfc2136-credentials ${shellQuote(creds)} ` +
       `--email ${shellQuote(email)}${agree}${certFlags}${serverFlag} ${domainFlags}`
     );
   }
@@ -306,11 +375,11 @@ function canDnsFallback(acme, tsigSecret, sans, certName) {
  * @param {string} [opts.tsigSecret]
  */
 function obtainCertificateWithChallenge(opts) {
-  const { exec, log, acme, email, certName, sans, tsigSecret } = opts;
+  const { exec, log, acme, email, certName, sans, tsigSecret, replaceLineage = false, defaultDnsZone } = opts;
   if (acme.challenge === "dns-01") {
-    ensureAcmeDnsCredentials({ exec, log, acme, tsigSecret });
+    ensureAcmeDnsCredentials({ exec, log, acme, tsigSecret, defaultDnsZone });
   }
-  runChecked(exec, buildCertonlyCommand({ acme, email, certName, sans }), log);
+  runChecked(exec, buildCertonlyCommand({ acme, email, certName, sans, replaceLineage, defaultDnsZone }), log);
 }
 
 /**
@@ -334,10 +403,10 @@ function obtainCertificateWithChallenge(opts) {
  * @returns {boolean} true when a certificate was written
  */
 function tryObtainOrExpandCertificate(opts) {
-  const { exec, log, acme, email, certName, sans, tsigSecret } = opts;
+  const { exec, log, acme, email, certName, sans, tsigSecret, replaceLineage = false, defaultDnsZone } = opts;
   const names = sans.length ? sans : [certName];
   try {
-    obtainCertificateWithChallenge({ exec, log, acme, email, certName, sans, tsigSecret });
+    obtainCertificateWithChallenge({ exec, log, acme, email, certName, sans, tsigSecret, replaceLineage, defaultDnsZone });
     return true;
   } catch (httpErr) {
     const msg = String(/** @type {Error} */ (httpErr).message || httpErr);
@@ -368,6 +437,8 @@ function tryObtainOrExpandCertificate(opts) {
         certName,
         sans,
         tsigSecret,
+        replaceLineage,
+        defaultDnsZone,
       });
       return true;
     } catch (dnsErr) {
@@ -390,6 +461,7 @@ function tryObtainOrExpandCertificate(opts) {
  */
 export function obtainMissingCertificates(opts) {
   const { exec, log, global, email, sites, tsigSecret } = opts;
+  const defaultDnsZone = global.dnsZone || "";
   const plans = tlsCertObtainPlans(sites, global);
   if (!plans.length) {
     log.info("no TLS domains configured");
@@ -419,12 +491,16 @@ export function obtainMissingCertificates(opts) {
       if (missing.length) log.info(`expanding certificate ${certName}: adding ${missing.join(", ")}`);
       // Reissue with the exact configured set (certbot --cert-name replaces the lineage's names).
       if (extra.length) log.info(`reissuing certificate ${certName}: removing ${extra.join(", ")}`);
-      if (tryObtainOrExpandCertificate({ exec, log, acme, email, certName, sans, tsigSecret })) {
+      if (tryObtainOrExpandCertificate({
+        exec, log, acme, email, certName, sans, tsigSecret,
+        replaceLineage: extra.length > 0,
+        defaultDnsZone,
+      })) {
         expanded.push(certName);
       }
       continue;
     }
-    if (tryObtainOrExpandCertificate({ exec, log, acme, email, certName, sans, tsigSecret })) {
+    if (tryObtainOrExpandCertificate({ exec, log, acme, email, certName, sans, tsigSecret, defaultDnsZone })) {
       obtained.push(certName);
     }
   }

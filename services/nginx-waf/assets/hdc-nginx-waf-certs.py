@@ -24,6 +24,7 @@ Subcommands (run as root):
 """
 import datetime as _dt
 import fcntl
+import hashlib
 import io
 import json
 import os
@@ -151,7 +152,12 @@ def lineage_info(name):
         return {"present": False}
     info["present"] = True
     info["key_ok"] = key_matches(os.path.join(base, "fullchain.pem"), os.path.join(base, "privkey.pem"))
-    info["renewal_conf"] = os.path.isfile(os.path.join(LE_DIR, "renewal", f"{name}.conf"))
+    conf = os.path.join(LE_DIR, "renewal", f"{name}.conf")
+    info["renewal_conf"] = os.path.isfile(conf)
+    info["renewal_sha"] = ""
+    if info["renewal_conf"]:
+        with open(conf, "rb") as f:
+            info["renewal_sha"] = hashlib.sha256(f.read()).hexdigest()
     info["valid"] = info["key_ok"] and info["expires"] > now()
     return info
 
@@ -423,12 +429,26 @@ def push_accounts_to(cfg, node):
 
 
 def newer_than(mine, theirs, my_prio, their_prio):
-    """True when my copy should replace theirs (newest valid wins; tie -> higher priority node)."""
-    if not mine or not mine.get("present") or not mine.get("valid"):
+    """True when my copy should replace theirs.
+
+    Newest *valid* certificate wins; a valid copy always beats an expired or missing one. When both
+    are expired (or both valid with the same expiry), the later notAfter wins, then higher priority.
+    Same certificate fingerprint: still push when this node has a renewal config the peer lacks (or
+    both have one and they differ — higher-priority node wins) so expired lineages can be renewed
+    on any node.
+    """
+    if not mine or not mine.get("present"):
         return False
-    if not theirs or not theirs.get("present") or not theirs.get("valid"):
+    if not theirs or not theirs.get("present"):
         return True
     if mine["fp"] == theirs["fp"]:
+        ms, ts = mine.get("renewal_sha", ""), theirs.get("renewal_sha", "")
+        if not ms or ms == ts:
+            return False
+        return not ts or my_prio < their_prio
+    if mine.get("valid") and not theirs.get("valid"):
+        return True
+    if not mine.get("valid") and theirs.get("valid"):
         return False
     if mine["expires"] != theirs["expires"]:
         return mine["expires"] > theirs["expires"]
