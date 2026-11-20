@@ -195,7 +195,7 @@ export function resolveWafDistributeSettings(mosquitto) {
  * @param {string} publicKey
  * @param {string[]} fromHosts
  */
-export function renderMosquittoDistributeAuthorizedKey(publicKey, fromHosts) {
+export function renderMosquittoDistributeAuthorizedKey(publicKey, fromHosts, options = {}) {
   const parts = publicKey.trim().split(/\s+/);
   if (parts.length < 2 || !/^ssh-(ed25519|rsa)$|^ecdsa-/.test(parts[0])) {
     throw new Error("cert_ha.peer_ssh_public_key must be an OpenSSH public key");
@@ -203,8 +203,11 @@ export function renderMosquittoDistributeAuthorizedKey(publicKey, fromHosts) {
   for (const h of fromHosts) {
     if (!/^[A-Za-z0-9.\-:*]+$/.test(h)) throw new Error(`bad WAF host ${JSON.stringify(h)}`);
   }
+  const receiveCmd = options.viaSudo
+    ? `sudo -n ${MOSQUITTO_CERT_RECEIVER} receive`
+    : `${MOSQUITTO_CERT_RECEIVER} receive`;
   const opts = [
-    `command="${MOSQUITTO_CERT_RECEIVER} receive"`,
+    `command="${receiveCmd}"`,
     "no-pty",
     "no-port-forwarding",
     "no-agent-forwarding",
@@ -225,8 +228,13 @@ dest=/etc/mosquitto/certs
 stage=\$(mktemp -d)
 trap 'rm -rf "\$stage"' EXIT
 tar -C "\$stage" -xf -
-test -s "\$stage/fullchain.pem"
-test -s "\$stage/privkey.pem"
+for f in fullchain.pem privkey.pem; do
+  if [ -L "\$stage/\$f" ]; then
+    cp -L "\$stage/\$f" "\$stage/\$f.real"
+    mv "\$stage/\$f.real" "\$stage/\$f"
+  fi
+  test -f "\$stage/\$f" && test -s "\$stage/\$f"
+done
 install -d -m 750 -o mosquitto -g mosquitto "\$dest"
 install -m 640 -o mosquitto -g mosquitto "\$stage/fullchain.pem" "\$dest/fullchain.pem"
 install -m 640 -o mosquitto -g mosquitto "\$stage/privkey.pem" "\$dest/privkey.pem"
@@ -240,19 +248,25 @@ systemctl reload mosquitto 2>/dev/null || systemctl restart mosquitto
  */
 export function installMosquittoCertReceiver(exec, mosquitto) {
   const { publicKey, fromHosts } = resolveWafDistributeSettings(mosquitto);
-  const line = renderMosquittoDistributeAuthorizedKey(publicKey, fromHosts);
+  const rootLine = renderMosquittoDistributeAuthorizedKey(publicKey, fromHosts);
+  const hdcLine = renderMosquittoDistributeAuthorizedKey(publicKey, fromHosts, { viaSudo: true });
   const scriptB64 = Buffer.from(renderMosquittoCertReceiverScript(), "utf8").toString("base64");
-  const lineB64 = Buffer.from(`${line}\n`, "utf8").toString("base64");
+  const rootLineB64 = Buffer.from(`${rootLine}\n`, "utf8").toString("base64");
+  const hdcLineB64 = Buffer.from(`${hdcLine}\n`, "utf8").toString("base64");
   const cmd = [
     "set -euo pipefail",
     `echo ${shellQuote(scriptB64)} | base64 -d > ${MOSQUITTO_CERT_RECEIVER}`,
     `chmod 755 ${MOSQUITTO_CERT_RECEIVER}`,
-    "install -d -m 700 /root/.ssh",
-    "F=/root/.ssh/authorized_keys",
-    "touch \"$F\" && chmod 600 \"$F\"",
-    `grep -v ${shellQuote(MOSQUITTO_DISTRIBUTE_KEY_COMMENT)} \"$F\" > \"$F.tmp\" || true`,
-    `echo ${shellQuote(lineB64)} | base64 -d >> \"$F.tmp\"`,
-    "mv \"$F.tmp\" \"$F\" && chmod 600 \"$F\"",
+    "install_key() {",
+    "  F=$1; owner=$2; b64=$3",
+    '  install -d -m 700 -o "$owner" -g "$owner" "$(dirname "$F")"',
+    '  touch "$F" && chmod 600 "$F" && chown "$owner:$owner" "$F"',
+    "  grep -v " + shellQuote(MOSQUITTO_DISTRIBUTE_KEY_COMMENT) + ' "$F" > "$F.tmp" || true',
+    '  echo "$b64" | base64 -d >> "$F.tmp"',
+    '  mv "$F.tmp" "$F" && chmod 600 "$F" && chown "$owner:$owner" "$F"',
+    "}",
+    `install_key /root/.ssh/authorized_keys root ${shellQuote(rootLineB64)}`,
+    `id hdc >/dev/null 2>&1 && install_key /home/hdc/.ssh/authorized_keys hdc ${shellQuote(hdcLineB64)} || true`,
   ].join("\n");
   const r = exec.run(cmd, { capture: true });
   if (r.status !== 0) {
@@ -282,7 +296,7 @@ export function retireGuestCertbotTimers(exec) {
  */
 export function fetchLivePemTarFromWaf(host, user, certName) {
   const safe = String(certName).replace(/[^a-zA-Z0-9._-]/g, "");
-  const remote = `sudo -n tar -C /etc/letsencrypt/live/${safe} -cf - fullchain.pem privkey.pem`;
+  const remote = `sudo -n tar -C /etc/letsencrypt/live/${safe} -chf - fullchain.pem privkey.pem`;
   const r = spawnSync(
     "ssh",
     ["-o", "BatchMode=yes", "-o", "ConnectTimeout=8", "-o", "IdentitiesOnly=no", `${user}@${host}`, remote],
@@ -308,7 +322,10 @@ export function installPemTarOnGuest(exec, tarBuf, dest) {
     "stage=$(mktemp -d)",
     "trap 'rm -rf \"$stage\"' EXIT",
     `echo ${shellQuote(b64)} | base64 -d | tar -C "$stage" -xf -`,
-    "test -s \"$stage/fullchain.pem\" && test -s \"$stage/privkey.pem\"",
+    "for f in fullchain.pem privkey.pem; do",
+    '  if [ -L "$stage/$f" ]; then cp -L "$stage/$f" "$stage/$f.real" && mv "$stage/$f.real" "$stage/$f"; fi',
+    '  test -f "$stage/$f" && test -s "$stage/$f"',
+    "done",
     `install -d -m 750 -o mosquitto -g mosquitto ${shellQuote(dest)}`,
     `install -m 640 -o mosquitto -g mosquitto "$stage/fullchain.pem" ${shellQuote(dest)}/fullchain.pem`,
     `install -m 640 -o mosquitto -g mosquitto "$stage/privkey.pem" ${shellQuote(dest)}/privkey.pem`,

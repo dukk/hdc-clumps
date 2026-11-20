@@ -648,7 +648,8 @@ def pems_tar(name):
             path = os.path.join(live, fn)
             if not os.path.isfile(path):
                 raise FileNotFoundError(path)
-            tar.add(path, arcname=fn)
+            # live/ files are typically symlinks into archive/; pack the real bytes
+            tar.add(os.path.realpath(path), arcname=fn)
     return buf.getvalue()
 
 
