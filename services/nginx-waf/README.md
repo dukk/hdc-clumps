@@ -137,7 +137,7 @@ Legacy `waf` / `access` fields still work for one release via normalize-time mig
 
 ## ACME challenge forwarding (HTTP-01, multi-node)
 
-Certbot runs only on the group's `cert-primary`; certificates reach the `peer` via the cert-sync hook.
+Certbot runs only on the group's `cert-primary`; certificates reach the `peer` via the cert-sync hook. (Legacy — with `acme.cert_ha.enabled` see **Certificate HA** below.)
 Cloudflare load-balances between both WAF origins, so Let's Encrypt (multi-perspective validation) can hit the peer.
 On HTTP-01 groups, `maintain` therefore renders every port-80 server block on **peer** nodes (each site and the
 default catch-all) with:
@@ -155,3 +155,60 @@ challenges for hosts without a vhost yet also validate. Nothing to configure: th
 `deployments[]`. The forwarding is applied by `maintain` (site push); re-run maintain after `deploy`.
 
 On HTTP-01 groups maintain also pushes the peer (with forwarding) right before certbot runs. To verify forwarding without spending Let's Encrypt attempts, push sites only: `hdc run service nginx-waf maintain -- --group public --site <id> --skip-certs`, drop a test file in the primary's webroot and fetch it through each node.
+
+## Certificate HA (`acme.cert_ha`, any node can renew)
+
+With `deployment_groups[].acme.cert_ha.enabled: true` the single cert-primary model above is replaced:
+every WAF node in the group gets the same tooling from hdc (`maintain`/`deploy` install it — nothing is
+hand-made on the hosts), so a rebuilt node or a new `waf-c`/`waf-d` only needs a `deployments[]` entry
+and a place in `cert_ha.priority`.
+
+Installed on each node by `lib/cert-ha.mjs`:
+
+| Path | What |
+|------|------|
+| `/usr/local/sbin/hdc-nginx-waf-certs` | on-host tool (`assets/hdc-nginx-waf-certs.py`): `renew`, `check`, `push`, `status`, `deploy-hook`, `serve` |
+| `/etc/hdc/nginx-waf-certs.json` | self id, ordered peer list (`priority` 0 = leader), thresholds, alert recipients |
+| `/etc/hdc/nginx-waf-certs/id_ed25519` | shared node-to-node key (vault `cert_ha.peer_ssh_key_vault_key`, default `HDC_NGINX_WAF_CERT_PEER_SSH_KEY`) |
+| `~hdc/.ssh/authorized_keys` | one managed line for that key: forced `command=… serve`, `from=` peer IPs, no pty/forwarding (other keys untouched) |
+| `/etc/sudoers.d/hdc-nginx-waf-certs` | `hdc` may run only `hdc-nginx-waf-certs serve-root *` as root |
+| `/usr/local/share/ca-certificates/*.crt` | `cert_ha.trust_root_ca_files` (e.g. step-ca root) → system trust, so `certbot renew` works for step-ca lineages |
+| `/etc/letsencrypt/hdc-dns-rfc2136.ini` | TSIG credentials for DNS-01 (from vault `acme.dns.tsig_vault_key`) on **every** node |
+| `hdc-nginx-waf-cert-renew.timer` | twice daily, staggered by priority (leader first); `certbot.timer` is disabled + masked |
+| `hdc-nginx-waf-cert-check.timer` | daily compare / sync / alert |
+| `/etc/letsencrypt/renewal-hooks/deploy/hdc-nginx-waf-certs` | after each issuance: `nginx -t` + reload, push the lineage to peers |
+
+**Leader + lock.** The node with priority 0 always runs `certbot renew`. A lower-priority node renews only if
+every higher-priority node is unreachable, has not finished a renew run within `takeover_after_hours` (36h),
+or the fleet holds a renewable cert within `takeover_days` (21d) of expiry. Before running certbot a node takes
+a lease (`/var/lib/hdc-nginx-waf-certs/renew.lease`, 3h TTL) on itself and on every reachable peer, in priority
+order; if any peer already holds it, everything is released and the run is skipped — two nodes never renew at once.
+
+**Sync.** `check`/`push` compare SHA-256 fingerprint + notAfter per lineage with each peer; the newest *valid*
+copy (cert/key match, not expired) wins in either direction (ties → higher priority). Transfers are per lineage
+(`live/`, `archive/`, `renewal/X.conf`; ACME accounts are added, never overwritten); the receiver validates,
+backs up, swaps, runs `nginx -t` and restores on failure before reloading.
+
+**Alerts** (journal tag `hdc-nginx-waf-certs` + mail via the host's postfix relay to `cert_ha.alert.mail_to`,
+optional `uptime_kuma_push_url`) fire only when the problem set changes: peer mismatch left after sync, cert
+within `warn_days` (14d), renewal failure, no node renewed within 36h, unreachable peer — and once more when all clear.
+Fleet-wide problems are mailed by the highest-priority reachable node only.
+
+**HTTP-01 with no single node.** Instead of proxying challenges to the cert-primary, every node serves its own
+webroot and falls back to its peers (`try_files $uri @hdc_acme_peers`, one hop, `proxy_next_upstream http_404`),
+on :80, :443 and the default catch-all; the peer upstream lives in `/etc/nginx/hdc/acme-peers.conf`.
+
+Useful commands:
+
+```bash
+sudo hdc-nginx-waf-certs status                       # this node
+sudo hdc-nginx-waf-certs check                        # compare/sync now (prints actions + problems)
+sudo hdc-nginx-waf-certs renew --dry-run --simulate-down vm-nginx-waf-a   # leader-down test on waf-b (staging)
+hdc run service nginx-waf maintain -- --group public --instance b --skip-certs   # roll out to one node
+hdc run service nginx-waf maintain -- --group public --sync-certs                # push --all from every node
+```
+
+`--instance` / `--system-id` limit every maintain step to that node, and certificate obtain runs on the
+highest-priority selected node — so `maintain -- --instance b` issues from waf-b while waf-a is down.
+Names outside the BIND zone(s) (Cloudflare-hosted) still need HTTP-01; LAN-only names belong on a separate
+`challenge: dns-01` site (see `docuseal-hdc`).

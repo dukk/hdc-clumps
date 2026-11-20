@@ -559,7 +559,47 @@ export function renderHdcNginxInclude(opts) {
   if (modsecurityEnabled) {
     lines.push("modsecurity on;");
   }
+  // cert-HA ACME peer upstream (written by configureNginxWafSites; glob tolerates absence)
+  lines.push(`include ${ACME_PEERS_FILE_GLOB};`);
   return `${lines.join("\n")}\n`;
+}
+
+export const ACME_PEERS_UPSTREAM = "hdc_acme_peers";
+export const ACME_PEERS_FILE = "/etc/nginx/hdc/acme-peers.conf";
+const ACME_PEERS_FILE_GLOB = "/etc/nginx/hdc/acme-peers*.conf";
+
+/**
+ * Validate/normalise cert-HA ACME peer addresses ("10.0.0.41" or "10.0.0.41:80").
+ * @param {unknown} raw
+ * @returns {string[]}
+ */
+export function normalizeAcmePeers(raw) {
+  if (!Array.isArray(raw)) return [];
+  const out = [];
+  for (const p of raw) {
+    const v = String(p ?? "").trim();
+    if (!v) continue;
+    if (!/^[A-Za-z0-9.\-]+(:\d{1,5})?$/.test(v)) {
+      throw new Error(`acmePeers entries must be host[:port] (got ${JSON.stringify(v)})`);
+    }
+    out.push(v.includes(":") ? v : `${v}:80`);
+  }
+  return out;
+}
+
+/**
+ * http-context upstream used by the cert-HA ACME fallback location.
+ * @param {unknown} acmePeers
+ * @returns {string} "" when no peers
+ */
+export function renderAcmePeersUpstream(acmePeers) {
+  const peers = normalizeAcmePeers(acmePeers);
+  if (!peers.length) return "";
+  return [
+    `upstream ${ACME_PEERS_UPSTREAM} {`,
+    ...peers.map((p) => `    server ${p} max_fails=0;`),
+    "}",
+  ].join("\n");
 }
 
 /**
@@ -572,6 +612,29 @@ export function renderHdcNginxInclude(opts) {
  * @returns {string} location block (leading newline) or ""
  */
 export function renderAcmeChallengeLocation(opts = {}) {
+  const peers = normalizeAcmePeers(opts.acmePeers);
+  const webrootForPeers = typeof opts.webroot === "string" ? opts.webroot.trim() : "";
+  if (peers.length && webrootForPeers) {
+    // Cert HA: every node serves its own webroot and falls back to its peers (one hop only), so any
+    // node can run certbot HTTP-01 regardless of which origin Cloudflare picks.
+    return `
+    location ^~ /.well-known/acme-challenge/ {
+        root ${webrootForPeers};
+        default_type "text/plain";
+        try_files $uri @hdc_acme_peers;
+    }
+    location @hdc_acme_peers {
+        if ($http_x_hdc_acme_hop) {
+            return 404;
+        }
+        proxy_pass http://${ACME_PEERS_UPSTREAM};
+        proxy_set_header Host $host;
+        proxy_set_header X-HDC-Acme-Hop 1;
+        proxy_next_upstream error timeout http_404;
+        proxy_connect_timeout 3s;
+        proxy_read_timeout 10s;
+    }`;
+  }
   const proxy = typeof opts.acmeChallengeProxy === "string" ? opts.acmeChallengeProxy.trim().replace(/\/+$/, "") : "";
   if (proxy) {
     if (!/^http:\/\/[A-Za-z0-9.\-:\[\]]+$/.test(proxy)) {
@@ -603,7 +666,11 @@ export function renderAcmeChallengeLocation(opts = {}) {
  */
 export function renderDefaultCatchAllVhost(opts = {}) {
   const webroot = opts.webroot ?? DEFAULT_SITE_ROOT;
-  const acme = renderAcmeChallengeLocation({ webroot: opts.acmeWebroot, acmeChallengeProxy: opts.acmeChallengeProxy });
+  const acme = renderAcmeChallengeLocation({
+    webroot: opts.acmeWebroot,
+    acmeChallengeProxy: opts.acmeChallengeProxy,
+    acmePeers: opts.acmePeers,
+  });
   return `# hdc default catch-all (unmatched host)
 server {
     listen 80 default_server;
@@ -685,6 +752,7 @@ export function renderSiteVhost(opts) {
     cloudflareIpv4 = true,
     wafNodeId,
     acmeChallengeProxy = "",
+    acmePeers = [],
     policyCatalog,
   } = opts;
   const id = siteId(site);
@@ -790,7 +858,7 @@ export function renderSiteVhost(opts) {
   const blocks = [];
 
   if (listen.includes(80)) {
-    const acme = http01Acme ? renderAcmeChallengeLocation({ webroot, acmeChallengeProxy }) : "";
+    const acme = http01Acme ? renderAcmeChallengeLocation({ webroot, acmeChallengeProxy, acmePeers }) : "";
     const locBlocksHttp =
       locations.length > 0
         ? locations.map((loc, i) => renderLoc(loc, i))
@@ -832,7 +900,9 @@ ${acme}${cloudflareRealIp}${httpServe}
   if (listen.includes(443) && tlsEnabled) {
     const acme443 =
       http01Acme && webroot
-        ? `
+        ? normalizeAcmePeers(acmePeers).length
+          ? renderAcmeChallengeLocation({ webroot, acmePeers })
+          : `
     location ^~ /.well-known/acme-challenge/ {
         root ${webroot};
         default_type "text/plain";

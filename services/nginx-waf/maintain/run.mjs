@@ -2,7 +2,11 @@
 /**
  * Maintain nginx WAF: push site configs, optional cert renew/sync.
  *
- * Usage: hdc run service nginx-waf maintain -- [--sync-certs] [--renew-certs] [--skip-certs] [--site <id>] [--group <id>] [--skip-clamav] [--skip-guest-agent] [--skip-wazuh-log-collection] [--skip-disk-resize] [--dry-run]
+ * Usage: hdc run service nginx-waf maintain -- [--sync-certs] [--renew-certs] [--skip-certs] [--site <id>] [--group <id>] [--instance <a|b|…>] [--skip-clamav] [--skip-guest-agent] [--skip-wazuh-log-collection] [--skip-disk-resize] [--dry-run]
+ *
+ * --instance / --system-id limit every step (guest agent, disk, baseline, cert HA, sites) to that node.
+ * With acme.cert_ha.enabled, every node gets the cert HA tool (leader-aware renew + peer sync, see
+ * lib/cert-ha.mjs); certificate obtain runs on the highest-priority selected node.
  */
 import { basename, dirname, join } from "node:path";
 import { existsSync, readFileSync } from "node:fs";
@@ -32,6 +36,12 @@ import {
 } from "hdc/package/nginx-waf-configure.mjs";
 import { configureExecFromDeployment } from "hdc/package/configure-exec.mjs";
 import { runCertSync } from "hdc/package/cert-sync.mjs";
+import {
+  acmeVhostOptions,
+  installCertHaOnNode,
+  prepareCertHa,
+  runCertHaTool,
+} from "hdc/package/cert-ha.mjs";
 import {
   anyCertNeedsEnsureOnHost,
   obtainMissingCertificates,
@@ -139,6 +149,7 @@ async function main() {
     renewCerts ||
     groupContexts.some(
       (ctx) =>
+        ctx.acme?.cert_ha?.enabled === true ||
         ctx.global.challenge === "dns-01" ||
         !ctx.global.email ||
         (ctx.global.dnsZone && ctx.global.dnsNameservers?.length),
@@ -152,7 +163,12 @@ async function main() {
   /** @type {Record<string, unknown>[]} */
   const results = [];
 
-  const allDeployments = resolveNginxWafDeployments(cfg, {});
+  // Full (unfiltered) group membership — cert HA peers, cert-primary lookup.
+  const allGroups = resolveNginxWafGroups(cfg, {});
+  /** @param {string} groupId */
+  const groupAllDeployments = (groupId) => allGroups.find((g) => g.groupId === groupId)?.deployments ?? [];
+  // Per-node steps honour --instance / --system-id.
+  const allDeployments = deployments;
   if (!skipGuestAgent) {
     for (const deployment of allDeployments) {
       if (deployment.mode !== "proxmox-qemu") continue;
@@ -229,12 +245,64 @@ async function main() {
         ctx.groupId,
       );
       const groupDeployments = ctx.deployments;
-      const certPrimary = findCertPrimaryDeployment(groupDeployments, global.certPrimarySystemId);
-      const certPeer = findPeerDeployment(groupDeployments, certPrimary);
-      const certPrimaryExec = configureExecFromDeployment(certPrimary);
+      const groupAll = groupAllDeployments(ctx.groupId);
+      const certPrimaryCfg = findCertPrimaryDeployment(groupAll, global.certPrimarySystemId);
       const { email, tsigSecret } = needVault
         ? await loadGroupSecrets(global, vault)
         : { email: global.email, tsigSecret: "" };
+      const ha = needVault
+        ? await prepareCertHa({
+            acmeRaw: ctx.acme,
+            groupDeployments: groupAll,
+            certPrimarySystemId: global.certPrimarySystemId,
+            vault,
+          })
+        : null;
+      // Issuer: cert-primary (legacy) or highest-priority selected node (cert HA, so waf-b can issue alone).
+      const certPrimary = ha
+        ? groupDeployments
+            .slice()
+            .sort(
+              (a, b) =>
+                ha.nodes.findIndex((n) => n.id === a.systemId) - ha.nodes.findIndex((n) => n.id === b.systemId),
+            )[0]
+        : certPrimaryCfg;
+      const certPeer = ha
+        ? groupDeployments.find((d) => d.systemId !== certPrimary.systemId) ?? null
+        : findPeerDeployment(groupAll, certPrimary);
+      const certPrimaryExec = configureExecFromDeployment(certPrimary);
+      const legacyProxyFor = (d) => (ha ? "" : acmeChallengeProxyFor(d, certPrimaryCfg, global));
+
+      if (ha) {
+        for (const deployment of groupDeployments) {
+          errout.write(`[hdc] ${target} ${verb}: group ${ctx.groupId}: cert HA on ${deployment.systemId} …\n`);
+          const existing = results.find((r) => r.system_id === deployment.systemId);
+          try {
+            const certHa = installCertHaOnNode({
+              exec: configureExecFromDeployment(deployment),
+              log,
+              deployment,
+              nodes: ha.nodes,
+              settings: ha.settings,
+              peerPrivateKey: ha.peerPrivateKey,
+              trustRoots: ha.trustRoots,
+              global,
+              tsigSecret,
+            });
+            if (existing) existing.cert_ha = certHa;
+            else results.push({ ok: true, system_id: deployment.systemId, role: deployment.role, cert_ha: certHa });
+          } catch (e) {
+            const msg = String(/** @type {Error} */ (e).message || e);
+            errout.write(`[hdc] ${target} ${verb}: ${deployment.systemId} cert HA failed: ${msg}\n`);
+            if (existing) {
+              existing.ok = false;
+              existing.cert_ha = { ok: false, message: msg };
+            } else {
+              results.push({ ok: false, system_id: deployment.systemId, cert_ha: { ok: false, message: msg } });
+            }
+          }
+        }
+      }
 
       const needsCertEnsure =
         !skipCerts && Boolean(email) && anyCertNeedsEnsureOnHost(certPrimaryExec, certSites, global);
@@ -271,6 +339,7 @@ async function main() {
             allSites,
             pruneStaleSites: !partialSiteUpdate,
             wafNodeId: certPrimary.systemId,
+            ...acmeVhostOptions(ha, certPrimary, ""),
           });
           if (certPeer) {
             // Peer must forward :80 ACME challenges to the primary before certbot runs (Cloudflare may pick either origin).
@@ -285,7 +354,7 @@ async function main() {
               allSites,
               pruneStaleSites: !partialSiteUpdate,
               wafNodeId: certPeer.systemId,
-              acmeChallengeProxy: acmeChallengeProxyFor(certPeer, certPrimary, global),
+              ...acmeVhostOptions(ha, certPeer, legacyProxyFor(certPeer)),
             });
           }
           obtainMissingCertificates({
@@ -297,9 +366,10 @@ async function main() {
             tsigSecret,
           });
         }
-        if (certPeer) {
+        if (ha || certPeer) {
           try {
-            runCertSync(certPrimaryExec, log);
+            if (ha) runCertHaTool(certPrimaryExec, "push --all", log);
+            else runCertSync(certPrimaryExec, log);
           } catch (e) {
             const msg = String(/** @type {Error} */ (e).message || e);
             errout.write(
@@ -328,7 +398,7 @@ async function main() {
             allSites,
             pruneStaleSites: !partialSiteUpdate,
             wafNodeId: deployment.systemId,
-            acmeChallengeProxy: acmeChallengeProxyFor(deployment, certPrimary, global),
+            ...acmeVhostOptions(ha, deployment, legacyProxyFor(deployment)),
           });
           const existing = results.find((r) => r.system_id === deployment.systemId);
           const entry = {
@@ -360,8 +430,13 @@ async function main() {
       const global = ctx.global;
       const { certSites } = maintainSiteLists(global, cfg, siteFilter, ctx.groupId);
       const groupDeployments = ctx.deployments;
-      const certPrimary = findCertPrimaryDeployment(groupDeployments, global.certPrimarySystemId);
-      const certPeer = findPeerDeployment(groupDeployments, certPrimary);
+      const groupAll = groupAllDeployments(ctx.groupId);
+      const haEnabled = ctx.acme?.cert_ha?.enabled === true;
+      // cert HA: renew from the first selected node (priority order; --instance b renews from waf-b)
+      const certPrimary = haEnabled
+        ? groupDeployments[0]
+        : findCertPrimaryDeployment(groupAll, global.certPrimarySystemId);
+      const certPeer = haEnabled ? null : findPeerDeployment(groupAll, certPrimary);
       const certPrimaryExec = configureExecFromDeployment(certPrimary);
       const { email, tsigSecret } = needVault
         ? await loadGroupSecrets(global, vault)
@@ -381,7 +456,8 @@ async function main() {
             rootCaContent: loadAcmeRootCaContent(global.acme),
           });
         }
-        renewCertificates({ exec: certPrimaryExec, log });
+        if (haEnabled) runCertHaTool(certPrimaryExec, "renew --force", log);
+        else renewCertificates({ exec: certPrimaryExec, log });
         obtainMissingCertificates({
           exec: certPrimaryExec,
           log,
@@ -390,13 +466,14 @@ async function main() {
           sites: certSites,
           tsigSecret,
         });
-        if (certPeer) runCertSync(certPrimaryExec, log);
+        if (haEnabled) runCertHaTool(certPrimaryExec, "push --all", log);
+        else if (certPeer) runCertSync(certPrimaryExec, log);
         results.push({
           ok: true,
           system_id: certPrimary.systemId,
           deployment_group: ctx.groupId,
           step: "renew-certs",
-          synced_to: certPeer?.systemId ?? null,
+          synced_to: haEnabled ? "cert-ha peers" : certPeer?.systemId ?? null,
         });
       } catch (e) {
         const msg = String(/** @type {Error} */ (e).message || e);
@@ -413,8 +490,22 @@ async function main() {
     for (const ctx of groupContexts) {
       const global = ctx.global;
       const groupDeployments = ctx.deployments;
-      const certPrimary = findCertPrimaryDeployment(groupDeployments, global.certPrimarySystemId);
-      const certPeer = findPeerDeployment(groupDeployments, certPrimary);
+      if (ctx.acme?.cert_ha?.enabled === true) {
+        // newest valid copy wins, in both directions, from every selected node
+        for (const d of groupDeployments) {
+          try {
+            runCertHaTool(configureExecFromDeployment(d), "push --all", log);
+            results.push({ ok: true, system_id: d.systemId, deployment_group: ctx.groupId, step: "sync-certs" });
+          } catch (e) {
+            const msg = String(/** @type {Error} */ (e).message || e);
+            results.push({ ok: false, system_id: d.systemId, deployment_group: ctx.groupId, step: "sync-certs", message: msg });
+          }
+        }
+        continue;
+      }
+      const groupAll = groupAllDeployments(ctx.groupId);
+      const certPrimary = findCertPrimaryDeployment(groupAll, global.certPrimarySystemId);
+      const certPeer = findPeerDeployment(groupAll, certPrimary);
       if (!certPeer) continue;
       const certPrimaryExec = configureExecFromDeployment(certPrimary);
       errout.write(

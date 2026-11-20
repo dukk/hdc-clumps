@@ -758,7 +758,7 @@ export function loadAcmeRootCaContent(acme, options = {}) {
   if (parsed.provider !== "custom" || !parsed.rootCaFile) return "";
   const root = options.repoRoot || repoRoot();
   const resolved = resolveRepoFile(root, parsed.rootCaFile.replace(/\\/g, "/"));
-  if (!resolved.exists) {
+  if (!(resolved.found ?? resolved.exists)) {
     errout.write(
       `[hdc] nginx-waf: acme.root_ca_file not found: ${parsed.rootCaFile} (checked ${resolved.source})\n`,
     );

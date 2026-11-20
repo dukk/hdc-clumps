@@ -38,6 +38,16 @@ import {
 } from "hdc/package/deployments.mjs";
 import { configureNginxWaf, createConfigureExec } from "hdc/package/nginx-waf-configure.mjs";
 import { installCertSyncOnPrimary, runCertSync } from "hdc/package/cert-sync.mjs";
+import {
+  certHaNodes,
+  installCertHaOnNode,
+  parseCertHaSettings,
+  prepareCertHa,
+  runCertHaTool,
+} from "hdc/package/cert-ha.mjs";
+
+/** cert HA: system_id → other WAF nodes for the ACME HTTP-01 peer fallback (set in main). */
+const acmePeersBySystemId = new Map();
 import { obtainMissingCertificates } from "hdc/package/letsencrypt.mjs";
 import {
   applyQemuCloudInit,
@@ -133,6 +143,7 @@ function runConfigure(deployment, global, sites, log, skipBaseInstall) {
     skipBaseInstall,
     wafNodeId: deployment.systemId,
     rootCaContent,
+    acmePeers: acmePeersBySystemId.get(deployment.systemId) ?? [],
   });
 }
 
@@ -585,6 +596,15 @@ async function main() {
     return;
   }
 
+  for (const g of resolveNginxWafGroups(cfg, {})) {
+    const haSettings = parseCertHaSettings(g.acme);
+    if (!haSettings.enabled) continue;
+    const nodes = certHaNodes(g.deployments, haSettings, g.global.certPrimarySystemId);
+    for (const n of nodes) {
+      acmePeersBySystemId.set(n.id, nodes.filter((o) => o.id !== n.id).map((o) => o.host));
+    }
+  }
+
   /** @type {Map<string, { global: ReturnType<typeof import("../lib/deployments.mjs").nginxWafGroupSettings>, sites: Record<string, unknown>[] }>} */
   const contextBySystemId = new Map();
   for (const ctx of groupContexts) {
@@ -640,9 +660,31 @@ async function main() {
     const peer = findPeerDeployment(ctx.deployments, primary);
     const primaryTarget = sshTargetFromDeployment(primary);
     const primaryExec = createConfigureExec("ssh", primaryTarget);
+    const ha = await prepareCertHa({
+      acmeRaw: ctx.acme,
+      groupDeployments: ctx.deployments,
+      certPrimarySystemId: global.certPrimarySystemId,
+      vault,
+    });
 
     try {
-      if (primary.role === "cert-primary" && !skipInstall(flags) && peer) {
+      if (ha && !skipInstall(flags)) {
+        const selected = new Set(deployments.map((d) => d.systemId));
+        for (const d of ctx.deployments) {
+          if (!selected.has(d.systemId)) continue;
+          installCertHaOnNode({
+            exec: createConfigureExec("ssh", sshTargetFromDeployment(d)),
+            log,
+            deployment: d,
+            nodes: ha.nodes,
+            settings: ha.settings,
+            peerPrivateKey: ha.peerPrivateKey,
+            trustRoots: ha.trustRoots,
+            global,
+            tsigSecret: groupSecrets.tsigSecret || tsigSecret,
+          });
+        }
+      } else if (!ha && primary.role === "cert-primary" && !skipInstall(flags) && peer) {
         installCertSyncOnPrimary({ primary, peer, primaryExec, log });
       }
       const certResult = obtainMissingCertificates({
@@ -653,7 +695,9 @@ async function main() {
         sites: ctx.sites,
         tsigSecret: groupSecrets.tsigSecret || tsigSecret,
       });
-      if (peer) {
+      if (ha) {
+        runCertHaTool(primaryExec, "push --all", log);
+      } else if (peer) {
         runCertSync(primaryExec, log);
       }
       results.push({

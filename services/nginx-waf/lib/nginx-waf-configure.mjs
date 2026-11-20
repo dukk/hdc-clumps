@@ -11,6 +11,8 @@ import {
   DEFAULT_SITE_ROOT,
   MODSECURITY_RULES_FILE,
   WAF_MAPS_FILE,
+  ACME_PEERS_FILE,
+  renderAcmePeersUpstream,
   renderDefaultCatchAllVhost,
   renderHdcNginxInclude,
   renderHdcNginxMaps,
@@ -287,7 +289,7 @@ export function installAcmeRootCa(opts) {
  * @param {ReturnType<typeof import("./deployments.mjs").nginxWafGroupSettings>} opts.global
  */
 export function configureDefaultCatchAllSite(opts) {
-  const { exec, log, global, acmeChallengeProxy = "" } = opts;
+  const { exec, log, global, acmeChallengeProxy = "", acmePeers = [] } = opts;
   if (!global.defaultSiteEnabled) {
     runChecked(
       exec,
@@ -301,8 +303,9 @@ export function configureDefaultCatchAllSite(opts) {
   const http01 = global.challenge === "http-01";
   const vhost = renderDefaultCatchAllVhost({
     webroot: DEFAULT_SITE_ROOT,
-    acmeWebroot: http01 && !acmeChallengeProxy ? global.webroot : "",
+    acmeWebroot: http01 && (!acmeChallengeProxy || acmePeers.length) ? global.webroot : "",
     acmeChallengeProxy: http01 ? acmeChallengeProxy : "",
+    acmePeers: http01 ? acmePeers : [],
   });
   const avail = "/etc/nginx/sites-available/hdc-default.conf";
   uploadFile(exec, avail, vhost, log);
@@ -325,6 +328,7 @@ export function configureDefaultCatchAllSite(opts) {
  * @param {boolean} [opts.pruneStaleSites] Remove hdc-* vhosts on host not in sites[] (default true)
  * @param {string} [opts.wafNodeId] deployment.system_id baked into upstream headers
  * @param {string} [opts.acmeChallengeProxy] peer only: "http://<cert-primary-ip>" for :80 ACME challenges
+ * @param {string[]} [opts.acmePeers] cert HA: other WAF nodes (host[:port]); serve own webroot, fall back to peers
  */
 export function configureNginxWafSites(opts) {
   const {
@@ -336,14 +340,21 @@ export function configureNginxWafSites(opts) {
     pruneStaleSites = true,
     wafNodeId,
     acmeChallengeProxy = "",
+    acmePeers = [],
   } = opts;
   runChecked(exec, "mkdir -p /etc/nginx/sites-available /etc/nginx/sites-enabled", log);
   uploadHdcNginxGlobalInclude({ exec, log, global, allSites });
+  const peersUpstream = global.challenge === "http-01" ? renderAcmePeersUpstream(acmePeers) : "";
+  if (peersUpstream) {
+    uploadFile(exec, ACME_PEERS_FILE, `# Managed by hdc nginx-waf (cert HA) — do not edit manually\n${peersUpstream}\n`, log);
+  } else {
+    runChecked(exec, `rm -f ${shellQuote(ACME_PEERS_FILE)}`, log);
+  }
 
   /** @type {string[]} */
   const enabledIds = [];
 
-  configureDefaultCatchAllSite({ exec, log, global, acmeChallengeProxy });
+  configureDefaultCatchAllSite({ exec, log, global, acmeChallengeProxy, acmePeers: peersUpstream ? acmePeers : [] });
 
   for (const site of sites) {
     const id = siteId(site);
@@ -364,6 +375,7 @@ export function configureNginxWafSites(opts) {
       cloudflareIpv4: access.cloudflareIpv4,
       wafNodeId,
       acmeChallengeProxy,
+      acmePeers: peersUpstream ? acmePeers : [],
       policyCatalog: global.policyDefinitions,
     });
     const avail = `/etc/nginx/sites-available/hdc-${id}.conf`;
@@ -421,7 +433,17 @@ export function configureNginxWafSites(opts) {
  * @param {string} [opts.wafNodeId]
  */
 export function configureNginxWaf(opts) {
-  const { exec, log, global, sites, skipBaseInstall, wafNodeId, rootCaContent = "", acmeChallengeProxy = "" } = opts;
+  const {
+    exec,
+    log,
+    global,
+    sites,
+    skipBaseInstall,
+    wafNodeId,
+    rootCaContent = "",
+    acmeChallengeProxy = "",
+    acmePeers = [],
+  } = opts;
   if (!skipBaseInstall) {
     installNginxWafBase({
       exec,
@@ -442,6 +464,7 @@ export function configureNginxWaf(opts) {
     allSites: sites,
     wafNodeId,
     acmeChallengeProxy,
+    acmePeers,
   });
   return { ...sitesResult };
 }

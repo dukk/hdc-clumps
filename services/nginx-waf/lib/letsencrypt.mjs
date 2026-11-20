@@ -148,7 +148,17 @@ export function sansMissingFromLive(desired, live) {
 }
 
 /**
- * True when the cert is missing or live SANs do not cover every configured name.
+ * Live SANs that are no longer configured (e.g. a name moved to its own lineage).
+ * @param {string[]} desired
+ * @param {string[]} live
+ */
+export function sansExtraInLive(desired, live) {
+  const want = new Set(desired.map((n) => String(n).trim().toLowerCase()).filter(Boolean));
+  return [...new Set(live.map((n) => String(n).trim().toLowerCase()).filter(Boolean))].filter((n) => !want.has(n));
+}
+
+/**
+ * True when the cert is missing or live SANs differ from the configured names.
  * @param {import("../../postfix-relay/lib/postfix-relay-configure.mjs").ConfigureExec} exec
  * @param {string} certName
  * @param {string[]} sans
@@ -158,7 +168,7 @@ export function certNeedsEnsureOnHost(exec, certName, sans) {
   const desired = sans.length ? sans : [certName];
   const live = readCertSansOnHost(exec, certName);
   if (live === null) return true;
-  return sansMissingFromLive(desired, live).length > 0;
+  return sansMissingFromLive(desired, live).length > 0 || sansExtraInLive(desired, live).length > 0;
 }
 
 /**
@@ -401,11 +411,14 @@ export function obtainMissingCertificates(opts) {
     if (exists) {
       const live = readCertSansOnHost(exec, certName) ?? [];
       const missing = sansMissingFromLive(desired, live);
-      if (!missing.length) {
+      const extra = sansExtraInLive(desired, live);
+      if (!missing.length && !extra.length) {
         skipped.push(certName);
         continue;
       }
-      log.info(`expanding certificate ${certName}: adding ${missing.join(", ")}`);
+      if (missing.length) log.info(`expanding certificate ${certName}: adding ${missing.join(", ")}`);
+      // Reissue with the exact configured set (certbot --cert-name replaces the lineage's names).
+      if (extra.length) log.info(`reissuing certificate ${certName}: removing ${extra.join(", ")}`);
       if (tryObtainOrExpandCertificate({ exec, log, acme, email, certName, sans, tsigSecret })) {
         expanded.push(certName);
       }
