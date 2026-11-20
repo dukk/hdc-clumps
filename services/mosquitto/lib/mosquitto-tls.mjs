@@ -227,7 +227,9 @@ fi
 dest=/etc/mosquitto/certs
 stage=\$(mktemp -d)
 trap 'rm -rf "\$stage"' EXIT
-tar -C "\$stage" -xf -
+cat > "\$stage/in.tar"
+tar -C "\$stage" -xf "\$stage/in.tar"
+rm -f "\$stage/in.tar"
 for f in fullchain.pem privkey.pem; do
   if [ -L "\$stage/\$f" ]; then
     cp -L "\$stage/\$f" "\$stage/\$f.real"
