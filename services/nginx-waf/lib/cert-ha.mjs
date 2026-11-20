@@ -72,7 +72,33 @@ export function parseCertHaSettings(acmeRaw) {
       mailFrom: typeof alert.mail_from === "string" ? alert.mail_from.trim() : "",
       uptimeKumaPushUrl: typeof alert.uptime_kuma_push_url === "string" ? alert.uptime_kuma_push_url.trim() : "",
     },
+    distribute: parseCertHaDistribute(raw.distribute),
   };
+}
+
+/**
+ * Extra cert-copy targets (e.g. mosquitto). Uses the existing peer SSH key; no new credential.
+ * @param {unknown} raw
+ * @returns {{ id: string, host: string, user: string, certNames: string[] }[]}
+ */
+export function parseCertHaDistribute(raw) {
+  if (!Array.isArray(raw)) return [];
+  /** @type {{ id: string, host: string, user: string, certNames: string[] }[]} */
+  const out = [];
+  for (const item of raw) {
+    if (!item || typeof item !== "object") continue;
+    const rec = /** @type {Record<string, unknown>} */ (item);
+    const host = typeof rec.host === "string" ? rec.host.trim() : "";
+    const id = typeof rec.id === "string" && rec.id.trim() ? rec.id.trim() : host;
+    const user = typeof rec.user === "string" && rec.user.trim() ? rec.user.trim() : "root";
+    const certNames = Array.isArray(rec.cert_names)
+      ? rec.cert_names.map((n) => String(n).trim()).filter(Boolean)
+      : [];
+    if (!host || !/^[A-Za-z0-9.\-]+$/.test(host)) continue;
+    if (!id || !certNames.length) continue;
+    out.push({ id, host, user, certNames });
+  }
+  return out;
 }
 
 /**
@@ -135,6 +161,12 @@ export function renderCertHaConfig(selfId, nodes, settings) {
       mail_from: settings.alert.mailFrom,
       uptime_kuma_push_url: settings.alert.uptimeKumaPushUrl,
     },
+    distribute: (settings.distribute || []).map((d) => ({
+      id: d.id,
+      host: d.host,
+      user: d.user,
+      cert_names: d.certNames,
+    })),
   };
   return `${JSON.stringify(cfg, null, 2)}\n`;
 }

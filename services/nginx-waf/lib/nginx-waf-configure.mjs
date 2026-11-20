@@ -18,6 +18,7 @@ import {
   renderHdcNginxMaps,
   renderModsecurityMainConf,
   renderSiteVhost,
+  isCertificateOnlySite,
   hostNames,
   siteId,
   sitesNeedWebsocketMap,
@@ -357,6 +358,7 @@ export function configureNginxWafSites(opts) {
   configureDefaultCatchAllSite({ exec, log, global, acmeChallengeProxy, acmePeers: peersUpstream ? acmePeers : [] });
 
   for (const site of sites) {
+    if (isCertificateOnlySite(site)) continue;
     const id = siteId(site);
     const tls = site.tls && typeof site.tls === "object" ? site.tls : {};
     const certName =

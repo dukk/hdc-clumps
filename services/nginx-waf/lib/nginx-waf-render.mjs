@@ -342,6 +342,14 @@ export function siteId(site) {
 /**
  * @param {Record<string, unknown>} site
  */
+/**
+ * Site that needs a certificate lineage but no nginx vhost (e.g. mqtt issued on the WAFs).
+ * @param {Record<string, unknown>} site
+ */
+export function isCertificateOnlySite(site) {
+  return site && site.certificate_only === true;
+}
+
 export function hostNames(site) {
   const migrated = migrateSiteHostNames(site);
   const names = Array.isArray(migrated.host_names)

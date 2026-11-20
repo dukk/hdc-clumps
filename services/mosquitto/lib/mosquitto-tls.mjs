@@ -5,7 +5,8 @@ import { resolveRepoFile } from "hdc/cli/lib/private-repo.mjs";
 import { repoRoot } from "hdc/cli/paths.mjs";
 import { pctExec } from "hdc/package/pve-pct-remote.mjs";
 import { createConfigureExec } from "../../postfix-relay/lib/postfix-relay-configure.mjs";
-import { tlsCertName, tlsCertDir, tlsEnabled, tlsRootCaPath } from "./mosquitto-render.mjs";
+import { spawnSync } from "node:child_process";
+import { tlsCertName, tlsCertDir, tlsEnabled, tlsRootCaPath, tlsCertSource } from "./mosquitto-render.mjs";
 
 /** @param {unknown} v */
 function isObject(v) {
@@ -118,6 +119,256 @@ export function resolveAcmeEmail(mosquitto) {
  * @param {import("../../postfix-relay/lib/postfix-relay-configure.mjs").ConfigureExec} exec
  * @param {Record<string, unknown>} mosquitto
  */
+export const MOSQUITTO_CERT_RECEIVER = "/usr/local/sbin/hdc-mosquitto-certs";
+export const MOSQUITTO_DISTRIBUTE_KEY_COMMENT = "hdc-nginx-waf-certs-distribute";
+
+/**
+ * @param {string} text
+ */
+function parseJsonc(text) {
+  return JSON.parse(String(text).replace(/^\s*\/\/.*$/gm, ""));
+}
+
+/**
+ * @param {Record<string, unknown>} mosquitto
+ */
+export function resolveNginxWafConfig(mosquitto) {
+  const tls = isObject(mosquitto.tls) ? mosquitto.tls : {};
+  const rel =
+    (typeof tls.nginx_waf_config_path === "string" && tls.nginx_waf_config_path.trim()) ||
+    "clumps/services/nginx-waf/config.json";
+  const resolved = resolveRepoFile(repoRoot(), rel);
+  if (!resolved.found) {
+    throw new Error(`nginx-waf config not found at ${rel}`);
+  }
+  const cfg = parseJsonc(readFileSync(resolved.path, "utf8"));
+  if (!isObject(cfg)) throw new Error("nginx-waf config must be a JSON object");
+  return { cfg, source: resolved.source, rel: resolved.rel };
+}
+
+/**
+ * Peer public key and WAF LAN addresses from the nginx-waf clump config.
+ * @param {Record<string, unknown>} mosquitto
+ * @returns {{ publicKey: string, fromHosts: string[], wafSsh: { host: string, user: string }[] }}
+ */
+export function resolveWafDistributeSettings(mosquitto) {
+  const { cfg } = resolveNginxWafConfig(mosquitto);
+  const groups = Array.isArray(cfg.deployment_groups) ? cfg.deployment_groups : [];
+  /** @type {string} */
+  let publicKey = "";
+  /** @type {string[]} */
+  const fromHosts = [];
+  /** @type {{ host: string, user: string }[]} */
+  const wafSsh = [];
+  for (const g of groups) {
+    if (!isObject(g)) continue;
+    const acme = isObject(g.acme) ? g.acme : {};
+    const ha = isObject(acme.cert_ha) ? acme.cert_ha : {};
+    if (!publicKey && typeof ha.peer_ssh_public_key === "string") {
+      publicKey = ha.peer_ssh_public_key.trim();
+    }
+    const deployments = Array.isArray(g.deployments) ? g.deployments : [];
+    for (const d of deployments) {
+      if (!isObject(d)) continue;
+      const configure = isObject(d.configure) ? d.configure : {};
+      const ssh = isObject(configure.ssh) ? configure.ssh : {};
+      const sshHost = typeof ssh.host === "string" ? ssh.host.trim() : "";
+      const sshUser = typeof ssh.user === "string" && ssh.user.trim() ? ssh.user.trim() : "hdc";
+      const px = isObject(d.proxmox) ? d.proxmox : {};
+      const qemu = isObject(px.qemu) ? px.qemu : {};
+      const ip = parseIpv4FromCidr(qemu.ip);
+      const host = ip || sshHost;
+      if (host) {
+        if (!fromHosts.includes(host)) fromHosts.push(host);
+        if (sshHost || ip) wafSsh.push({ host: sshHost || host, user: sshUser });
+      }
+    }
+  }
+  if (!publicKey) {
+    throw new Error("nginx-waf acme.cert_ha.peer_ssh_public_key required to receive certs from the WAFs");
+  }
+  return { publicKey, fromHosts, wafSsh };
+}
+
+/**
+ * authorized_keys line: same peer key as the WAF fleet, forced to the mosquitto receiver.
+ * @param {string} publicKey
+ * @param {string[]} fromHosts
+ */
+export function renderMosquittoDistributeAuthorizedKey(publicKey, fromHosts) {
+  const parts = publicKey.trim().split(/\s+/);
+  if (parts.length < 2 || !/^ssh-(ed25519|rsa)$|^ecdsa-/.test(parts[0])) {
+    throw new Error("cert_ha.peer_ssh_public_key must be an OpenSSH public key");
+  }
+  for (const h of fromHosts) {
+    if (!/^[A-Za-z0-9.\-:*]+$/.test(h)) throw new Error(`bad WAF host ${JSON.stringify(h)}`);
+  }
+  const opts = [
+    `command="${MOSQUITTO_CERT_RECEIVER} receive"`,
+    "no-pty",
+    "no-port-forwarding",
+    "no-agent-forwarding",
+    "no-X11-forwarding",
+    fromHosts.length ? `from="${fromHosts.join(",")}"` : "",
+  ].filter(Boolean);
+  return `${opts.join(",")} ${parts[0]} ${parts[1]} ${MOSQUITTO_DISTRIBUTE_KEY_COMMENT}`;
+}
+
+export function renderMosquittoCertReceiverScript() {
+  return `#!/bin/bash
+set -euo pipefail
+if [ "\${1:-}" != "receive" ]; then
+  echo "usage: receive" >&2
+  exit 2
+fi
+dest=/etc/mosquitto/certs
+stage=\$(mktemp -d)
+trap 'rm -rf "\$stage"' EXIT
+tar -C "\$stage" -xf -
+test -s "\$stage/fullchain.pem"
+test -s "\$stage/privkey.pem"
+install -d -m 750 -o mosquitto -g mosquitto "\$dest"
+install -m 640 -o mosquitto -g mosquitto "\$stage/fullchain.pem" "\$dest/fullchain.pem"
+install -m 640 -o mosquitto -g mosquitto "\$stage/privkey.pem" "\$dest/privkey.pem"
+systemctl reload mosquitto 2>/dev/null || systemctl restart mosquitto
+`;
+}
+
+/**
+ * @param {import("../../postfix-relay/lib/postfix-relay-configure.mjs").ConfigureExec} exec
+ * @param {Record<string, unknown>} mosquitto
+ */
+export function installMosquittoCertReceiver(exec, mosquitto) {
+  const { publicKey, fromHosts } = resolveWafDistributeSettings(mosquitto);
+  const line = renderMosquittoDistributeAuthorizedKey(publicKey, fromHosts);
+  const scriptB64 = Buffer.from(renderMosquittoCertReceiverScript(), "utf8").toString("base64");
+  const lineB64 = Buffer.from(`${line}\n`, "utf8").toString("base64");
+  const cmd = [
+    "set -euo pipefail",
+    `echo ${shellQuote(scriptB64)} | base64 -d > ${MOSQUITTO_CERT_RECEIVER}`,
+    `chmod 755 ${MOSQUITTO_CERT_RECEIVER}`,
+    "install -d -m 700 /root/.ssh",
+    "F=/root/.ssh/authorized_keys",
+    "touch \"$F\" && chmod 600 \"$F\"",
+    `grep -v ${shellQuote(MOSQUITTO_DISTRIBUTE_KEY_COMMENT)} \"$F\" > \"$F.tmp\" || true`,
+    `echo ${shellQuote(lineB64)} | base64 -d >> \"$F.tmp\"`,
+    "mv \"$F.tmp\" \"$F\" && chmod 600 \"$F\"",
+  ].join("\n");
+  const r = exec.run(cmd, { capture: true });
+  if (r.status !== 0) {
+    throw new Error(`failed to install mosquitto cert receiver: ${r.stderr || r.stdout || `exit ${r.status}`}`);
+  }
+}
+
+/**
+ * Stop the legacy guest certbot / step-ca renew timer so it cannot keep failing against ca.hdc.
+ * @param {import("../../postfix-relay/lib/postfix-relay-configure.mjs").ConfigureExec} exec
+ */
+export function retireGuestCertbotTimers(exec) {
+  const cmd = [
+    "systemctl disable --now hdc-mosquitto-cert-renew.timer certbot.timer 2>/dev/null || true",
+    "systemctl mask hdc-mosquitto-cert-renew.timer certbot.timer 2>/dev/null || true",
+    "systemctl disable --now hdc-mosquitto-cert-renew.service certbot.service 2>/dev/null || true",
+  ].join("\n");
+  exec.run(cmd, { capture: true });
+}
+
+/**
+ * Fetch live pems from a WAF (operator SSH as the existing hdc user).
+ * @param {string} host
+ * @param {string} user
+ * @param {string} certName
+ * @returns {{ ok: boolean, tar?: Buffer, message?: string }}
+ */
+export function fetchLivePemTarFromWaf(host, user, certName) {
+  const safe = String(certName).replace(/[^a-zA-Z0-9._-]/g, "");
+  const remote = `sudo -n tar -C /etc/letsencrypt/live/${safe} -cf - fullchain.pem privkey.pem`;
+  const r = spawnSync(
+    "ssh",
+    ["-o", "BatchMode=yes", "-o", "ConnectTimeout=8", "-o", "IdentitiesOnly=no", `${user}@${host}`, remote],
+    { encoding: "buffer", maxBuffer: 2_000_000 },
+  );
+  if (r.status !== 0) {
+    const err = (r.stderr || r.stdout || Buffer.from(`exit ${r.status}`)).toString("utf8").trim();
+    return { ok: false, message: err.slice(0, 300) };
+  }
+  if (!r.stdout || !r.stdout.length) return { ok: false, message: "empty tar from WAF" };
+  return { ok: true, tar: r.stdout };
+}
+
+/**
+ * @param {import("../../postfix-relay/lib/postfix-relay-configure.mjs").ConfigureExec} exec
+ * @param {Buffer} tarBuf
+ * @param {string} dest
+ */
+export function installPemTarOnGuest(exec, tarBuf, dest) {
+  const b64 = tarBuf.toString("base64");
+  const cmd = [
+    "set -euo pipefail",
+    "stage=$(mktemp -d)",
+    "trap 'rm -rf \"$stage\"' EXIT",
+    `echo ${shellQuote(b64)} | base64 -d | tar -C "$stage" -xf -`,
+    "test -s \"$stage/fullchain.pem\" && test -s \"$stage/privkey.pem\"",
+    `install -d -m 750 -o mosquitto -g mosquitto ${shellQuote(dest)}`,
+    `install -m 640 -o mosquitto -g mosquitto "$stage/fullchain.pem" ${shellQuote(dest)}/fullchain.pem`,
+    `install -m 640 -o mosquitto -g mosquitto "$stage/privkey.pem" ${shellQuote(dest)}/privkey.pem`,
+    "systemctl reload mosquitto 2>/dev/null || systemctl restart mosquitto",
+  ].join("\n");
+  const r = exec.run(cmd, { capture: true });
+  if (r.status !== 0) {
+    throw new Error(`failed to install MQTTS cert: ${r.stderr || r.stdout || `exit ${r.status}`}`);
+  }
+}
+
+/**
+ * @param {import("../../postfix-relay/lib/postfix-relay-configure.mjs").ConfigureExec} exec
+ * @param {string} dest
+ */
+export function guestMqttCertIsLetsEncrypt(exec, dest) {
+  const path = `${dest}/fullchain.pem`;
+  const exists = exec.run(`test -s ${shellQuote(path)}`, { capture: true });
+  if (exists.status !== 0) return false;
+  const valid = exec.run(`openssl x509 -in ${shellQuote(path)} -noout -checkend 0`, { capture: true });
+  if (valid.status !== 0) return false;
+  const issuer = exec.run(`openssl x509 -in ${shellQuote(path)} -noout -issuer`, { capture: true });
+  return /Let's Encrypt|ISRG/i.test(issuer.stdout || "");
+}
+
+/**
+ * Install receiver, retire guest ACME timers, and copy the WAF-issued cert onto mosquitto.
+ * @param {object} opts
+ * @param {import("../../postfix-relay/lib/postfix-relay-configure.mjs").ConfigureExec} opts.exec
+ * @param {Record<string, unknown>} opts.mosquitto
+ */
+export function ensureTlsFromNginxWaf(opts) {
+  const { exec, mosquitto } = opts;
+  const certName = tlsCertName(mosquitto);
+  const dest = tlsCertDir(mosquitto);
+  installMosquittoCertReceiver(exec, mosquitto);
+  retireGuestCertbotTimers(exec);
+  const { wafSsh } = resolveWafDistributeSettings(mosquitto);
+  /** @type {string[]} */
+  const errors = [];
+  for (const waf of wafSsh) {
+    const fetched = fetchLivePemTarFromWaf(waf.host, waf.user, certName);
+    if (!fetched.ok) {
+      errors.push(`${waf.user}@${waf.host}: ${fetched.message}`);
+      continue;
+    }
+    installPemTarOnGuest(exec, fetched.tar, dest);
+    errout.write(`[hdc] mosquitto tls: installed ${certName} from ${waf.user}@${waf.host}\n`);
+    return { ok: true, cert_name: certName, source: "nginx-waf", from: `${waf.user}@${waf.host}` };
+  }
+  if (guestMqttCertIsLetsEncrypt(exec, dest)) {
+    errout.write(`[hdc] mosquitto tls: existing Let's Encrypt cert at ${dest} is still valid\n`);
+    return { ok: true, cert_name: certName, source: "nginx-waf", skipped: true, message: "valid LE cert already present" };
+  }
+  throw new Error(
+    `could not copy ${certName} from the WAF fleet onto mosquitto (run nginx-waf maintain first): ${errors.join("; ") || "no WAF hosts"}`,
+  );
+}
+
+
 export function syncTlsCertsForMosquitto(exec, mosquitto) {
   const certName = tlsCertName(mosquitto).replace(/[^a-zA-Z0-9._-]/g, "");
   const dest = tlsCertDir(mosquitto);
@@ -174,6 +425,9 @@ export function obtainOrRenewCertOnGuest(opts) {
   if (!tlsEnabled(mosquitto)) {
     return { ok: true, skipped: true, message: "TLS disabled" };
   }
+  if (tlsCertSource(mosquitto) === "nginx-waf") {
+    return ensureTlsFromNginxWaf({ exec, mosquitto });
+  }
   const certName = tlsCertName(mosquitto);
   const stepCa = resolveStepCaSettings(mosquitto);
   const email = resolveAcmeEmail(mosquitto);
@@ -214,6 +468,9 @@ export function obtainOrRenewCertOnGuest(opts) {
  * @param {Record<string, unknown>} mosquitto
  */
 export function renewCertsOnGuest(exec, mosquitto) {
+  if (tlsCertSource(mosquitto) === "nginx-waf") {
+    return ensureTlsFromNginxWaf({ exec, mosquitto });
+  }
   const certName = tlsCertName(mosquitto).replace(/[^a-zA-Z0-9._-]/g, "");
   const dest = tlsCertDir(mosquitto);
   const hook = [

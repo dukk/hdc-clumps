@@ -394,16 +394,54 @@ def receive_lineage(name, data):
         shutil.rmtree(stage, ignore_errors=True)
 
 
+def account_parent_map(account_rels):
+    """Group certbot account ids by ACME directory parent path."""
+    parents = {}
+    for rel in account_rels:
+        rel = rel.replace("\\", "/")
+        parent = os.path.dirname(rel)
+        parents.setdefault(parent, set()).add(os.path.basename(rel))
+    return parents
+
+
+def existing_account_rels(accounts_root):
+    found = []
+    if not os.path.isdir(accounts_root):
+        return found
+    for root, _dirs, files in os.walk(accounts_root):
+        if "private_key.json" in files:
+            found.append(os.path.relpath(root, accounts_root))
+    return found
+
+
 def receive_accounts(data):
+    """Install missing ACME *directories*, but never add a second account under one that already has one."""
     stage = tempfile.mkdtemp(prefix="acct-", dir=STATE_DIR)
     added = 0
+    skipped = 0
     try:
         with tarfile.open(fileobj=io.BytesIO(data), mode="r:gz") as tar:
             members = safe_members(tar, ["accounts"])
             tar.extractall(stage, members=members, filter="tar") if sys.version_info >= (3, 12) else tar.extractall(stage, members=members)
         src_root = os.path.join(stage, "accounts")
+        dest_root = os.path.join(LE_DIR, "accounts")
+        existing = account_parent_map(existing_account_rels(dest_root))
+        src_accounts = existing_account_rels(src_root)
+        skip_ids = set()
+        for rel in src_accounts:
+            parent = os.path.dirname(rel.replace("\\", "/"))
+            acc_id = os.path.basename(rel)
+            have = existing.get(parent) or set()
+            if have and acc_id not in have:
+                skip_ids.add(rel)
+                skipped += 1
         for root, dirs, files in os.walk(src_root):
             rel = os.path.relpath(root, src_root)
+            rel_posix = rel.replace("\\", "/")
+            # If this dir is inside a skipped account id, drop it.
+            if any(rel_posix == s or rel_posix.startswith(s + "/") for s in skip_ids):
+                dirs[:] = []
+                continue
             dst = os.path.join(LE_DIR, "accounts", rel) if rel != "." else os.path.join(LE_DIR, "accounts")
             os.makedirs(dst, mode=0o700, exist_ok=True)
             for fn in files:
@@ -412,7 +450,7 @@ def receive_accounts(data):
                     shutil.copy2(os.path.join(root, fn), d)
                     os.chmod(d, 0o600 if fn == "private_key.json" else 0o644)
                     added += 1
-        return {"ok": True, "added_files": added}
+        return {"ok": True, "added_files": added, "skipped_accounts": skipped}
     finally:
         shutil.rmtree(stage, ignore_errors=True)
 
@@ -466,7 +504,10 @@ def sync_to_peers(cfg, only=None, simulate_down=()):
         if st is None:
             problems.append(f"peer {node['id']} unreachable")
             continue
-        if set(me["accounts"]) - set(st.get("accounts", [])):
+        # Only push an ACME directory the peer has no account for (never add a second account).
+        me_parents = account_parent_map(me.get("accounts") or [])
+        peer_parents = account_parent_map(st.get("accounts") or [])
+        if any(parent not in peer_parents for parent in me_parents):
             ok, msg = push_accounts_to(cfg, node)
             actions.append(f"accounts -> {node['id']}: {'ok' if ok else 'FAILED ' + msg[:200]}")
             if not ok:
@@ -598,6 +639,55 @@ def should_renew(cfg, simulate_down=(), force=False):
     return True, "takeover: all higher-priority nodes unreachable or failing"
 
 
+
+def pems_tar(name):
+    live = os.path.join(LE_DIR, "live", name)
+    buf = io.BytesIO()
+    with tarfile.open(fileobj=buf, mode="w:gz") as tar:
+        for fn in ("fullchain.pem", "privkey.pem"):
+            path = os.path.join(live, fn)
+            if not os.path.isfile(path):
+                raise FileNotFoundError(path)
+            tar.add(path, arcname=fn)
+    return buf.getvalue()
+
+
+def distribute_targets(cfg, only=None):
+    out = []
+    for t in cfg.get("distribute") or []:
+        names = list(t.get("cert_names") or [])
+        if only:
+            names = [n for n in names if n in only]
+        if names and t.get("host"):
+            out.append({**t, "cert_names": names})
+    return out
+
+
+def push_to_distribute_target(cfg, target, name):
+    node = {"id": target.get("id") or target["host"], "host": target["host"],
+            "user": target.get("user") or "root"}
+    rc, out, err = peer_call(cfg, node, "receive", stdin_bytes=pems_tar(name), timeout=60)
+    msg = (out or err).decode(errors="replace").strip()
+    return rc == 0, msg
+
+
+def distribute_certs(cfg, only=None):
+    actions, problems = [], []
+    for target in distribute_targets(cfg, only):
+        for name in target["cert_names"]:
+            if not os.path.isfile(os.path.join(LE_DIR, "live", name, "fullchain.pem")):
+                problems.append(f"distribute {name} -> {target.get('id')}: lineage missing locally")
+                continue
+            try:
+                ok, msg = push_to_distribute_target(cfg, target, name)
+            except Exception as e:  # noqa: BLE001
+                ok, msg = False, repr(e)
+            actions.append(f"distribute {name} -> {target.get('id')}: {'ok' if ok else 'FAILED ' + msg[:200]}")
+            if not ok:
+                problems.append(f"distribute {name} to {target.get('id')} failed")
+    return actions, problems
+
+
 def cmd_renew(cfg, args):
     dry = "--dry-run" in args
     force = "--force" in args
@@ -631,6 +721,10 @@ def cmd_renew(cfg, args):
                 actions, problems, _ = sync_to_peers(cfg, simulate_down=sim)
                 for a in actions:
                     log(a)
+                d_actions, d_problems = distribute_certs(cfg)
+                for a in d_actions:
+                    log(a)
+                problems.extend(d_problems)
             probs = [f"renewal failed on {cfg['self']}: {n}" for n in state["failed"]]
             if r.returncode != 0 and not probs:
                 probs = [f"certbot renew exited {r.returncode} on {cfg['self']}"]
@@ -708,7 +802,14 @@ def cmd_push(cfg, args):
         log(a)
     for p in problems:
         log(f"problem: {p}")
-    print(json.dumps({"actions": actions, "problems": problems}, indent=1))
+    d_actions, d_problems = distribute_certs(cfg, only)
+    for a in d_actions:
+        log(a)
+        actions.append(a)
+    # Best-effort: the receiver (e.g. mosquitto) may not be installed yet.
+    if d_problems:
+        log("; ".join(d_problems))
+    print(json.dumps({"actions": actions, "problems": problems, "distribute_problems": d_problems}, indent=1))
     return 0 if not any("failed" in p for p in problems) else 1
 
 
@@ -723,7 +824,23 @@ def cmd_deploy_hook(cfg, args):
             actions, problems, _ = sync_to_peers(cfg, only={name})
         for a in actions:
             log(a)
+        if name:
+            d_actions, d_problems = distribute_certs(cfg, {name})
+            for a in d_actions:
+                log(a)
+            if d_problems:
+                log("; ".join(d_problems))
     return 0
+
+
+
+def cmd_distribute(cfg, args):
+    only = set(args) if args else None
+    actions, problems = distribute_certs(cfg, only)
+    for a in actions:
+        log(a)
+    print(json.dumps({"actions": actions, "problems": problems}, indent=1))
+    return 0 if not problems else 1
 
 
 def parse_sim(args):
@@ -790,6 +907,7 @@ def main(argv):
         return 2
     handlers = {
         "renew": cmd_renew, "check": cmd_check, "push": cmd_push, "deploy-hook": cmd_deploy_hook,
+        "distribute": cmd_distribute,
         "status": lambda c, a: print(json.dumps(local_status(c), indent=1)) or 0,
         "serve-root": cmd_serve_root,
     }

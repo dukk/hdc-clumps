@@ -44,6 +44,84 @@ function shellQuote(s) {
   return `'${s.replace(/'/g, `'\\''`)}'`;
 }
 
+
+/** Let's Encrypt production ACME directory. */
+export const LETS_ENCRYPT_PROD_DIRECTORY = "https://acme-v02.api.letsencrypt.org/directory";
+/** Let's Encrypt staging ACME directory. */
+export const LETS_ENCRYPT_STAGING_DIRECTORY = "https://acme-staging-v02.api.letsencrypt.org/directory";
+
+/**
+ * Directory URL certbot should use for these ACME settings.
+ * @param {ReturnType<typeof import("./deployments.mjs").parseAcmeSettings>} acme
+ */
+export function defaultAcmeDirectoryUrl(acme) {
+  if (acme && acme.provider === "custom" && acme.server) {
+    return String(acme.server).trim().replace(/\/+$/, "");
+  }
+  if (acme && acme.staging) return LETS_ENCRYPT_STAGING_DIRECTORY;
+  return LETS_ENCRYPT_PROD_DIRECTORY;
+}
+
+/**
+ * certbot on-disk account directory for an ACME directory URL.
+ * @param {string} serverUrl
+ */
+export function acmeAccountStorageDir(serverUrl) {
+  const u = new URL(serverUrl);
+  const path = (u.pathname || "/directory").replace(/\/+$/, "") || "/directory";
+  return `/etc/letsencrypt/accounts/${u.host}${path}`;
+}
+
+/**
+ * Pick the node's own certbot account: the id most often referenced by renewal confs
+ * for this ACME directory, else a stable existing id (never a second, unused copy).
+ * @param {string[]} accountIds
+ * @param {string[]} renewalAccountIds
+ */
+export function selectCertbotAccountId(accountIds, renewalAccountIds) {
+  const ids = [...new Set(accountIds.map((s) => String(s).trim()).filter(Boolean))];
+  if (!ids.length) return "";
+  /** @type {Map<string, number>} */
+  const counts = new Map();
+  for (const raw of renewalAccountIds) {
+    const id = String(raw).trim();
+    if (!ids.includes(id)) continue;
+    counts.set(id, (counts.get(id) || 0) + 1);
+  }
+  if (counts.size) {
+    return [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))[0][0];
+  }
+  return [...ids].sort()[0];
+}
+
+/**
+ * Discover the node's certbot account id for this ACME server, if one already exists.
+ * @param {import("../../postfix-relay/lib/postfix-relay-configure.mjs").ConfigureExec} exec
+ * @param {ReturnType<typeof import("./deployments.mjs").parseAcmeSettings>} acme
+ */
+export function selectCertbotAccountOnHost(exec, acme) {
+  const server = defaultAcmeDirectoryUrl(acme);
+  const dir = acmeAccountStorageDir(server);
+  const list = exec.run(
+    `if [ -d ${shellQuote(dir)} ]; then ls -1 ${shellQuote(dir)}; fi`,
+    { capture: true },
+  );
+  const accountIds = (list.status === 0 ? list.stdout : "")
+    .split(/\r?\n/)
+    .map((s) => s.trim())
+    .filter((s) => /^[A-Za-z0-9_-]+$/.test(s));
+  const usage = exec.run(
+    `for f in /etc/letsencrypt/renewal/*.conf; do [ -f "$f" ] || continue; acc=$(awk -F= '/^account[[:space:]]*=/ { gsub(/[[:space:]]/, "", $2); print $2; exit }' "$f"); srv=$(awk -F= '/^server[[:space:]]*=/ { gsub(/[[:space:]]/, "", $2); print $2; exit }' "$f"); [ -n "$acc" ] && [ "$srv" = ${shellQuote(server)} ] && printf '%s\n' "$acc"; done`,
+    { capture: true },
+  );
+
+  const renewalIds = (usage.status === 0 ? usage.stdout : "")
+    .split(/\r?\n/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+  return selectCertbotAccountId(accountIds, renewalIds);
+}
+
 /**
  * @param {import("../../postfix-relay/lib/postfix-relay-configure.mjs").ConfigureExec} exec
  * @param {string} cmd
@@ -163,12 +241,70 @@ export function sansExtraInLive(desired, live) {
  * @param {string} certName
  * @param {string[]} sans
  */
-export function certNeedsEnsureOnHost(exec, certName, sans) {
+export function certNeedsEnsureOnHost(exec, certName, sans, acme) {
   if (!certExistsOnHost(exec, certName)) return true;
   const desired = sans.length ? sans : [certName];
   const live = readCertSansOnHost(exec, certName);
   if (live === null) return true;
-  return sansMissingFromLive(desired, live).length > 0 || sansExtraInLive(desired, live).length > 0;
+  if (sansMissingFromLive(desired, live).length > 0 || sansExtraInLive(desired, live).length > 0) {
+    return true;
+  }
+  if (acme && certAcmeTargetDiffersOnHost(exec, certName, acme)) return true;
+  if (liveCertExpiredOnHost(exec, certName)) return true;
+  return false;
+}
+
+/**
+ * Live cert issuer string, or empty if unreadable.
+ * @param {import("../../postfix-relay/lib/postfix-relay-configure.mjs").ConfigureExec} exec
+ * @param {string} certName
+ */
+export function readLiveCertIssuerOnHost(exec, certName) {
+  const path = `/etc/letsencrypt/live/${certName}/cert.pem`;
+  const r = exec.run(`openssl x509 -in ${shellQuote(path)} -noout -issuer`, { capture: true });
+  return r.status === 0 ? r.stdout.trim() : "";
+}
+
+/**
+ * server= value from the lineage renewal conf, or empty.
+ * @param {import("../../postfix-relay/lib/postfix-relay-configure.mjs").ConfigureExec} exec
+ * @param {string} certName
+ */
+export function readRenewalConfServerOnHost(exec, certName) {
+  const path = `/etc/letsencrypt/renewal/${certName}.conf`;
+  const r = exec.run(
+    `awk -F= '/^server[[:space:]]*=/ { gsub(/[[:space:]]/, "", $2); print $2; exit }' ${shellQuote(path)}`,
+    { capture: true },
+  );
+  return r.status === 0 ? r.stdout.trim() : "";
+}
+
+/**
+ * True when the live lineage is issued by / pointed at a different ACME server than desired.
+ * @param {import("../../postfix-relay/lib/postfix-relay-configure.mjs").ConfigureExec} exec
+ * @param {string} certName
+ * @param {ReturnType<typeof import("./deployments.mjs").parseAcmeSettings>} acme
+ */
+export function certAcmeTargetDiffersOnHost(exec, certName, acme) {
+  const wanted = defaultAcmeDirectoryUrl(acme).replace(/\/+$/, "");
+  const server = readRenewalConfServerOnHost(exec, certName).replace(/\/+$/, "");
+  if (server && server !== wanted) return true;
+  if (acme && acme.provider !== "custom") {
+    const issuer = readLiveCertIssuerOnHost(exec, certName);
+    if (issuer && /DUKK HDC Internal CA|Step (Online|Intermediate) CA/i.test(issuer)) return true;
+  }
+  return false;
+}
+
+/**
+ * @param {import("../../postfix-relay/lib/postfix-relay-configure.mjs").ConfigureExec} exec
+ * @param {string} certName
+ */
+export function liveCertExpiredOnHost(exec, certName) {
+  const path = `/etc/letsencrypt/live/${certName}/cert.pem`;
+  const r = exec.run(`openssl x509 -in ${shellQuote(path)} -noout -checkend 0`, { capture: true });
+  // openssl exits 1 when the cert expires within the window (here: already expired / now).
+  return r.status !== 0;
 }
 
 /**
@@ -309,23 +445,24 @@ export function ensureLetsencryptDnsCredentials(opts) {
  * @param {string[]} opts.sans
  */
 export function buildCertonlyCommand(opts) {
-  const { acme, email, certName, sans, replaceLineage = false, defaultDnsZone } = opts;
+  const { acme, email, certName, sans, replaceLineage = false, defaultDnsZone, accountId = "" } = opts;
   const agree = " --agree-tos --non-interactive";
   const domainFlags = (sans.length ? sans : [certName]).map((n) => `-d ${n}`).join(" ");
   // --expand adds names; omitting it and passing --force-renewal replaces the lineage's exact SAN set.
   const certFlags = ` --cert-name ${shellQuote(certName)}` + (replaceLineage ? " --force-renewal" : " --expand");
+  const accountFlag = accountId ? ` --account ${shellQuote(accountId)}` : "";
   const serverFlag = acmeServerFlag(acme);
   const caBundle = acmeCaBundlePrefix(acme);
   if (acme.challenge === "dns-01") {
     const creds = certbotDnsCredentialsPath(acme.dnsZone, defaultDnsZone ?? acme.dnsZone);
     return (
       `${caBundle}certbot certonly --dns-rfc2136 --dns-rfc2136-credentials ${shellQuote(creds)} ` +
-      `--email ${shellQuote(email)}${agree}${certFlags}${serverFlag} ${domainFlags}`
+      `--email ${shellQuote(email)}${agree}${certFlags}${accountFlag}${serverFlag} ${domainFlags}`
     );
   }
   return (
     `${caBundle}mkdir -p ${shellQuote(acme.webroot || "/var/www/letsencrypt")} && certbot certonly --webroot -w ${shellQuote(acme.webroot || "/var/www/letsencrypt")} ` +
-    `--email ${shellQuote(email)}${agree}${certFlags}${serverFlag} ${domainFlags}`
+    `--email ${shellQuote(email)}${agree}${certFlags}${accountFlag}${serverFlag} ${domainFlags}`
   );
 }
 
@@ -375,11 +512,11 @@ function canDnsFallback(acme, tsigSecret, sans, certName) {
  * @param {string} [opts.tsigSecret]
  */
 function obtainCertificateWithChallenge(opts) {
-  const { exec, log, acme, email, certName, sans, tsigSecret, replaceLineage = false, defaultDnsZone } = opts;
+  const { exec, log, acme, email, certName, sans, tsigSecret, replaceLineage = false, defaultDnsZone, accountId = "" } = opts;
   if (acme.challenge === "dns-01") {
     ensureAcmeDnsCredentials({ exec, log, acme, tsigSecret, defaultDnsZone });
   }
-  runChecked(exec, buildCertonlyCommand({ acme, email, certName, sans, replaceLineage, defaultDnsZone }), log);
+  runChecked(exec, buildCertonlyCommand({ acme, email, certName, sans, replaceLineage, defaultDnsZone, accountId }), log);
 }
 
 /**
@@ -403,10 +540,10 @@ function obtainCertificateWithChallenge(opts) {
  * @returns {boolean} true when a certificate was written
  */
 function tryObtainOrExpandCertificate(opts) {
-  const { exec, log, acme, email, certName, sans, tsigSecret, replaceLineage = false, defaultDnsZone } = opts;
+  const { exec, log, acme, email, certName, sans, tsigSecret, replaceLineage = false, defaultDnsZone, accountId = "" } = opts;
   const names = sans.length ? sans : [certName];
   try {
-    obtainCertificateWithChallenge({ exec, log, acme, email, certName, sans, tsigSecret, replaceLineage, defaultDnsZone });
+    obtainCertificateWithChallenge({ exec, log, acme, email, certName, sans, tsigSecret, replaceLineage, defaultDnsZone, accountId });
     return true;
   } catch (httpErr) {
     const msg = String(/** @type {Error} */ (httpErr).message || httpErr);
@@ -439,6 +576,7 @@ function tryObtainOrExpandCertificate(opts) {
         tsigSecret,
         replaceLineage,
         defaultDnsZone,
+        accountId,
       });
       return true;
     } catch (dnsErr) {
@@ -475,34 +613,57 @@ export function obtainMissingCertificates(opts) {
   const expanded = [];
   /** @type {string[]} */
   const skipped = [];
+  /** @type {string[]} */
+  const failed = [];
+  /** @type {Map<string, string>} */
+  const accountByServer = new Map();
 
   for (const plan of plans) {
     const { certName, sans, acme } = plan;
     const desired = sans.length ? sans : [certName];
+    const server = defaultAcmeDirectoryUrl(acme);
+    if (!accountByServer.has(server)) {
+      accountByServer.set(server, selectCertbotAccountOnHost(exec, acme));
+    }
+    const accountId = accountByServer.get(server) || "";
     const exists = certExistsOnHost(exec, certName);
     if (exists) {
       const live = readCertSansOnHost(exec, certName) ?? [];
       const missing = sansMissingFromLive(desired, live);
       const extra = sansExtraInLive(desired, live);
-      if (!missing.length && !extra.length) {
+      const retarget = certAcmeTargetDiffersOnHost(exec, certName, acme);
+      const expired = liveCertExpiredOnHost(exec, certName);
+      if (!missing.length && !extra.length && !retarget && !expired) {
         skipped.push(certName);
         continue;
       }
       if (missing.length) log.info(`expanding certificate ${certName}: adding ${missing.join(", ")}`);
       // Reissue with the exact configured set (certbot --cert-name replaces the lineage's names).
       if (extra.length) log.info(`reissuing certificate ${certName}: removing ${extra.join(", ")}`);
+      if (retarget) log.info(`reissuing certificate ${certName}: switching ACME server to ${server}`);
+      if (expired && !retarget && !missing.length && !extra.length) {
+        log.info(`reissuing certificate ${certName}: live certificate has expired`);
+      }
       if (tryObtainOrExpandCertificate({
         exec, log, acme, email, certName, sans, tsigSecret,
-        replaceLineage: extra.length > 0,
+        replaceLineage: extra.length > 0 || retarget || expired,
         defaultDnsZone,
+        accountId,
       })) {
         expanded.push(certName);
+      } else {
+        failed.push(certName);
       }
       continue;
     }
-    if (tryObtainOrExpandCertificate({ exec, log, acme, email, certName, sans, tsigSecret, defaultDnsZone })) {
+    if (tryObtainOrExpandCertificate({ exec, log, acme, email, certName, sans, tsigSecret, defaultDnsZone, accountId })) {
       obtained.push(certName);
+    } else {
+      failed.push(certName);
     }
+  }
+  if (failed.length) {
+    throw new Error(`certificate obtain failed for: ${failed.join(", ")}`);
   }
   return { obtained, expanded, skipped };
 }
@@ -515,7 +676,7 @@ export function obtainMissingCertificates(opts) {
  */
 export function anyCertNeedsEnsureOnHost(exec, sites, groupGlobal) {
   for (const plan of tlsCertObtainPlans(sites, groupGlobal)) {
-    if (certNeedsEnsureOnHost(exec, plan.certName, plan.sans)) return true;
+    if (certNeedsEnsureOnHost(exec, plan.certName, plan.sans, plan.acme)) return true;
   }
   return false;
 }

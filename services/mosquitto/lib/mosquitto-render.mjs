@@ -19,6 +19,24 @@ export function tlsBlock(mosquitto) {
 /**
  * @param {Record<string, unknown>} mosquitto
  */
+
+/**
+ * Where the MQTTS certificate comes from.
+ * "nginx-waf" = issued on the WAF fleet and copied here; "step-ca" = legacy guest ACME.
+ * @param {Record<string, unknown>} mosquitto
+ */
+export function tlsCertSource(mosquitto) {
+  const tls = tlsBlock(mosquitto);
+  const v = typeof tls.source === "string" ? tls.source.trim().toLowerCase() : "";
+  if (v === "nginx-waf" || v === "nginx_waf" || v === "waf") return "nginx-waf";
+  if (v === "step-ca" || v === "step_ca" || v === "acme") return "step-ca";
+  // Infer: a step-ca config path without an explicit source is the legacy path.
+  if (typeof tls.step_ca_config_path === "string" && tls.step_ca_config_path.trim() && !v) {
+    return "step-ca";
+  }
+  return v || "nginx-waf";
+}
+
 export function tlsEnabled(mosquitto) {
   const tls = tlsBlock(mosquitto);
   return tls.enabled !== false;
