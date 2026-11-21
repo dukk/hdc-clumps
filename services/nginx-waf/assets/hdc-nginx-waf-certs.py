@@ -850,6 +850,44 @@ def parse_sim(args):
     return set()
 
 
+
+ACME_HTTP01_WEBROOT = "/var/www/letsencrypt/.well-known/acme-challenge"
+ACME_HTTP01_TOKEN_RE = re.compile(r"^[A-Za-z0-9_-]{1,128}$")
+
+
+def _acme_http01_path(token):
+    if not ACME_HTTP01_TOKEN_RE.fullmatch(token):
+        raise ValueError("bad token")
+    path = os.path.join(ACME_HTTP01_WEBROOT, token)
+    if os.path.dirname(os.path.abspath(path)) != os.path.abspath(ACME_HTTP01_WEBROOT):
+        raise ValueError("bad token")
+    return path
+
+
+def acme_http01_put(token):
+    path = _acme_http01_path(token)
+    data = sys.stdin.buffer.read()
+    if not data or len(data) > 4096:
+        print("bad validation", file=sys.stderr)
+        return 2
+    os.makedirs(ACME_HTTP01_WEBROOT, mode=0o755, exist_ok=True)
+    tmp = f"{path}.tmp"
+    with open(tmp, "wb") as f:
+        f.write(data)
+    os.chmod(tmp, 0o644)
+    os.replace(tmp, path)
+    return 0
+
+
+def acme_http01_clear(token):
+    path = _acme_http01_path(token)
+    try:
+        os.remove(path)
+    except FileNotFoundError:
+        pass
+    return 0
+
+
 def cmd_serve(cfg, args):
     orig = os.environ.get("SSH_ORIGINAL_COMMAND", "")
     os.execvp("sudo", ["sudo", "-n", SELF_PATH, "serve-root", orig])
@@ -891,6 +929,18 @@ def cmd_serve_root(cfg, args):
             res = receive_accounts(data)
         print(json.dumps(res))
         return 0
+    if verb == "acme-http01-put" and len(rest) == 1:
+        try:
+            return acme_http01_put(rest[0])
+        except ValueError:
+            print("bad token", file=sys.stderr)
+            return 2
+    if verb == "acme-http01-clear" and len(rest) == 1:
+        try:
+            return acme_http01_clear(rest[0])
+        except ValueError:
+            print("bad token", file=sys.stderr)
+            return 2
     print(f"refused: {verb}", file=sys.stderr)
     return 2
 

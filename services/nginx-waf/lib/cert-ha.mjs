@@ -324,13 +324,13 @@ export function renderAcmeHttp01AuthHook(peerHosts) {
   const peerList = peers.map((h) => shellQuote(h)).join(" ");
   const peerLoop = peers.length
     ? `for peer in ${peerList}; do
-  sudo -u "$HOOK_USER" ssh -o BatchMode=yes -o ConnectTimeout=8 "$HOOK_USER@$peer" "sudo mkdir -p $WEBROOT && echo -n \"$CERTBOT_VALIDATION\" | sudo tee $WEBROOT/\"$CERTBOT_TOKEN\" > /dev/null && sudo chmod 644 $WEBROOT/\"$CERTBOT_TOKEN\""
+  echo -n "$CERTBOT_VALIDATION" | ssh -i "$HOOK_KEY" -o IdentitiesOnly=yes -o BatchMode=yes -o ConnectTimeout=8 hdc@"$peer" acme-http01-put "$CERTBOT_TOKEN"
 done`
     : ": # no peer WAFs";
   return `#!/bin/bash
 # Managed by hdc nginx-waf (cert-ha.mjs) — do not edit on the host
 set -euo pipefail
-HOOK_USER=hdc
+HOOK_KEY=${CERT_HA_KEY_PATH}
 WEBROOT=${ACME_HTTP01_WEBROOT}
 mkdir -p "$WEBROOT"
 echo -n "$CERTBOT_VALIDATION" > "$WEBROOT/$CERTBOT_TOKEN"
@@ -347,13 +347,13 @@ export function renderAcmeHttp01CleanupHook(peerHosts) {
   const peerList = peers.map((h) => shellQuote(h)).join(" ");
   const peerLoop = peers.length
     ? `for peer in ${peerList}; do
-  sudo -u "$HOOK_USER" ssh -o BatchMode=yes -o ConnectTimeout=8 "$HOOK_USER@$peer" "sudo rm -f $WEBROOT/\"$CERTBOT_TOKEN\""
+  ssh -i "$HOOK_KEY" -o IdentitiesOnly=yes -o BatchMode=yes -o ConnectTimeout=8 hdc@"$peer" acme-http01-clear "$CERTBOT_TOKEN"
 done`
     : ": # no peer WAFs";
   return `#!/bin/bash
 # Managed by hdc nginx-waf (cert-ha.mjs) — do not edit on the host
 set -euo pipefail
-HOOK_USER=hdc
+HOOK_KEY=${CERT_HA_KEY_PATH}
 WEBROOT=${ACME_HTTP01_WEBROOT}
 rm -f "$WEBROOT/$CERTBOT_TOKEN"
 ${peerLoop}
