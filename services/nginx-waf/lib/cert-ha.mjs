@@ -30,6 +30,7 @@ export const CERT_HA_TOOL_PATH = "/usr/local/sbin/hdc-nginx-waf-certs";
 export const CERT_HA_CONFIG_PATH = "/etc/hdc/nginx-waf-certs.json";
 export const CERT_HA_KEY_DIR = "/etc/hdc/nginx-waf-certs";
 export const CERT_HA_KEY_PATH = `${CERT_HA_KEY_DIR}/id_ed25519`;
+export const CERT_HA_KNOWN_HOSTS_PATH = `${CERT_HA_KEY_DIR}/known_hosts`;
 export const CERT_HA_STATE_DIR = "/var/lib/hdc-nginx-waf-certs";
 export const CERT_HA_HOOK_PATH = "/etc/letsencrypt/renewal-hooks/deploy/hdc-nginx-waf-certs";
 export const CERT_HA_SUDOERS_PATH = "/etc/sudoers.d/hdc-nginx-waf-certs";
@@ -324,13 +325,14 @@ export function renderAcmeHttp01AuthHook(peerHosts) {
   const peerList = peers.map((h) => shellQuote(h)).join(" ");
   const peerLoop = peers.length
     ? `for peer in ${peerList}; do
-  echo -n "$CERTBOT_VALIDATION" | ssh -i "$HOOK_KEY" -o IdentitiesOnly=yes -o BatchMode=yes -o ConnectTimeout=8 hdc@"$peer" acme-http01-put "$CERTBOT_TOKEN"
+  echo -n "$CERTBOT_VALIDATION" | ssh -i "$HOOK_KEY" -o UserKnownHostsFile="$HOOK_KNOWN_HOSTS" -o IdentitiesOnly=yes -o BatchMode=yes -o ConnectTimeout=8 hdc@"$peer" acme-http01-put "$CERTBOT_TOKEN"
 done`
     : ": # no peer WAFs";
   return `#!/bin/bash
 # Managed by hdc nginx-waf (cert-ha.mjs) — do not edit on the host
 set -euo pipefail
 HOOK_KEY=${CERT_HA_KEY_PATH}
+HOOK_KNOWN_HOSTS=${CERT_HA_KNOWN_HOSTS_PATH}
 WEBROOT=${ACME_HTTP01_WEBROOT}
 mkdir -p "$WEBROOT"
 echo -n "$CERTBOT_VALIDATION" > "$WEBROOT/$CERTBOT_TOKEN"
@@ -347,13 +349,14 @@ export function renderAcmeHttp01CleanupHook(peerHosts) {
   const peerList = peers.map((h) => shellQuote(h)).join(" ");
   const peerLoop = peers.length
     ? `for peer in ${peerList}; do
-  ssh -i "$HOOK_KEY" -o IdentitiesOnly=yes -o BatchMode=yes -o ConnectTimeout=8 hdc@"$peer" acme-http01-clear "$CERTBOT_TOKEN"
+  ssh -i "$HOOK_KEY" -o UserKnownHostsFile="$HOOK_KNOWN_HOSTS" -o IdentitiesOnly=yes -o BatchMode=yes -o ConnectTimeout=8 hdc@"$peer" acme-http01-clear "$CERTBOT_TOKEN"
 done`
     : ": # no peer WAFs";
   return `#!/bin/bash
 # Managed by hdc nginx-waf (cert-ha.mjs) — do not edit on the host
 set -euo pipefail
 HOOK_KEY=${CERT_HA_KEY_PATH}
+HOOK_KNOWN_HOSTS=${CERT_HA_KNOWN_HOSTS_PATH}
 WEBROOT=${ACME_HTTP01_WEBROOT}
 rm -f "$WEBROOT/$CERTBOT_TOKEN"
 ${peerLoop}
@@ -387,6 +390,14 @@ function ensurePeerKnownHosts(exec, log, user, peerHosts) {
       '  ssh-keyscan -T 5 "$host" >> "$F"',
       "done",
       'chown "$U:$U" "$F" && chmod 600 "$F"',
+      `KH=${shellQuote(CERT_HA_KNOWN_HOSTS_PATH)}`,
+      'install -d -m 700 "$(dirname "$KH")"',
+      'touch "$KH" && chmod 644 "$KH"',
+      `for host in ${hosts}; do`,
+      '  ssh-keygen -R "$host" -f "$KH" >/dev/null 2>&1 || true',
+      '  ssh-keyscan -T 5 "$host" >> "$KH"',
+      "done",
+      'chmod 644 "$KH"',
     ].join("\n"),
     log,
     `known_hosts for ${user} (peers ${peers.join(",")})`,
