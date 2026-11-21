@@ -38,6 +38,9 @@ export const CERT_HA_KEY_COMMENT = "hdc-nginx-waf-certs";
 export const DEFAULT_PEER_KEY_VAULT_KEY = "HDC_NGINX_WAF_CERT_PEER_SSH_KEY";
 export const RENEW_UNIT = "hdc-nginx-waf-cert-renew";
 export const CHECK_UNIT = "hdc-nginx-waf-cert-check";
+export const ACME_HTTP01_WEBROOT = "/var/www/letsencrypt/.well-known/acme-challenge";
+export const ACME_HTTP01_AUTH_HOOK_PATH = "/etc/letsencrypt/hdc-acme-auth-hook.sh";
+export const ACME_HTTP01_CLEANUP_HOOK_PATH = "/etc/letsencrypt/hdc-acme-cleanup-hook.sh";
 
 function isObject(v) {
   return v !== null && typeof v === "object" && !Array.isArray(v);
@@ -294,6 +297,102 @@ function uploadFile(exec, remotePath, content, log, mode = "644") {
   );
 }
 
+
+/**
+ * Validate peer host tokens used in generated hook / ssh-keyscan scripts.
+ * @param {string[]} hosts
+ * @returns {string[]}
+ */
+export function assertSafePeerHosts(hosts) {
+  const out = [];
+  for (const raw of hosts || []) {
+    const h = String(raw || "").trim();
+    if (!h) continue;
+    if (!/^[A-Za-z0-9.-]+$/.test(h)) throw new Error(`bad peer host ${JSON.stringify(h)}`);
+    out.push(h);
+  }
+  return out;
+}
+
+/**
+ * HTTP-01 auth hook used by manual+http-01 lineages (e.g. vault.dukk.org behind Cloudflare).
+ * Writes the token on this node and copies it to every other WAF so either origin can answer.
+ * @param {string[]} peerHosts
+ */
+export function renderAcmeHttp01AuthHook(peerHosts) {
+  const peers = assertSafePeerHosts(peerHosts);
+  const peerList = peers.map((h) => shellQuote(h)).join(" ");
+  const peerLoop = peers.length
+    ? `for peer in ${peerList}; do
+  sudo -u "$HOOK_USER" ssh -o BatchMode=yes -o ConnectTimeout=8 "$HOOK_USER@$peer" "sudo mkdir -p $WEBROOT && echo -n \"$CERTBOT_VALIDATION\" | sudo tee $WEBROOT/\"$CERTBOT_TOKEN\" > /dev/null && sudo chmod 644 $WEBROOT/\"$CERTBOT_TOKEN\""
+done`
+    : ": # no peer WAFs";
+  return `#!/bin/bash
+# Managed by hdc nginx-waf (cert-ha.mjs) — do not edit on the host
+set -euo pipefail
+HOOK_USER=hdc
+WEBROOT=${ACME_HTTP01_WEBROOT}
+mkdir -p "$WEBROOT"
+echo -n "$CERTBOT_VALIDATION" > "$WEBROOT/$CERTBOT_TOKEN"
+chmod 644 "$WEBROOT/$CERTBOT_TOKEN"
+${peerLoop}
+`;
+}
+
+/**
+ * @param {string[]} peerHosts
+ */
+export function renderAcmeHttp01CleanupHook(peerHosts) {
+  const peers = assertSafePeerHosts(peerHosts);
+  const peerList = peers.map((h) => shellQuote(h)).join(" ");
+  const peerLoop = peers.length
+    ? `for peer in ${peerList}; do
+  sudo -u "$HOOK_USER" ssh -o BatchMode=yes -o ConnectTimeout=8 "$HOOK_USER@$peer" "sudo rm -f $WEBROOT/\"$CERTBOT_TOKEN\""
+done`
+    : ": # no peer WAFs";
+  return `#!/bin/bash
+# Managed by hdc nginx-waf (cert-ha.mjs) — do not edit on the host
+set -euo pipefail
+HOOK_USER=hdc
+WEBROOT=${ACME_HTTP01_WEBROOT}
+rm -f "$WEBROOT/$CERTBOT_TOKEN"
+${peerLoop}
+`;
+}
+
+/**
+ * Ensure the automation user can BatchMode SSH to every other WAF (host keys only; no new credentials).
+ * @param {{ label: string; run: Function }} exec
+ * @param {{ info: Function }} log
+ * @param {string} user
+ * @param {string[]} peerHosts
+ */
+function ensurePeerKnownHosts(exec, log, user, peerHosts) {
+  const peers = assertSafePeerHosts(peerHosts);
+  if (!peers.length) return;
+  if (!/^[a-z_][a-z0-9_-]*$/.test(user)) throw new Error(`bad ssh user ${JSON.stringify(user)}`);
+  const hosts = peers.map((h) => shellQuote(h)).join(" ");
+  runChecked(
+    exec,
+    [
+      "set -euo pipefail",
+      `U=${shellQuote(user)}`,
+      'H=$(getent passwd "$U" | cut -d: -f6)',
+      'test -n "$H"',
+      'install -d -m 700 -o "$U" -g "$U" "$H/.ssh"',
+      'F="$H/.ssh/known_hosts"',
+      'touch "$F" && chown "$U:$U" "$F" && chmod 600 "$F"',
+      `for host in ${hosts}; do`,
+      '  ssh-keygen -R "$host" -f "$F" >/dev/null 2>&1 || true',
+      '  ssh-keyscan -T 5 "$host" >> "$F"',
+      "done",
+      'chown "$U:$U" "$F" && chmod 600 "$F"',
+    ].join("\n"),
+    log,
+    `known_hosts for ${user} (peers ${peers.join(",")})`,
+  );
+}
+
 /**
  * Install/refresh cert HA on one node. Idempotent.
  * @param {object} opts
@@ -377,6 +476,11 @@ export function installCertHaOnNode(opts) {
     'chown "$U:$U" "$F.hdc-new" && chmod 600 "$F.hdc-new" && mv -f "$F.hdc-new" "$F"',
   ].join("\n");
   runChecked(exec, ak, log, `authorized_keys managed peer line for ${user} (from ${peerHosts.join(",") || "-"})`);
+
+  // 4b. HTTP-01 manual hooks + hdc known_hosts so any WAF can renew CF-proxied names (e.g. vault.dukk.org)
+  ensurePeerKnownHosts(exec, log, user, peerHosts);
+  uploadFile(exec, ACME_HTTP01_AUTH_HOOK_PATH, renderAcmeHttp01AuthHook(peerHosts), log, "755");
+  uploadFile(exec, ACME_HTTP01_CLEANUP_HOOK_PATH, renderAcmeHttp01CleanupHook(peerHosts), log, "755");
 
   // 5. certbot deploy hook → tool; retire the old single-peer sync hook/script
   uploadFile(
